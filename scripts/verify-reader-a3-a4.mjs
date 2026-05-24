@@ -122,6 +122,16 @@ assert(title.textContent === mediaArticle.title, 'title text should match articl
 assert(title.dataset.blockId === 'title', 'title should have data-block-id');
 assert(!title.dataset.unitId, 'title should not be an active FocusUnit before A4');
 assert(findByClass(rendered, 'reader-kicker')?.textContent === 'LineLens', 'reader brand should not include Reader suffix');
+const cover = findByClass(rendered, 'reader-cover');
+assert(cover?.tagName === 'FIGURE', 'cover image should render as figure');
+assert(cover.dataset.blockId === mediaArticle.coverImage.id, 'cover image should keep its block id');
+assert(cover.dataset.blockType === 'cover', 'cover image should use cover block type');
+assert(cover.children[0]?.tagName === 'IMG', 'cover should contain an image element');
+assert(cover.children[0]?.src === mediaArticle.coverImage.src, 'cover image src should match article cover');
+assert(
+  findChildIndex(findByClass(rendered, 'article-header'), cover) < findChildIndex(findByClass(rendered, 'article-header'), title),
+  'cover image should render above the title'
+);
 
 for (const block of mediaArticle.blocks) {
   const element = rendered.querySelector(`[data-block-id="${block.id}"]`);
@@ -134,6 +144,22 @@ assert(rendered.querySelector('[data-block-id="q1"]')?.tagName === 'BLOCKQUOTE',
 assert(rendered.querySelector('[data-block-id="img1"]')?.tagName === 'FIGURE', 'image should render as figure');
 assert(rendered.querySelector('[data-block-id="embed1"]')?.tagName === 'ASIDE', 'embed should render as aside');
 assert(rendered.querySelector('[data-block-id="list1"]')?.tagName === 'UL', 'list should render as ul');
+const explicitHeadingRendered = renderArticleShell({
+  ...mediaArticle,
+  blocks: [{ id: 'explicit-h1', type: 'heading', level: 1, text: '1. 看一眼 Transformer 的 Attention Heatmap' }]
+});
+assert(
+  explicitHeadingRendered.querySelector('[data-block-id="explicit-h1"]')?.tagName === 'H1',
+  'explicit h1 source heading should render as h1'
+);
+const shortParagraphRendered = renderArticleShell({
+  ...mediaArticle,
+  blocks: [{ id: 'short-p', type: 'paragraph', text: '例如：' }]
+});
+assert(
+  shortParagraphRendered.querySelector('[data-block-id="short-p"]')?.tagName === 'P',
+  'short plain text should render as paragraph'
+);
 
 const focusBuild = buildFocusUnits(mediaArticle, rendered);
 assert(focusBuild.units.length >= mediaArticle.blocks.length, 'FocusUnit list should be built');
@@ -234,6 +260,10 @@ function matchesSelector(element, selector) {
 
 function findByClass(rootElement, className) {
   return walk(rootElement).find((element) => element.className.split(/\s+/).includes(className)) ?? null;
+}
+
+function findChildIndex(parent, child) {
+  return parent?.children.indexOf(child) ?? -1;
 }
 
 function walk(rootElement) {

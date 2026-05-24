@@ -59,6 +59,7 @@ assertIncludes('src/shared/focus.ts', 'export type FocusUnit');
 assertIncludes('src/shared/messages.ts', 'export type ExtensionMessage');
 assertIncludes('src/background/index.ts', 'chrome.runtime.onMessage');
 assertIncludes('src/content/index.ts', 'ARTICLE_NOT_READY');
-assertIncludes('src/reader/index.ts', 'articleId');
+assertIncludes('src/reader/index.ts', 'loadRequestedArticle');
+assertIncludes('src/reader/article-loader.ts', 'articleId');
 
 console.log('Stage 0 verification passed.');

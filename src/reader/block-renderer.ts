@@ -18,7 +18,13 @@ export function renderArticleShell(article: Article): HTMLElement {
   title.dataset.blockType = 'title';
   title.textContent = article.title;
 
-  header.append(kicker, title);
+  header.append(kicker);
+
+  if (article.coverImage) {
+    header.append(renderCoverImageBlock(article.coverImage.id, article.coverImage.src, article.coverImage.alt));
+  }
+
+  header.append(title);
 
   const body = document.createElement('section');
   body.className = 'article-body';
@@ -34,7 +40,7 @@ export function renderArticleShell(article: Article): HTMLElement {
 function renderBlock(block: ArticleBlock): HTMLElement {
   switch (block.type) {
     case 'heading':
-      return renderTextBlock('h2', block.id, block.type, block.text);
+      return renderTextBlock(getHeadingTagName(block.level), block.id, block.type, block.text);
     case 'paragraph':
       return renderTextBlock('p', block.id, block.type, block.text);
     case 'quote':
@@ -49,7 +55,7 @@ function renderBlock(block: ArticleBlock): HTMLElement {
 }
 
 function renderTextBlock(
-  tagName: 'blockquote' | 'h2' | 'p',
+  tagName: 'blockquote' | 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'p',
   blockId: string,
   blockType: string,
   text: string
@@ -60,6 +66,10 @@ function renderTextBlock(
   element.dataset.blockType = blockType;
   element.textContent = text;
   return element;
+}
+
+function getHeadingTagName(level: 1 | 2 | 3 | 4 | 5 | 6 = 2): 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' {
+  return `h${level}`;
 }
 
 function renderImageBlock(blockId: string, src: string, alt = ''): HTMLElement {
@@ -81,6 +91,13 @@ function renderImageBlock(blockId: string, src: string, alt = ''): HTMLElement {
   });
 
   figure.append(image);
+  return figure;
+}
+
+function renderCoverImageBlock(blockId: string, src: string, alt = ''): HTMLElement {
+  const figure = renderImageBlock(blockId, src, alt);
+  figure.className = 'reader-cover reader-media';
+  figure.dataset.blockType = 'cover';
   return figure;
 }
 

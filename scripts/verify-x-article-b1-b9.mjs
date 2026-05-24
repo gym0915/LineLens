@@ -1,0 +1,163 @@
+import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
+import { createExtractorRegistry } from '../dist/content/extractor-registry.js';
+import { xArticleExtractor } from '../dist/content/extractors/x/article-extractor.js';
+import { X_ARTICLE_SELECTORS } from '../dist/content/extractors/x/article-selectors.js';
+import { validateArticle } from '../dist/shared/article-validator.js';
+import { normalizeText } from '../dist/shared/text.js';
+import { getXArticleIdFromUrl, isXArticleUrl } from '../dist/shared/url.js';
+
+const rootDir = resolve(import.meta.dirname, '..', '..');
+const detailSnapshot = readFileSync(
+  resolve(rootDir, 'assets/x-article-detail.html'),
+  'utf8'
+);
+const detail2Snapshot = readFileSync(
+  resolve(rootDir, 'assets/x-article-detail2.html'),
+  'utf8'
+);
+const mainSnapshot = readFileSync(
+  resolve(rootDir, 'assets/x-article-main.html'),
+  'utf8'
+);
+
+assert.equal(isXArticleUrl('https://x.com/dotey/article/2058421725256171718'), true);
+assert.equal(isXArticleUrl('https://twitter.com/dotey/article/2058421725256171718'), true);
+assert.equal(isXArticleUrl('https://x.com/dotey/status/2058421725256171718'), false);
+assert.equal(isXArticleUrl('https://example.com/dotey/article/2058421725256171718'), false);
+assert.equal(getXArticleIdFromUrl('https://x.com/dotey/article/2058421725256171718'), '2058421725256171718');
+
+assert.equal(normalizeText('  DeepSeek\n\t  的战略  '), 'DeepSeek 的战略');
+
+const registry = createExtractorRegistry([xArticleExtractor]);
+const match = registry.match({
+  url: new URL('https://x.com/dotey/article/2058421725256171718')
+});
+assert.equal(match?.extractor.id, 'x.article');
+assert.equal(match?.result.reason, 'x_article_url');
+
+assert.equal(X_ARTICLE_SELECTORS.readView, '[data-testid="twitterArticleReadView"]');
+assert.equal(X_ARTICLE_SELECTORS.title, '[data-testid="twitter-article-title"]');
+assert.equal(X_ARTICLE_SELECTORS.longform, '[data-testid="longformRichTextComponent"]');
+
+const detailText = extractSnapshotLongformText(detailSnapshot);
+const mainText = extractSnapshotLongformText(mainSnapshot);
+assert.equal(detailText.hash, mainText.hash);
+assert.equal(detailText.title, 'DeepSeek 的 10 万亿美元大战略【译】');
+assert.ok(detailText.textLength > 8000);
+assert.equal(detailText.textCount, 157);
+assert.equal(detailText.unorderedListItemCount > 0, true, 'snapshot should include Draft.js unordered list items');
+assert.equal(detailText.orderedListItemCount > 0, true, 'snapshot should include Draft.js ordered list items');
+assert.equal(
+  detailText.coverImageSrc,
+  'https://pbs.twimg.com/media/HJD4tg6WcAEYzqi?format=jpg&amp;name=medium',
+  'snapshot should expose the cover image before the article title'
+);
+assert.equal(detailText.boldSpanCount > 0, true, 'snapshot should include bold text spans');
+
+const detail2Text = extractSnapshotLongformText(detail2Snapshot);
+assert.equal(detail2Text.title, '为什么 AI 会“忘记”中间的信息');
+assert.equal(
+  detail2Text.coverImageSrc,
+  'https://pbs.twimg.com/media/HDXifRZWgAAB29S?format=jpg&amp;name=medium',
+  'detail2 should expose the cover image before the article title'
+);
+assert.equal(detail2Text.headingOneCount > 0, true, 'detail2 should include X article h1 content blocks');
+assert.equal(detail2Text.boldSpanCount > 0, true, 'detail2 should include bold text spans');
+
+const modularExtractorSource = readFileSync(
+  resolve(rootDir, 'LineLens/src/content/extractors/x/article-extractor.ts'),
+  'utf8'
+);
+const liveExtractorSource = readFileSync(resolve(rootDir, 'LineLens/src/content/index.ts'), 'utf8');
+for (const source of [modularExtractorSource, liveExtractorSource]) {
+  assert.match(source, /function isDraftListItem/, 'extractor should detect Draft.js list items');
+  assert.match(source, /flushPendingList/, 'extractor should group consecutive list items');
+  assert.match(source, /function extractCoverImage/, 'extractor should have dedicated cover extraction');
+  assert.match(source, /findImageBeforeTitle/, 'cover extraction should be constrained to images before the title');
+  assert.match(source, /function isHeadingBlock/, 'extractor should preserve explicit X heading tags');
+  assert.match(source, /function getHeadingLevel/, 'extractor should preserve explicit X heading levels');
+  assert.match(source, /function extractTextWithAnnotations/, 'extractor should preserve bold text annotations');
+  assert.match(source, /fontWeight === 'bold'/, 'extractor should read inline bold styles');
+  assert.doesNotMatch(source, /guessTextBlockType/, 'extractor should not infer headings from short text');
+}
+
+const validation = validateArticle({
+  id: '2058421725256171718',
+  source: 'x-article',
+  sourceUrl: 'https://x.com/dotey/article/2058421725256171718',
+  canonicalUrl: 'https://x.com/dotey/article/2058421725256171718',
+  title: detailText.title,
+  extractedAt: Date.now(),
+  blocks: [
+    { id: 'p1', type: 'paragraph', text: detailText.firstParagraph },
+    { id: 'p2', type: 'paragraph', text: detailText.secondParagraph },
+    { id: 'p3', type: 'paragraph', text: detailText.thirdParagraph }
+  ]
+});
+assert.equal(validation.valid, true, validation.reason);
+
+const invalidValidation = validateArticle({
+  id: '2058421725256171718',
+  source: 'x-article',
+  sourceUrl: 'https://x.com/dotey/article/2058421725256171718',
+  canonicalUrl: 'https://x.com/dotey/article/2058421725256171718',
+  title: '',
+  extractedAt: Date.now(),
+  blocks: []
+});
+assert.deepEqual(invalidValidation, {
+  valid: false,
+  reason: 'missing_title'
+});
+
+console.log('B1-B9 X Article verification passed.');
+
+function extractSnapshotLongformText(html) {
+  const title = normalizeText(decodeHtml(
+    html
+      .slice(html.indexOf('data-testid="twitter-article-title"'))
+      .match(/<span[^>]*>(.*?)<\/span>/)?.[1] ?? ''
+  ));
+  const titleStart = html.indexOf('data-testid="twitter-article-title"');
+  const preTitle = html.slice(0, titleStart);
+  const start = html.indexOf('data-testid="longformRichTextComponent"');
+  const end = html.indexOf('</main>', start);
+  const longform = html.slice(start, end);
+  const textItems = [...longform.matchAll(/<span[^>]*data-text="true"[^>]*>([\s\S]*?)<\/span>/g)]
+    .map((match) => normalizeText(decodeHtml(match[1].replace(/<[^>]+>/g, ''))))
+    .filter(Boolean);
+  const text = textItems.join('\\n');
+  return {
+    title,
+    textCount: textItems.length,
+    textLength: text.length,
+    hash: createHash('sha256').update(text).digest('hex'),
+    unorderedListItemCount: countMatches(longform, 'public-DraftStyleDefault-unorderedListItem'),
+    orderedListItemCount: countMatches(longform, 'public-DraftStyleDefault-orderedListItem'),
+    coverImageSrc: preTitle.match(/data-testid="tweetPhoto"[\s\S]*?<img[^>]+src="([^"]+)"/)?.[1] ?? '',
+    headingOneCount: countMatches(longform, 'longform-header-one'),
+    boldSpanCount: countMatches(longform, 'font-weight: bold'),
+    firstParagraph: textItems[5],
+    secondParagraph: textItems[7],
+    thirdParagraph: textItems[9]
+  };
+}
+
+function countMatches(value, pattern) {
+  return value.split(pattern).length - 1;
+}
+
+function decodeHtml(value) {
+  return value
+    .replace(/&quot;/g, '"')
+    .replace(/&#x27;/g, "'")
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&nbsp;/g, ' ');
+}
