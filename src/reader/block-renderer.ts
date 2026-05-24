@@ -10,7 +10,7 @@ export function renderArticleShell(article: Article): HTMLElement {
 
   const kicker = document.createElement('p');
   kicker.className = 'reader-kicker';
-  kicker.textContent = 'LineLens Reader';
+  kicker.textContent = 'LineLens';
 
   const title = document.createElement('h1');
   title.className = 'article-title';
@@ -41,6 +41,8 @@ function renderBlock(block: ArticleBlock): HTMLElement {
       return renderTextBlock('blockquote', block.id, block.type, block.text);
     case 'image':
       return renderImageBlock(block.id, block.src, block.alt);
+    case 'list':
+      return renderListBlock(block.id, block.items);
     case 'embed':
       return renderEmbedBlock(block.id, block.label, block.text);
   }
@@ -80,6 +82,33 @@ function renderImageBlock(blockId: string, src: string, alt = ''): HTMLElement {
 
   figure.append(image);
   return figure;
+}
+
+function renderListBlock(blockId: string, items: string[]): HTMLElement {
+  const list = document.createElement('ul');
+  list.className = 'reader-block reader-list';
+  list.dataset.blockId = blockId;
+  list.dataset.blockType = 'list';
+
+  items.forEach((text, index) => {
+    const item = document.createElement('li');
+    item.className = 'reader-list-item';
+    item.dataset.listItemIndex = `${index}`;
+
+    const bullet = document.createElement('span');
+    bullet.className = 'reader-list-bullet';
+    bullet.setAttribute('aria-hidden', 'true');
+    bullet.textContent = '•';
+
+    const content = document.createElement('span');
+    content.className = 'reader-list-text';
+    content.textContent = text;
+
+    item.append(bullet, content);
+    list.append(item);
+  });
+
+  return list;
 }
 
 function renderEmbedBlock(blockId: string, label: string, text?: string): HTMLElement {

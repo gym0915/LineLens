@@ -228,6 +228,10 @@ assert(findByClass(root, 'is-active')?.dataset.unitId === 'p1-u1', 'H should mov
 const beforeArrowDown = findByClass(root, 'is-active')?.dataset.unitId;
 dispatchKey(keydown, 'ArrowDown');
 assert(findByClass(root, 'is-active')?.dataset.unitId === beforeArrowDown, 'ArrowDown should not change active FocusUnit');
+assert(dispatchKey(keydown, ' ') === false, 'Space should remain unhandled by Reader navigation');
+assert(findByClass(root, 'is-active')?.dataset.unitId === beforeArrowDown, 'Space should not change active FocusUnit');
+assert(dispatchKey(keydown, 'Enter') === false, 'Enter should remain unhandled by Reader navigation');
+assert(findByClass(root, 'is-active')?.dataset.unitId === beforeArrowDown, 'Enter should not change active FocusUnit');
 
 selectedText = 'selected';
 dispatchKey(keydown, 'ArrowRight');
@@ -248,7 +252,7 @@ assert(savedProgress.unitId === 'p1-u2', 'Focus changes should save progress');
 assert(typeof savedProgress.updatedAt === 'number', 'Saved progress should include updatedAt');
 
 const status = findByClass(root, 'reader-status');
-assert(/\d+ \/ \d+/.test(status?.textContent ?? ''), 'Reader should show lightweight progress status');
+assert(/\d+% · \d+ min remaining/.test(status?.textContent ?? ''), 'Reader should show Clean-style progress status');
 const hint = findByClass(root, 'reader-hint');
 assert(hint?.classList.contains('is-hidden'), 'Reader hint should hide after first user action');
 

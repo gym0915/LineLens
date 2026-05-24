@@ -5,8 +5,10 @@ export type {
   EmbedBlock,
   HeadingBlock,
   ImageBlock,
+  ListBlock,
   ParagraphBlock,
-  QuoteBlock
+  QuoteBlock,
+  TextAnnotation
 } from './article.js';
 export type { FocusUnit } from './focus.js';
 export type { AnchorMode, ReaderFocusState } from './focus.js';

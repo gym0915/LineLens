@@ -143,15 +143,23 @@ for (const expected of [
   '--reader-media-active-border',
   '--reader-media-active-padding',
   '--reader-media-active-width',
+  '--reader-card-shadow',
+  '--reader-quote-border-active',
   '.focus-unit.is-muted:hover',
   '@media (prefers-reduced-motion: reduce)',
   '.reader-media.focus-unit.is-active',
   '.reader-media.focus-unit.is-active img',
+  '.reader-block[data-block-type="quote"].focus-unit.is-active',
+  '.reader-block[data-block-type="heading"].focus-unit.is-active',
+  '.reader-list-item.focus-unit.is-active',
+  '.focus-unit strong',
+  'font-weight: 700',
+  'padding: 9px 10px 11px',
+  '0 0 0 4px var(--reader-highlight-surface)',
   'background: var(--reader-highlight-surface)',
   'width: var(--reader-media-active-width)',
   'border: 1px solid var(--reader-media-active-border)',
-  'outline: none',
-  'filter: saturate(1) opacity(1)'
+  'filter: none'
 ]) {
   assert(css.includes(expected), `missing CSS coverage for ${expected}`);
 }

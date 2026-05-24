@@ -79,6 +79,10 @@ class ElementLike extends NodeLike {
     this.eventListeners.set(type, listener);
   }
 
+  setAttribute(name, value) {
+    this.attributes[name] = value;
+  }
+
   remove() {
     if (!this.parent) return;
     this.parent.children = this.parent.children.filter((child) => child !== this);
@@ -87,6 +91,10 @@ class ElementLike extends NodeLike {
 
   querySelector(selector) {
     return querySelector(this, selector);
+  }
+
+  querySelectorAll(selector) {
+    return walk(this).filter((element) => matchesSelector(element, selector));
   }
 }
 
@@ -113,6 +121,7 @@ assert(title?.tagName === 'H1', 'title should render as h1');
 assert(title.textContent === mediaArticle.title, 'title text should match article title');
 assert(title.dataset.blockId === 'title', 'title should have data-block-id');
 assert(!title.dataset.unitId, 'title should not be an active FocusUnit before A4');
+assert(findByClass(rendered, 'reader-kicker')?.textContent === 'LineLens', 'reader brand should not include Reader suffix');
 
 for (const block of mediaArticle.blocks) {
   const element = rendered.querySelector(`[data-block-id="${block.id}"]`);
@@ -124,6 +133,7 @@ assert(rendered.querySelector('[data-block-id="h1"]')?.tagName === 'H2', 'headin
 assert(rendered.querySelector('[data-block-id="q1"]')?.tagName === 'BLOCKQUOTE', 'quote should render as blockquote');
 assert(rendered.querySelector('[data-block-id="img1"]')?.tagName === 'FIGURE', 'image should render as figure');
 assert(rendered.querySelector('[data-block-id="embed1"]')?.tagName === 'ASIDE', 'embed should render as aside');
+assert(rendered.querySelector('[data-block-id="list1"]')?.tagName === 'UL', 'list should render as ul');
 
 const focusBuild = buildFocusUnits(mediaArticle, rendered);
 assert(focusBuild.units.length >= mediaArticle.blocks.length, 'FocusUnit list should be built');
@@ -132,12 +142,14 @@ assert(focusBuild.units.some((unit) => unit.type === 'block' && unit.blockType =
 assert(focusBuild.units.some((unit) => unit.type === 'block' && unit.blockType === 'quote'), 'quote block FocusUnit missing');
 assert(focusBuild.units.some((unit) => unit.type === 'block' && unit.blockType === 'image'), 'image block FocusUnit missing');
 assert(focusBuild.units.some((unit) => unit.type === 'block' && unit.blockType === 'embed'), 'embed block FocusUnit missing');
+const listUnits = focusBuild.units.filter((unit) => unit.type === 'reading-text' && unit.blockId === 'list1');
+assert(listUnits.length === 3, 'list items should become individual FocusUnits');
 
 for (const unit of focusBuild.units) {
   const element = focusBuild.elements.get(unit.unitId);
   assert(element, `missing DOM mapping for ${unit.unitId}`);
   if (unit.type === 'reading-text') {
-    assert(element.tagName === 'SPAN', `${unit.unitId} should render as inline span`);
+    assert(['SPAN', 'LI'].includes(element.tagName), `${unit.unitId} should render as inline span or list item`);
   }
 }
 
@@ -165,9 +177,32 @@ assert(
   firstMixedUnits.some((unit) => unit.text.includes('中文解释、') && unit.text.includes('数字指标和产品名')),
   'short list items should be merged into a natural reading unit'
 );
+const mixedRendered = renderArticleShell(mixedArticle);
+buildFocusUnits(mixedArticle, mixedRendered);
+const boldTexts = mixedRendered.querySelectorAll('strong').map((element) => element.textContent);
+assert(boldTexts.includes('English terms'), 'bold annotation should render English terms as strong');
+assert(
+  boldTexts.includes('GPT-5、Claude、TypeScript 5.5'),
+  'bold annotation should render product/version names as strong'
+);
+const annotatedUnit = walk(mixedRendered).find((element) => element.dataset.unitId === 'p1-u2');
+assert(
+  annotatedUnit?.textContent.includes('GPT-5、Claude、TypeScript 5.5'),
+  'bold annotations should not change FocusUnit text content'
+);
 
 const css = readFileSync(join(root, 'public', 'reader.css'), 'utf8');
-for (const token of ['--reader-column-width', '--reader-canvas', '--reader-body-line-height', '--reader-paragraph-gap', '--reader-media-gap']) {
+for (const token of [
+  '--reader-column-width',
+  '--reader-canvas',
+  '--reader-body-line-height',
+  '--reader-paragraph-gap',
+  '--reader-media-gap',
+  'Playfair Display',
+  'Lora',
+  'DM Sans',
+  '.reader-list-item.focus-unit.is-active'
+]) {
   assert(css.includes(token), `missing visual token ${token}`);
 }
 
@@ -178,14 +213,23 @@ function readFixture(id) {
 }
 
 function querySelector(rootElement, selector) {
+  return walk(rootElement).find((element) => matchesSelector(element, selector)) ?? null;
+}
+
+function matchesSelector(element, selector) {
   const dataMatch = selector.match(/^\[data-([a-z-]+)="([^"]+)"\]$/);
   if (dataMatch) {
     const [, rawName, value] = dataMatch;
     const key = rawName.replace(/-([a-z])/g, (_, char) => char.toUpperCase());
-    return walk(rootElement).find((element) => element.dataset?.[key] === value) ?? null;
+    return element.dataset?.[key] === value;
   }
 
-  return null;
+  const classMatch = selector.match(/^\.([A-Za-z0-9_-]+)$/);
+  if (classMatch) return element.className.split(/\s+/).includes(classMatch[1]);
+
+  if (/^[a-z]+$/i.test(selector)) return element.tagName === selector.toUpperCase();
+
+  return false;
 }
 
 function findByClass(rootElement, className) {

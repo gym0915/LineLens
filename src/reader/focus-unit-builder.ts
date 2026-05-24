@@ -1,4 +1,4 @@
-import type { Article, FocusUnit } from '../shared/article-schema.js';
+import type { Article, FocusUnit, TextAnnotation } from '../shared/article-schema.js';
 import { splitIntoReadingUnits } from './semantic-splitter.js';
 
 export type FocusUnitBuildResult = {
@@ -25,7 +25,7 @@ export function buildFocusUnits(article: Article, root: HTMLElement): FocusUnitB
         const span = document.createElement('span');
         span.className = 'focus-unit';
         span.dataset.unitId = unitId;
-        span.textContent = readingUnit.text;
+        appendAnnotatedText(span, block.text, readingUnit.startOffset, readingUnit.endOffset, block.annotations);
         blockElement.append(span, document.createTextNode(' '));
 
         const unit: FocusUnit = {
@@ -39,6 +39,28 @@ export function buildFocusUnits(article: Article, root: HTMLElement): FocusUnitB
         };
         units.push(unit);
         elements.set(unitId, span);
+      });
+      continue;
+    }
+
+    if (block.type === 'list') {
+      blockElement.querySelectorAll<HTMLElement>('.reader-list-item').forEach((itemElement, index) => {
+        const unitId = `${block.id}-item-${index + 1}`;
+        const text = block.items[index] ?? '';
+        itemElement.classList.add('focus-unit');
+        itemElement.dataset.unitId = unitId;
+
+        const unit: FocusUnit = {
+          id: unitId,
+          type: 'reading-text',
+          blockId: block.id,
+          unitId,
+          text,
+          startOffset: 0,
+          endOffset: text.length
+        };
+        units.push(unit);
+        elements.set(unitId, itemElement);
       });
       continue;
     }
@@ -60,4 +82,38 @@ export function buildFocusUnits(article: Article, root: HTMLElement): FocusUnitB
   }
 
   return { units, elements };
+}
+
+function appendAnnotatedText(
+  container: HTMLElement,
+  sourceText: string,
+  startOffset: number,
+  endOffset: number,
+  annotations: TextAnnotation[] = []
+): void {
+  const relevantAnnotations = annotations
+    .filter((annotation) => annotation.bold && annotation.endOffset > startOffset && annotation.startOffset < endOffset)
+    .map((annotation) => ({
+      startOffset: Math.max(annotation.startOffset, startOffset),
+      endOffset: Math.min(annotation.endOffset, endOffset)
+    }))
+    .sort((a, b) => a.startOffset - b.startOffset);
+
+  let cursor = startOffset;
+  for (const annotation of relevantAnnotations) {
+    if (annotation.startOffset > cursor) {
+      container.append(document.createTextNode(sourceText.slice(cursor, annotation.startOffset)));
+    }
+
+    if (annotation.endOffset > annotation.startOffset) {
+      const strong = document.createElement('strong');
+      strong.textContent = sourceText.slice(annotation.startOffset, annotation.endOffset);
+      container.append(strong);
+    }
+    cursor = annotation.endOffset;
+  }
+
+  if (cursor < endOffset) {
+    container.append(document.createTextNode(sourceText.slice(cursor, endOffset)));
+  }
 }

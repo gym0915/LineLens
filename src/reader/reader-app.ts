@@ -35,7 +35,7 @@ export function mountReaderApp(root: HTMLElement, article: Article): void {
       focusIndex: index,
       updatedAt: Date.now()
     });
-    status.textContent = `${index + 1} / ${units.length}`;
+    status.textContent = formatReadingStatus(units, index);
   });
   engine.setAnchorMode('free');
 
@@ -142,4 +142,19 @@ function shouldIgnoreKeydown(event: KeyboardEvent): boolean {
 
 function hideHint(hint: HTMLElement): void {
   hint.classList.add('is-hidden');
+}
+
+function formatReadingStatus(units: FocusUnit[], activeIndex: number): string {
+  const progress = Math.round(((activeIndex + 1) / units.length) * 100);
+  const remainingWords = units
+    .slice(activeIndex + 1)
+    .reduce((count, unit) => count + ('text' in unit ? countWords(unit.text) : 0), 0);
+  const minutesLeft = Math.max(1, Math.ceil(remainingWords / 200));
+  return `${progress}% · ${minutesLeft} min remaining`;
+}
+
+function countWords(text: string): number {
+  const latinWords = text.match(/[A-Za-z0-9]+(?:[-'][A-Za-z0-9]+)*/g)?.length ?? 0;
+  const cjkChars = text.match(/[\u3400-\u9fff]/g)?.length ?? 0;
+  return latinWords + Math.ceil(cjkChars / 2);
 }

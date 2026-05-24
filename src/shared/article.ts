@@ -17,6 +17,7 @@ export type ArticleBlock =
   | ParagraphBlock
   | QuoteBlock
   | ImageBlock
+  | ListBlock
   | EmbedBlock;
 
 export type HeadingBlock = {
@@ -29,12 +30,14 @@ export type ParagraphBlock = {
   id: string;
   type: 'paragraph';
   text: string;
+  annotations?: TextAnnotation[];
 };
 
 export type QuoteBlock = {
   id: string;
   type: 'quote';
   text: string;
+  annotations?: TextAnnotation[];
 };
 
 export type ImageBlock = {
@@ -46,10 +49,23 @@ export type ImageBlock = {
   aspectRatio?: number;
 };
 
+export type ListBlock = {
+  id: string;
+  type: 'list';
+  items: string[];
+  itemAnnotations?: TextAnnotation[][];
+};
+
 export type EmbedBlock = {
   id: string;
   type: 'embed';
   label: string;
   text?: string;
   href?: string;
+};
+
+export type TextAnnotation = {
+  startOffset: number;
+  endOffset: number;
+  bold?: boolean;
 };
