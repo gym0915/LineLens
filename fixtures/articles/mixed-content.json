@@ -1,0 +1,25 @@
+{
+  "id": "mixed-content",
+  "source": "fixture",
+  "sourceUrl": "fixture://articles/mixed-content",
+  "canonicalUrl": "fixture://articles/mixed-content",
+  "title": "AI Tools and 中文阅读节奏",
+  "extractedAt": 1770000000000,
+  "blocks": [
+    {
+      "id": "p1",
+      "type": "paragraph",
+      "text": "在讨论 Vibe Coding（凭感觉编程）时，很多文章会同时出现 English terms、中文解释、数字指标和产品名，例如 GPT-5、Claude、TypeScript 5.5。"
+    },
+    {
+      "id": "p2",
+      "type": "paragraph",
+      "text": "如果拆分算法把 https://example.com/very-long-path?foo=bar 这样的 URL 切断，或者把 TypeScript 拆成 Type 和 Script，阅读体验会立刻变差。"
+    },
+    {
+      "id": "p3",
+      "type": "paragraph",
+      "text": "因此 FocusUnit 需要尊重语义边界：中文标点可以作为主要断点，英文单词、括号内容和数字单位则需要更谨慎地处理。"
+    }
+  ]
+}

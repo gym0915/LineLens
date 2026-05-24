@@ -1,0 +1,17 @@
+{
+  "name": "linelens",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node scripts/copy-static.mjs",
+    "verify:stage0": "node scripts/verify-stage0.mjs",
+    "verify:reader-a3-a4": "npm run build && node scripts/verify-reader-a3-a4.mjs",
+    "verify:reader-a5": "npm run build && node scripts/verify-reader-a5.mjs",
+    "verify:reader-a6-a7": "npm run build && node scripts/verify-reader-a6-a7.mjs",
+    "verify:reader-a8-a9": "npm run build && node scripts/verify-reader-a8-a9.mjs"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4"
+  }
+}

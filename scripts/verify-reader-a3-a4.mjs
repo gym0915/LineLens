@@ -1,0 +1,212 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { renderArticleShell } from '../dist/reader/block-renderer.js';
+import { buildFocusUnits } from '../dist/reader/focus-unit-builder.js';
+import { splitIntoReadingUnits } from '../dist/reader/semantic-splitter.js';
+
+class ClassList {
+  constructor(owner) {
+    this.owner = owner;
+    this.values = new Set();
+  }
+
+  add(...names) {
+    for (const name of names) {
+      this.values.add(name);
+    }
+    this.owner.className = [...this.values].join(' ');
+  }
+
+  remove(...names) {
+    for (const name of names) {
+      this.values.delete(name);
+    }
+    this.owner.className = [...this.values].join(' ');
+  }
+
+  contains(name) {
+    return this.values.has(name);
+  }
+}
+
+class NodeLike {
+  constructor() {
+    this.children = [];
+    this.parent = null;
+  }
+
+  append(...nodes) {
+    for (const node of nodes) {
+      const normalized = typeof node === 'string' ? new TextNodeLike(node) : node;
+      normalized.parent = this;
+      this.children.push(normalized);
+    }
+  }
+}
+
+class TextNodeLike extends NodeLike {
+  constructor(text) {
+    super();
+    this.nodeType = 3;
+    this.textContent = text;
+  }
+}
+
+class ElementLike extends NodeLike {
+  constructor(tagName) {
+    super();
+    this.nodeType = 1;
+    this.tagName = tagName.toUpperCase();
+    this.dataset = {};
+    this.attributes = {};
+    this.className = '';
+    this.classList = new ClassList(this);
+    this.eventListeners = new Map();
+    this.loading = '';
+    this.alt = '';
+    this.src = '';
+  }
+
+  set textContent(value) {
+    this.children = [new TextNodeLike(value)];
+  }
+
+  get textContent() {
+    return this.children.map((child) => child.textContent ?? '').join('');
+  }
+
+  addEventListener(type, listener) {
+    this.eventListeners.set(type, listener);
+  }
+
+  remove() {
+    if (!this.parent) return;
+    this.parent.children = this.parent.children.filter((child) => child !== this);
+    this.parent = null;
+  }
+
+  querySelector(selector) {
+    return querySelector(this, selector);
+  }
+}
+
+globalThis.document = {
+  createElement(tagName) {
+    return new ElementLike(tagName);
+  },
+  createTextNode(text) {
+    return new TextNodeLike(text);
+  }
+};
+
+const root = new URL('..', import.meta.url).pathname;
+const fixtureDir = join(root, 'fixtures', 'articles');
+const mediaArticle = readFixture('media-and-quote');
+const longArticle = readFixture('long-paragraphs');
+const mixedArticle = readFixture('mixed-content');
+
+const rendered = renderArticleShell(mediaArticle);
+assert(rendered.dataset.articleId === 'media-and-quote', 'article id should be rendered');
+
+const title = findByClass(rendered, 'article-title');
+assert(title?.tagName === 'H1', 'title should render as h1');
+assert(title.textContent === mediaArticle.title, 'title text should match article title');
+assert(title.dataset.blockId === 'title', 'title should have data-block-id');
+assert(!title.dataset.unitId, 'title should not be an active FocusUnit before A4');
+
+for (const block of mediaArticle.blocks) {
+  const element = rendered.querySelector(`[data-block-id="${block.id}"]`);
+  assert(element, `block ${block.id} should have data-block-id`);
+  assert(element.dataset.blockType === block.type, `block ${block.id} should have block type`);
+}
+
+assert(rendered.querySelector('[data-block-id="h1"]')?.tagName === 'H2', 'heading should render as h2');
+assert(rendered.querySelector('[data-block-id="q1"]')?.tagName === 'BLOCKQUOTE', 'quote should render as blockquote');
+assert(rendered.querySelector('[data-block-id="img1"]')?.tagName === 'FIGURE', 'image should render as figure');
+assert(rendered.querySelector('[data-block-id="embed1"]')?.tagName === 'ASIDE', 'embed should render as aside');
+
+const focusBuild = buildFocusUnits(mediaArticle, rendered);
+assert(focusBuild.units.length >= mediaArticle.blocks.length, 'FocusUnit list should be built');
+assert(!focusBuild.units.some((unit) => unit.blockId === 'title'), 'title should not be first active unit');
+assert(focusBuild.units.some((unit) => unit.type === 'block' && unit.blockType === 'heading'), 'heading block FocusUnit missing');
+assert(focusBuild.units.some((unit) => unit.type === 'block' && unit.blockType === 'quote'), 'quote block FocusUnit missing');
+assert(focusBuild.units.some((unit) => unit.type === 'block' && unit.blockType === 'image'), 'image block FocusUnit missing');
+assert(focusBuild.units.some((unit) => unit.type === 'block' && unit.blockType === 'embed'), 'embed block FocusUnit missing');
+
+for (const unit of focusBuild.units) {
+  const element = focusBuild.elements.get(unit.unitId);
+  assert(element, `missing DOM mapping for ${unit.unitId}`);
+  if (unit.type === 'reading-text') {
+    assert(element.tagName === 'SPAN', `${unit.unitId} should render as inline span`);
+  }
+}
+
+const longParagraph = longArticle.blocks.find((block) => block.type === 'paragraph');
+assert(longParagraph, 'long paragraph fixture should have paragraph');
+const longUnits = splitIntoReadingUnits(longParagraph.text);
+assert(longUnits.length > 1, 'long paragraph should split into multiple units');
+assert(longUnits.every((unit) => unit.text.length <= 80), 'long units should be capped at 80 chars');
+
+const mixedParagraph = mixedArticle.blocks.find((block) => block.type === 'paragraph' && block.text.includes('https://example.com'));
+assert(mixedParagraph, 'mixed fixture should include URL paragraph');
+const mixedUnits = splitIntoReadingUnits(mixedParagraph.text);
+assert(mixedUnits.some((unit) => unit.text.includes('https://example.com/very-long-path?foo=bar')), 'URL should not be split apart');
+assert(mixedUnits.every((unit) => mixedParagraph.text.slice(unit.startOffset, unit.endOffset) === unit.text), 'offsets should map back to original text');
+assert(!mixedUnits.some((unit) => /\bType$|^Script\b/.test(unit.text)), 'English words should not be split apart');
+
+const firstMixedParagraph = mixedArticle.blocks.find((block) => block.type === 'paragraph' && block.text.includes('中文解释'));
+assert(firstMixedParagraph, 'mixed fixture should include list-like weak punctuation paragraph');
+const firstMixedUnits = splitIntoReadingUnits(firstMixedParagraph.text);
+assert(
+  !firstMixedUnits.some((unit) => unit.text === '中文解释、'),
+  'weak punctuation should not create a tiny isolated unit'
+);
+assert(
+  firstMixedUnits.some((unit) => unit.text.includes('中文解释、') && unit.text.includes('数字指标和产品名')),
+  'short list items should be merged into a natural reading unit'
+);
+
+const css = readFileSync(join(root, 'public', 'reader.css'), 'utf8');
+for (const token of ['--reader-column-width', '--reader-canvas', '--reader-body-line-height', '--reader-paragraph-gap', '--reader-media-gap']) {
+  assert(css.includes(token), `missing visual token ${token}`);
+}
+
+console.log('Reader A3/A4 verification passed.');
+
+function readFixture(id) {
+  return JSON.parse(readFileSync(join(fixtureDir, `${id}.json`), 'utf8'));
+}
+
+function querySelector(rootElement, selector) {
+  const dataMatch = selector.match(/^\[data-([a-z-]+)="([^"]+)"\]$/);
+  if (dataMatch) {
+    const [, rawName, value] = dataMatch;
+    const key = rawName.replace(/-([a-z])/g, (_, char) => char.toUpperCase());
+    return walk(rootElement).find((element) => element.dataset?.[key] === value) ?? null;
+  }
+
+  return null;
+}
+
+function findByClass(rootElement, className) {
+  return walk(rootElement).find((element) => element.className.split(/\s+/).includes(className)) ?? null;
+}
+
+function walk(rootElement) {
+  const result = [];
+  const stack = [rootElement];
+  while (stack.length > 0) {
+    const current = stack.shift();
+    if (current instanceof ElementLike) {
+      result.push(current);
+    }
+    stack.unshift(...current.children);
+  }
+  return result;
+}
+
+function assert(condition, message) {
+  if (!condition) {
+    throw new Error(message);
+  }
+}

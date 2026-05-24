@@ -1,0 +1,249 @@
+:root {
+  --reader-canvas: #eae5dc;
+  --reader-ink: #2c2521;
+  --reader-text-title: rgba(44, 37, 33, 0.82);
+  --reader-text-active: #2c2521;
+  --reader-text-muted: rgba(44, 37, 33, 0.22);
+  --reader-text-hover: rgba(44, 37, 33, 0.45);
+  --reader-text-chrome: rgba(44, 37, 33, 0.35);
+  --reader-highlight-surface: #ffffff;
+  --reader-highlight-shadow: 0 2px 14px rgba(44, 37, 33, 0.12);
+  --reader-highlight-outline: rgba(44, 37, 33, 0.16);
+  --reader-media-active-border: rgba(44, 37, 33, 0.22);
+  --reader-media-active-shadow: 0 18px 42px rgba(44, 37, 33, 0.12);
+  --reader-media-active-padding: 6px;
+  --reader-media-active-width: calc(100% - 24px);
+  --reader-column-width: 560px;
+  --reader-page-padding-x: 32px;
+  --reader-page-padding-top: 80px;
+  --reader-page-padding-bottom: 50vh;
+  --reader-body-line-height: 1.9;
+  --reader-paragraph-gap: 28px;
+  --reader-media-gap: 40px;
+  --reader-radius-media: 2px;
+  color: var(--reader-ink);
+  background: var(--reader-canvas);
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--reader-canvas);
+}
+
+.reader-shell {
+  box-sizing: border-box;
+  width: min(var(--reader-column-width), calc(100vw - (var(--reader-page-padding-x) * 2)));
+  margin: 0 auto;
+  padding: var(--reader-page-padding-top) 0 var(--reader-page-padding-bottom);
+}
+
+.reader-kicker {
+  margin: 0 0 16px;
+  color: var(--reader-text-chrome);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.article-title {
+  margin: 0 0 40px;
+  color: var(--reader-text-title);
+  font-size: clamp(2rem, 5vw, 2.75rem);
+  line-height: 1.16;
+}
+
+.article-body {
+  font-size: 16.5px;
+  line-height: var(--reader-body-line-height);
+}
+
+.reader-block {
+  margin: 0 0 var(--reader-paragraph-gap);
+}
+
+.reader-block[data-block-type="heading"] {
+  margin-top: 40px;
+  color: var(--reader-text-title);
+  font-size: 22px;
+  line-height: 1.35;
+}
+
+.reader-block[data-block-type="quote"] {
+  padding-left: 18px;
+  border-left: 2px solid rgba(44, 37, 33, 0.14);
+  font-style: italic;
+}
+
+.reader-media {
+  margin: var(--reader-media-gap) 0;
+}
+
+.reader-media img {
+  display: block;
+  width: 100%;
+  max-height: 420px;
+  object-fit: cover;
+  border-radius: var(--reader-radius-media);
+  filter: saturate(0.88) opacity(0.82);
+  transition: filter 250ms ease;
+}
+
+.reader-media.is-load-error {
+  min-height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(44, 37, 33, 0.12);
+  color: var(--reader-text-chrome);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 14px;
+}
+
+.reader-embed {
+  padding: 16px;
+  border: 1px solid rgba(44, 37, 33, 0.12);
+  color: var(--reader-text-chrome);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 14px;
+}
+
+.focus-unit {
+  display: inline;
+  cursor: pointer;
+  transition:
+    color 250ms ease,
+    background 250ms ease,
+    box-shadow 250ms ease,
+    padding 250ms ease;
+}
+
+.focus-unit.is-muted {
+  color: var(--reader-text-muted);
+}
+
+.focus-unit.is-muted:hover {
+  color: var(--reader-text-hover);
+}
+
+.focus-unit.is-active {
+  display: inline;
+  border-radius: 3px;
+  background: var(--reader-highlight-surface);
+  box-shadow: var(--reader-highlight-shadow);
+  color: var(--reader-text-active);
+}
+
+.reader-media.focus-unit,
+.reader-embed.focus-unit,
+.reader-block[data-block-type="heading"].focus-unit,
+.reader-block[data-block-type="quote"].focus-unit {
+  display: block;
+}
+
+.reader-media.focus-unit.is-active,
+.reader-embed.focus-unit.is-active,
+.reader-block[data-block-type="heading"].focus-unit.is-active,
+.reader-block[data-block-type="quote"].focus-unit.is-active {
+  outline: 1px solid var(--reader-highlight-outline);
+  outline-offset: 6px;
+}
+
+.reader-media.focus-unit.is-muted img {
+  filter: saturate(0.62) opacity(0.46);
+}
+
+.reader-media.focus-unit.is-muted:hover img {
+  filter: saturate(0.76) opacity(0.62);
+}
+
+.reader-media.focus-unit.is-active {
+  box-sizing: border-box;
+  width: var(--reader-media-active-width);
+  margin: calc(var(--reader-media-gap) + 4px) auto calc(var(--reader-media-gap) + 8px);
+  padding: var(--reader-media-active-padding);
+  background: var(--reader-highlight-surface);
+  border: 1px solid var(--reader-media-active-border);
+  border-radius: 8px;
+  outline: none;
+  box-shadow: var(--reader-media-active-shadow);
+}
+
+.reader-media.focus-unit.is-active img {
+  width: 100%;
+  margin: 0;
+  border-radius: 4px;
+  filter: saturate(1) opacity(1);
+}
+
+p .focus-unit.is-active {
+  padding: 2px 5px;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+.reader-status {
+  position: fixed;
+  right: 24px;
+  bottom: 20px;
+  color: var(--reader-text-chrome);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 11px;
+}
+
+.reader-hint {
+  position: fixed;
+  left: 50%;
+  bottom: 20px;
+  transform: translateX(-50%);
+  margin: 0;
+  color: var(--reader-text-chrome);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  transition: opacity 600ms ease;
+}
+
+.reader-hint.is-hidden {
+  opacity: 0;
+}
+
+.highlight-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.highlight-layer.is-visible {
+  opacity: 1;
+}
+
+.highlight-focus {
+  position: fixed;
+  left: var(--highlight-x, 0);
+  top: var(--highlight-y, 0);
+  width: var(--highlight-width, 0);
+  height: var(--highlight-height, 0);
+  border-radius: 4px;
+  box-shadow: 0 0 0 1px var(--reader-highlight-outline);
+  transition:
+    left 250ms ease,
+    top 250ms ease,
+    width 250ms ease,
+    height 250ms ease,
+    opacity 250ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .focus-unit,
+  .reader-media img,
+  .highlight-focus,
+  .reader-hint {
+    transition: none;
+  }
+}

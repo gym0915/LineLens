@@ -1,0 +1,43 @@
+{
+  "id": "media-and-quote",
+  "source": "fixture",
+  "sourceUrl": "fixture://articles/media-and-quote",
+  "canonicalUrl": "fixture://articles/media-and-quote",
+  "title": "带图片和引用的阅读样本",
+  "extractedAt": 1770000000000,
+  "blocks": [
+    {
+      "id": "h1",
+      "type": "heading",
+      "text": "阅读中的空间感"
+    },
+    {
+      "id": "p1",
+      "type": "paragraph",
+      "text": "有些用户需要当前句子被高亮，但仍然希望知道这句话处在整篇文章的什么位置。完全隐藏上下文并不总是更好。"
+    },
+    {
+      "id": "q1",
+      "type": "quote",
+      "text": "当前内容需要足够明确，周围内容也需要保留可感知的轮廓。"
+    },
+    {
+      "id": "img1",
+      "type": "image",
+      "src": "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=900&h=540&fit=crop&auto=format",
+      "alt": "安静书桌上的笔记本和窗边光线",
+      "aspectRatio": 1.6667
+    },
+    {
+      "id": "embed1",
+      "type": "embed",
+      "label": "未知嵌入内容",
+      "text": "这里代表后续可能出现的视频、链接卡片或平台嵌入。"
+    },
+    {
+      "id": "p2",
+      "type": "paragraph",
+      "text": "图片、引用和嵌入内容都不是普通的一行文字。它们需要作为整块进入 FocusUnit 列表，避免高亮区域和真实内容高度错位。"
+    }
+  ]
+}
