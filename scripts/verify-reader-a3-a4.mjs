@@ -143,6 +143,14 @@ assert(rendered.querySelector('[data-block-id="h1"]')?.tagName === 'H2', 'headin
 assert(rendered.querySelector('[data-block-id="q1"]')?.tagName === 'BLOCKQUOTE', 'quote should render as blockquote');
 assert(rendered.querySelector('[data-block-id="img1"]')?.tagName === 'FIGURE', 'image should render as figure');
 assert(rendered.querySelector('[data-block-id="embed1"]')?.tagName === 'ASIDE', 'embed should render as aside');
+assert(rendered.querySelector('[data-block-id="ref1"]')?.tagName === 'ASIDE', 'ref card should render as aside');
+assert(findByClass(rendered.querySelector('[data-block-id="ref1"]'), 'reader-ref-card-cover')?.tagName === 'IMG', 'ref card should render cover image');
+assert(findByClass(rendered.querySelector('[data-block-id="ref1"]'), 'reader-ref-card-source')?.textContent === 'X Article', 'ref card source should render');
+assert(
+  findByClass(rendered.querySelector('[data-block-id="ref1"]'), 'reader-ref-card-title')?.textContent ===
+    'The Science of Attention: Why Your Brain Needs Boredom',
+  'ref card title should render'
+);
 assert(rendered.querySelector('[data-block-id="list1"]')?.tagName === 'UL', 'list should render as ul');
 const explicitHeadingRendered = renderArticleShell({
   ...mediaArticle,
@@ -168,6 +176,7 @@ assert(focusBuild.units.some((unit) => unit.type === 'block' && unit.blockType =
 assert(focusBuild.units.some((unit) => unit.type === 'block' && unit.blockType === 'quote'), 'quote block FocusUnit missing');
 assert(focusBuild.units.some((unit) => unit.type === 'block' && unit.blockType === 'image'), 'image block FocusUnit missing');
 assert(focusBuild.units.some((unit) => unit.type === 'block' && unit.blockType === 'embed'), 'embed block FocusUnit missing');
+assert(focusBuild.units.some((unit) => unit.type === 'block' && unit.blockType === 'ref-card'), 'ref card block FocusUnit missing');
 const listUnits = focusBuild.units.filter((unit) => unit.type === 'reading-text' && unit.blockId === 'list1');
 assert(listUnits.length === 3, 'list items should become individual FocusUnits');
 

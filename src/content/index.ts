@@ -27,6 +27,16 @@ type ArticleBlock =
     }
   | {
       id: string;
+      type: 'ref-card';
+      coverUrl: string;
+      coverAlt?: string;
+      source: string;
+      title: string;
+      excerpt: string;
+      href?: string;
+    }
+  | {
+      id: string;
       type: 'embed';
       label: string;
       text?: string;
@@ -399,6 +409,11 @@ function extractBlock(block: Element, articleId: string, index: number): Article
 }
 
 function extractNonTextBlock(block: Element, articleId: string, index: number): ArticleBlock | null {
+  const refCard = extractRefCardBlock(block, blockId(articleId, index));
+  if (refCard) {
+    return refCard;
+  }
+
   const image = extractImageFromElement(block, blockId(articleId, index));
   if (image) {
     return image;
@@ -412,6 +427,41 @@ function extractNonTextBlock(block: Element, articleId: string, index: number): 
     text: text || undefined,
     href: block.querySelector('a[href]')?.getAttribute('href') ?? undefined
   };
+}
+
+function extractRefCardBlock(block: Element, id: string): ArticleBlock | null {
+  const coverRoot = block.querySelector('[data-testid="article-cover-image"]');
+  if (!coverRoot) {
+    return null;
+  }
+
+  const coverImage = coverRoot.querySelector<HTMLImageElement>('img');
+  const coverUrl = coverImage?.currentSrc || coverImage?.src || '';
+  if (!coverUrl) {
+    return null;
+  }
+
+  const href = block.querySelector('a[href]')?.getAttribute('href') ?? undefined;
+  const title = normalizeText(getTextAfterCover(coverRoot, 0));
+  const excerpt = normalizeText(getTextAfterCover(coverRoot, 1));
+
+  return {
+    id,
+    type: 'ref-card',
+    coverUrl,
+    coverAlt: coverImage?.alt || undefined,
+    source: 'X Article',
+    title: title || 'X Article',
+    excerpt,
+    href
+  };
+}
+
+function getTextAfterCover(coverRoot: Element, offset: number): string {
+  const textBlocks = Array.from(coverRoot.parentElement?.querySelectorAll<HTMLElement>('div[dir="auto"]') ?? []);
+  const coverIndex = textBlocks.findIndex((element) => coverRoot.contains(element));
+  const candidates = coverIndex >= 0 ? textBlocks.slice(coverIndex + 1) : textBlocks;
+  return candidates[offset]?.textContent ?? '';
 }
 
 function extractCoverImage(readView: Element, articleId: string): ImageBlock | undefined {
@@ -521,7 +571,9 @@ function validateArticle(article: Article) {
 
   const textLength = article.blocks.reduce((total, block) => total + getBlockTextLength(block), 0);
   const hasTextBlock = article.blocks.some((block) => isTextBlock(block));
-  const hasMediaBlock = article.blocks.some((block) => block.type === 'image' || block.type === 'embed');
+  const hasMediaBlock = article.blocks.some(
+    (block) => block.type === 'image' || block.type === 'embed' || block.type === 'ref-card'
+  );
 
   if (textLength <= 200 && !(hasTextBlock && hasMediaBlock)) {
     return { valid: false, reason: 'insufficient_content' };
@@ -541,6 +593,10 @@ function getBlockTextLength(block: ArticleBlock): number {
 
   if (block.type === 'embed') {
     return normalizeText(`${block.label} ${block.text ?? ''}`).length;
+  }
+
+  if (block.type === 'ref-card') {
+    return normalizeText(`${block.source} ${block.title} ${block.excerpt}`).length;
   }
 
   return 0;

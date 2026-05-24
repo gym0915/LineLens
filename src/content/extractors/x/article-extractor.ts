@@ -171,6 +171,11 @@ function extractBlock(block: Element, articleId: string, index: number): Article
 }
 
 function extractNonTextBlock(block: Element, articleId: string, index: number): ArticleBlock | null {
+  const refCard = extractRefCardBlock(block, blockId(articleId, index));
+  if (refCard) {
+    return refCard;
+  }
+
   const image = extractImageFromElement(block, blockId(articleId, index));
   if (image) {
     return image;
@@ -184,6 +189,41 @@ function extractNonTextBlock(block: Element, articleId: string, index: number): 
     text: text || undefined,
     href: block.querySelector('a[href]')?.getAttribute('href') ?? undefined
   };
+}
+
+function extractRefCardBlock(block: Element, id: string): ArticleBlock | null {
+  const coverRoot = block.querySelector('[data-testid="article-cover-image"]');
+  if (!coverRoot) {
+    return null;
+  }
+
+  const coverImage = coverRoot.querySelector<HTMLImageElement>('img');
+  const coverUrl = coverImage?.currentSrc || coverImage?.src || '';
+  if (!coverUrl) {
+    return null;
+  }
+
+  const href = block.querySelector('a[href]')?.getAttribute('href') ?? undefined;
+  const title = normalizeText(getTextAfterCover(coverRoot, 0));
+  const excerpt = normalizeText(getTextAfterCover(coverRoot, 1));
+
+  return {
+    id,
+    type: 'ref-card',
+    coverUrl,
+    coverAlt: coverImage?.alt || undefined,
+    source: 'X Article',
+    title: title || 'X Article',
+    excerpt,
+    href
+  };
+}
+
+function getTextAfterCover(coverRoot: Element, offset: number): string {
+  const textBlocks = Array.from(coverRoot.parentElement?.querySelectorAll<HTMLElement>('div[dir="auto"]') ?? []);
+  const coverIndex = textBlocks.findIndex((element) => coverRoot.contains(element));
+  const candidates = coverIndex >= 0 ? textBlocks.slice(coverIndex + 1) : textBlocks;
+  return candidates[offset]?.textContent ?? '';
 }
 
 function extractCoverImage(readView: Element, articleId: string): ImageBlock | undefined {

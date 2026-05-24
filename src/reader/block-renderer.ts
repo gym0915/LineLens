@@ -49,6 +49,8 @@ function renderBlock(block: ArticleBlock): HTMLElement {
       return renderImageBlock(block.id, block.src, block.alt);
     case 'list':
       return renderListBlock(block.id, block.items);
+    case 'ref-card':
+      return renderRefCardBlock(block.id, block.coverUrl, block.coverAlt, block.source, block.title, block.excerpt);
     case 'embed':
       return renderEmbedBlock(block.id, block.label, block.text);
   }
@@ -126,6 +128,54 @@ function renderListBlock(blockId: string, items: string[]): HTMLElement {
   });
 
   return list;
+}
+
+function renderRefCardBlock(
+  blockId: string,
+  coverUrl: string,
+  coverAlt = '',
+  source: string,
+  title: string,
+  excerpt: string
+): HTMLElement {
+  const card = document.createElement('aside');
+  card.className = 'reader-block reader-ref-card';
+  card.dataset.blockId = blockId;
+  card.dataset.blockType = 'ref-card';
+
+  const shell = document.createElement('div');
+  shell.className = 'reader-ref-card-shell';
+
+  const media = document.createElement('div');
+  media.className = 'reader-ref-card-media';
+
+  const image = document.createElement('img');
+  image.className = 'reader-ref-card-cover';
+  image.src = coverUrl;
+  image.alt = coverAlt;
+  image.loading = 'lazy';
+
+  const sourceBadge = document.createElement('span');
+  sourceBadge.className = 'reader-ref-card-source';
+  sourceBadge.textContent = source;
+
+  media.append(image, sourceBadge);
+
+  const content = document.createElement('div');
+  content.className = 'reader-ref-card-content';
+
+  const titleElement = document.createElement('div');
+  titleElement.className = 'reader-ref-card-title';
+  titleElement.textContent = title;
+
+  const excerptElement = document.createElement('div');
+  excerptElement.className = 'reader-ref-card-excerpt';
+  excerptElement.textContent = excerpt;
+
+  content.append(titleElement, excerptElement);
+  shell.append(media, content);
+  card.append(shell);
+  return card;
 }
 
 function renderEmbedBlock(blockId: string, label: string, text?: string): HTMLElement {

@@ -57,6 +57,8 @@ assert.equal(
   'snapshot should expose the cover image before the article title'
 );
 assert.equal(detailText.boldSpanCount > 0, true, 'snapshot should include bold text spans');
+assert.equal(detailText.simpleTweetCount > 0, true, 'snapshot should include embedded simple tweets');
+assert.equal(detailText.articleCoverImageCount > 0, true, 'snapshot should include embedded X article cards');
 
 const detail2Text = extractSnapshotLongformText(detail2Snapshot);
 assert.equal(detail2Text.title, '为什么 AI 会“忘记”中间的信息');
@@ -83,6 +85,8 @@ for (const source of [modularExtractorSource, liveExtractorSource]) {
   assert.match(source, /function extractTextWithAnnotations/, 'extractor should preserve bold text annotations');
   assert.match(source, /fontWeight === 'bold'/, 'extractor should read inline bold styles');
   assert.doesNotMatch(source, /guessTextBlockType/, 'extractor should not infer headings from short text');
+  assert.match(source, /function extractRefCardBlock/, 'extractor should parse embedded X article cards');
+  assert.match(source, /data-testid="article-cover-image"/, 'extractor should target article cover cards');
 }
 
 const validation = validateArticle({
@@ -141,6 +145,8 @@ function extractSnapshotLongformText(html) {
     coverImageSrc: preTitle.match(/data-testid="tweetPhoto"[\s\S]*?<img[^>]+src="([^"]+)"/)?.[1] ?? '',
     headingOneCount: countMatches(longform, 'longform-header-one'),
     boldSpanCount: countMatches(longform, 'font-weight: bold'),
+    simpleTweetCount: countMatches(longform, 'data-testid="simpleTweet"'),
+    articleCoverImageCount: countMatches(longform, 'data-testid="article-cover-image"'),
     firstParagraph: textItems[5],
     secondParagraph: textItems[7],
     thirdParagraph: textItems[9]

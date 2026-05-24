@@ -28,7 +28,9 @@ export function validateArticle(article: Article): ValidationResult {
 
   const textLength = article.blocks.reduce((total, block) => total + getBlockTextLength(block), 0);
   const hasTextBlock = article.blocks.some((block) => isTextBlock(block));
-  const hasMediaBlock = article.blocks.some((block) => block.type === 'image' || block.type === 'embed');
+  const hasMediaBlock = article.blocks.some(
+    (block) => block.type === 'image' || block.type === 'embed' || block.type === 'ref-card'
+  );
 
   if (textLength <= MIN_TEXT_LENGTH && !(hasTextBlock && hasMediaBlock)) {
     return { valid: false, reason: 'insufficient_content' };
@@ -48,6 +50,10 @@ function getBlockTextLength(block: ArticleBlock): number {
 
   if (block.type === 'embed') {
     return normalizeText(`${block.label} ${block.text ?? ''}`).length;
+  }
+
+  if (block.type === 'ref-card') {
+    return normalizeText(`${block.source} ${block.title} ${block.excerpt}`).length;
   }
 
   return 0;

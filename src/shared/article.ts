@@ -18,6 +18,7 @@ export type ArticleBlock =
   | QuoteBlock
   | ImageBlock
   | ListBlock
+  | RefCardBlock
   | EmbedBlock;
 
 export type HeadingBlock = {
@@ -55,6 +56,17 @@ export type ListBlock = {
   type: 'list';
   items: string[];
   itemAnnotations?: TextAnnotation[][];
+};
+
+export type RefCardBlock = {
+  id: string;
+  type: 'ref-card';
+  coverUrl: string;
+  coverAlt?: string;
+  source: string;
+  title: string;
+  excerpt: string;
+  href?: string;
 };
 
 export type EmbedBlock = {

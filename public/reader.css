@@ -134,6 +134,67 @@ body {
   line-height: 1.7;
 }
 
+.reader-ref-card {
+  margin: 28px 0;
+  border-radius: 10px;
+  color: var(--reader-text-muted);
+  font-family: "DM Sans", system-ui, sans-serif;
+  overflow: hidden;
+}
+
+.reader-ref-card-shell {
+  overflow: hidden;
+  border: 1px solid rgba(44, 37, 33, 0.13);
+  border-radius: 6px;
+  background: #f7f4ef;
+}
+
+.reader-ref-card-media {
+  position: relative;
+  height: 190px;
+  overflow: hidden;
+}
+
+.reader-ref-card-cover {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: saturate(0.4);
+  transition: filter 300ms ease;
+}
+
+.reader-ref-card-source {
+  position: absolute;
+  bottom: 10px;
+  left: 12px;
+  padding: 3px 9px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.55);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
+.reader-ref-card-content {
+  padding: 14px 16px 16px;
+}
+
+.reader-ref-card-title {
+  margin-bottom: 7px;
+  color: rgba(44, 37, 33, 0.75);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.42;
+}
+
+.reader-ref-card-excerpt {
+  color: rgba(44, 37, 33, 0.45);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
 .reader-list {
   margin: 24px 0;
   padding: 0;
@@ -209,6 +270,7 @@ p .focus-unit.is-active {
 
 .reader-media.focus-unit,
 .reader-embed.focus-unit,
+.reader-ref-card.focus-unit,
 .reader-block[data-block-type="heading"].focus-unit,
 .reader-block[data-block-type="quote"].focus-unit {
   display: block;
@@ -258,11 +320,34 @@ p .focus-unit.is-active {
 }
 
 .reader-embed.focus-unit.is-active,
+.reader-ref-card.focus-unit.is-active,
 .reader-list-item.focus-unit.is-active {
   padding: 7px 10px;
   border-radius: var(--reader-radius-card);
   background: var(--reader-highlight-surface);
   box-shadow: var(--reader-card-shadow);
+}
+
+.reader-ref-card.focus-unit.is-muted:hover {
+  opacity: 0.62;
+}
+
+.reader-ref-card.focus-unit.is-active {
+  padding: 6px;
+  border-radius: 10px;
+  opacity: 1;
+}
+
+.reader-ref-card.focus-unit.is-active .reader-ref-card-cover {
+  filter: none;
+}
+
+.reader-ref-card.focus-unit.is-active .reader-ref-card-title {
+  color: var(--reader-text-active);
+}
+
+.reader-ref-card.focus-unit.is-active .reader-ref-card-excerpt {
+  color: rgba(44, 37, 33, 0.6);
 }
 
 .reader-block[data-block-type="heading"].focus-unit.is-active {

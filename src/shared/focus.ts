@@ -13,7 +13,7 @@ export type FocusUnit =
       type: 'block';
       blockId: string;
       unitId: string;
-      blockType: 'title' | 'heading' | 'quote' | 'image' | 'embed';
+      blockType: 'title' | 'heading' | 'quote' | 'image' | 'embed' | 'ref-card';
     };
 
 export type AnchorMode = 'free' | 'anchored';

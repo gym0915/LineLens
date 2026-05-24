@@ -8,6 +8,7 @@ export type {
   ListBlock,
   ParagraphBlock,
   QuoteBlock,
+  RefCardBlock,
   TextAnnotation
 } from './article.js';
 export type { FocusUnit } from './focus.js';
