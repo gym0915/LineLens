@@ -21,7 +21,14 @@ export function renderArticleShell(article: Article): HTMLElement {
   header.append(kicker);
 
   if (article.coverImage) {
-    header.append(renderCoverImageBlock(article.coverImage.id, article.coverImage.src, article.coverImage.alt));
+    header.append(
+      renderCoverImageBlock(
+        article.coverImage.id,
+        article.coverImage.src,
+        article.coverImage.alt,
+        article.coverImage.aspectRatio
+      )
+    );
   }
 
   header.append(title);
@@ -46,7 +53,7 @@ function renderBlock(block: ArticleBlock): HTMLElement {
     case 'quote':
       return renderTextBlock('blockquote', block.id, block.type, block.text);
     case 'image':
-      return renderImageBlock(block.id, block.src, block.alt);
+      return renderImageBlock(block.id, block.src, block.alt, block.aspectRatio);
     case 'list':
       return renderListBlock(block.id, block.items);
     case 'ref-card':
@@ -74,11 +81,12 @@ function getHeadingTagName(level: 1 | 2 | 3 | 4 | 5 | 6 = 2): 'h1' | 'h2' | 'h3'
   return `h${level}`;
 }
 
-function renderImageBlock(blockId: string, src: string, alt = ''): HTMLElement {
+function renderImageBlock(blockId: string, src: string, alt = '', aspectRatio?: number): HTMLElement {
   const figure = document.createElement('figure');
   figure.className = 'reader-block reader-media';
   figure.dataset.blockId = blockId;
   figure.dataset.blockType = 'image';
+  applyMediaAspectRatio(figure, aspectRatio);
 
   const image = document.createElement('img');
   image.src = src;
@@ -96,11 +104,21 @@ function renderImageBlock(blockId: string, src: string, alt = ''): HTMLElement {
   return figure;
 }
 
-function renderCoverImageBlock(blockId: string, src: string, alt = ''): HTMLElement {
-  const figure = renderImageBlock(blockId, src, alt);
+function renderCoverImageBlock(blockId: string, src: string, alt = '', aspectRatio?: number): HTMLElement {
+  const figure = renderImageBlock(blockId, src, alt, aspectRatio);
   figure.className = 'reader-cover reader-media';
   figure.dataset.blockType = 'cover';
   return figure;
+}
+
+function applyMediaAspectRatio(element: HTMLElement, aspectRatio?: number): void {
+  if (!aspectRatio || !Number.isFinite(aspectRatio) || aspectRatio <= 0) {
+    return;
+  }
+
+  const value = String(aspectRatio);
+  element.dataset.aspectRatio = value;
+  element.setAttribute('style', `--reader-media-aspect-ratio: ${value};`);
 }
 
 function renderListBlock(blockId: string, items: string[]): HTMLElement {

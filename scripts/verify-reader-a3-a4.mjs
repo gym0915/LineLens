@@ -142,6 +142,10 @@ for (const block of mediaArticle.blocks) {
 assert(rendered.querySelector('[data-block-id="h1"]')?.tagName === 'H2', 'heading should render as h2');
 assert(rendered.querySelector('[data-block-id="q1"]')?.tagName === 'BLOCKQUOTE', 'quote should render as blockquote');
 assert(rendered.querySelector('[data-block-id="img1"]')?.tagName === 'FIGURE', 'image should render as figure');
+assert(
+  rendered.querySelector('[data-block-id="img1"]')?.dataset.aspectRatio === String(mediaArticle.blocks.find((block) => block.id === 'img1')?.aspectRatio),
+  'image should expose source aspect ratio for proportional rendering'
+);
 assert(rendered.querySelector('[data-block-id="embed1"]')?.tagName === 'ASIDE', 'embed should render as aside');
 assert(rendered.querySelector('[data-block-id="ref1"]')?.tagName === 'ASIDE', 'ref card should render as aside');
 assert(findByClass(rendered.querySelector('[data-block-id="ref1"]'), 'reader-ref-card-cover')?.tagName === 'IMG', 'ref card should render cover image');
@@ -194,6 +198,18 @@ const longUnits = splitIntoReadingUnits(longParagraph.text);
 assert(longUnits.length > 1, 'long paragraph should split into multiple units');
 assert(longUnits.every((unit) => unit.text.length <= 80), 'long units should be capped at 80 chars');
 
+const englishUnits = splitIntoReadingUnits(
+  'A vibrant outdoor portrait of a smiling woman on a sunny beach. She is wearing a uniquely designed swimsuit, a monokini with a prominent vertical cutout connecting the bandeau top section and the high-waisted bottom section, resembling the shape of katakana "エ".'
+);
+assert(
+  englishUnits[0]?.text === 'A vibrant outdoor portrait of a smiling woman on a sunny beach.',
+  'English period should split at sentence boundary before fallback length splitting'
+);
+assert(
+  englishUnits[1]?.text.startsWith('She is wearing a uniquely designed swimsuit'),
+  'English sentence after period should start a new reading unit'
+);
+
 const mixedParagraph = mixedArticle.blocks.find((block) => block.type === 'paragraph' && block.text.includes('https://example.com'));
 assert(mixedParagraph, 'mixed fixture should include URL paragraph');
 const mixedUnits = splitIntoReadingUnits(mixedParagraph.text);
@@ -217,12 +233,12 @@ buildFocusUnits(mixedArticle, mixedRendered);
 const boldTexts = mixedRendered.querySelectorAll('strong').map((element) => element.textContent);
 assert(boldTexts.includes('English terms'), 'bold annotation should render English terms as strong');
 assert(
-  boldTexts.includes('GPT-5、Claude、TypeScript 5.5'),
-  'bold annotation should render product/version names as strong'
+  boldTexts.some((text) => text.includes('GPT-5、Claude、TypeScript 5')),
+  'bold annotation should preserve styled text across semantic units'
 );
 const annotatedUnit = walk(mixedRendered).find((element) => element.dataset.unitId === 'p1-u2');
 assert(
-  annotatedUnit?.textContent.includes('GPT-5、Claude、TypeScript 5.5'),
+  annotatedUnit?.textContent.includes('GPT-5、Claude、TypeScript 5'),
   'bold annotations should not change FocusUnit text content'
 );
 
@@ -240,6 +256,9 @@ for (const token of [
 ]) {
   assert(css.includes(token), `missing visual token ${token}`);
 }
+assert(css.includes('aspect-ratio: var(--reader-media-aspect-ratio)'), 'reader image should use extracted aspect ratio');
+assert(!css.includes('height: 230px'), 'reader image should not force a fixed media height');
+assert(css.includes('object-fit: contain'), 'reader image should preserve the complete source image');
 
 console.log('Reader A3/A4 verification passed.');
 

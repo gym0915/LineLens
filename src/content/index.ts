@@ -498,13 +498,65 @@ function imageElementToBlock(image: HTMLImageElement, id: string): ImageBlock | 
   }
 
   const href = image.closest('a[href]')?.getAttribute('href') ?? undefined;
+  const aspectRatio = getImageAspectRatio(image);
   return {
     id,
     type: 'image',
     src,
     alt: image.alt || undefined,
-    href
+    href,
+    ...(aspectRatio ? { aspectRatio } : {})
   };
+}
+
+function getImageAspectRatio(image: HTMLImageElement): number | undefined {
+  const intrinsicRatio = toValidAspectRatio(image.naturalWidth, image.naturalHeight);
+  if (intrinsicRatio) {
+    return intrinsicRatio;
+  }
+
+  for (let element: Element | null = image.parentElement; element; element = element.parentElement) {
+    const paddingRatio = getPaddingBottomAspectRatio(element);
+    if (paddingRatio) {
+      return paddingRatio;
+    }
+  }
+
+  return undefined;
+}
+
+function getPaddingBottomAspectRatio(element: Element): number | undefined {
+  for (const child of Array.from(element.children)) {
+    const paddingBottom = getInlinePaddingBottomPercent(child);
+    if (paddingBottom) {
+      return roundAspectRatio(100 / paddingBottom);
+    }
+  }
+
+  return undefined;
+}
+
+function getInlinePaddingBottomPercent(element: Element): number | undefined {
+  const paddingBottom = (element as HTMLElement).style?.paddingBottom || element.getAttribute('style') || '';
+  const match = /(?:padding-bottom:\s*)?([0-9.]+)%/i.exec(paddingBottom);
+  if (!match) {
+    return undefined;
+  }
+
+  const value = Number(match[1]);
+  return Number.isFinite(value) && value > 0 ? value : undefined;
+}
+
+function toValidAspectRatio(width: number, height: number): number | undefined {
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+    return undefined;
+  }
+
+  return roundAspectRatio(width / height);
+}
+
+function roundAspectRatio(value: number): number {
+  return Math.round(value * 10000) / 10000;
 }
 
 function isHeadingBlock(block: Element): boolean {

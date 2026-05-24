@@ -107,11 +107,16 @@ body {
 .reader-media img {
   display: block;
   width: 100%;
-  height: 230px;
-  object-fit: cover;
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
   border-radius: var(--reader-radius-media);
   filter: saturate(0.5);
   transition: filter 300ms ease;
+}
+
+.reader-media[data-aspect-ratio] img {
+  aspect-ratio: var(--reader-media-aspect-ratio);
 }
 
 .reader-media.is-load-error {
@@ -306,6 +311,8 @@ p .focus-unit.is-active {
 
 .reader-media.focus-unit.is-active img {
   width: 100%;
+  max-width: 100%;
+  height: auto;
   margin: 0;
   border-radius: var(--reader-radius-media);
   filter: none;
