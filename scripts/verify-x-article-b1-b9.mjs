@@ -85,7 +85,9 @@ const modularExtractorSource = readFileSync(
 );
 const liveExtractorSource = readFileSync(resolve(rootDir, 'LineLens/src/content/index.ts'), 'utf8');
 const articleModelSource = readFileSync(resolve(rootDir, 'LineLens/src/shared/article.ts'), 'utf8');
+const readerRendererSource = readFileSync(resolve(rootDir, 'LineLens/src/reader/block-renderer.ts'), 'utf8');
 for (const source of [modularExtractorSource, liveExtractorSource]) {
+  assert.match(source, /X_CANONICAL_ORIGIN/, 'extractor should use a dedicated X canonical origin constant');
   assert.match(source, /function getListKind/, 'extractor should detect Draft.js list items and preserve list kind');
   assert.match(source, /flushPendingList/, 'extractor should group consecutive list items');
   assert.match(source, /function extractCoverImage/, 'extractor should have dedicated cover extraction');
@@ -95,7 +97,7 @@ for (const source of [modularExtractorSource, liveExtractorSource]) {
   assert.match(source, /function extractTextWithAnnotations/, 'extractor should preserve bold text annotations');
   assert.match(source, /fontWeight === 'bold'/, 'extractor should read inline bold styles');
   assert.doesNotMatch(source, /guessTextBlockType/, 'extractor should not infer headings from short text');
-  assert.match(source, /function extractRefCardBlock/, 'extractor should parse embedded X article cards');
+  assert.match(source, /function extractSimpleTweetBlock/, 'extractor should parse embedded simple tweet cards');
   assert.match(source, /data-testid="article-cover-image"/, 'extractor should target article cover cards');
   assert.match(source, /function extractLinkBlock/, 'extractor should preserve text links as clickable blocks');
   assert.match(source, /linkAnnotations/, 'extractor should preserve inline links as annotations');
@@ -104,9 +106,14 @@ for (const source of [modularExtractorSource, liveExtractorSource]) {
   assert.match(source, /pendingListKind/, 'extractor should preserve ordered versus unordered lists');
   assert.match(source, /function extractTweetRefBlock/, 'extractor should parse data-testid tweet reference blocks');
   assert.match(source, /tweetBlock/, 'extractor should use the tweet data-testid selector');
+  assert.match(source, /function getSimpleTweetHref/, 'simple tweets should use a dedicated href extractor');
+  assert.match(source, /status\/(?!.*analytics)/, 'simple tweet href extraction should prefer tweet status links over profile or analytics links');
+  assert.match(source, /new URL\(href, X_CANONICAL_ORIGIN\)\.toString\(\)/, 'simple tweet href extraction should normalize relative X hrefs to absolute x.com URLs');
   assert.doesNotMatch(source, /section\[data-block="true"\]\[contenteditable="false"\]/, 'image detection should not rely on contenteditable=false section blocks');
 }
 assert.match(articleModelSource, /kind\?: 'ordered' \| 'unordered'/, 'list model should include ordered/unordered kind');
+assert.match(readerRendererSource, /renderSimpleTweetBlock\(block\.id, block\.coverUrl, block\.coverAlt, block\.source, block\.title, block\.excerpt, block\.href\)/, 'reader should pass simple-tweet href into rendering');
+assert.match(readerRendererSource, /createElement\('a'\)/, 'reader should render linked simple tweets as anchors');
 
 const validation = validateArticle({
   id: '2058421725256171718',

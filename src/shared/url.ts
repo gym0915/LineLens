@@ -1,3 +1,5 @@
+export const X_CANONICAL_ORIGIN = 'https://x.com';
+
 const X_ARTICLE_HOSTS = new Set(['x.com', 'twitter.com']);
 const X_ARTICLE_PATH_PATTERN = /^\/([^/]+)\/article\/(\d+)\/?$/;
 

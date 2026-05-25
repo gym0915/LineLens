@@ -35,7 +35,7 @@ type ArticleBlock =
     }
   | {
       id: string;
-      type: 'ref-card';
+      type: 'simple-tweet';
       coverUrl: string;
       coverAlt?: string;
       source: string;
@@ -109,6 +109,7 @@ const X_ARTICLE_SELECTORS = {
   tweetPhotoImage: '[data-testid="tweetPhoto"] img'
 } as const;
 
+const X_CANONICAL_ORIGIN = 'https://x.com';
 const X_ARTICLE_HOSTS = new Set(['x.com', 'twitter.com']);
 const X_ARTICLE_PATH_PATTERN = /^\/([^/]+)\/article\/(\d+)\/?$/;
 const MIN_READY_BLOCKS = 3;
@@ -305,7 +306,7 @@ function extractXArticle(url: URL, root: ParentNode): Article {
     id: articleId,
     source: 'x-article',
     sourceUrl: url.toString(),
-    canonicalUrl: `https://x.com/${getXArticleAuthorHandleFromUrl(url) ?? 'i'}/article/${articleId}`,
+    canonicalUrl: `${X_CANONICAL_ORIGIN}/${getXArticleAuthorHandleFromUrl(url) ?? 'i'}/article/${articleId}`,
     authorHandle: getXArticleAuthorHandleFromUrl(url),
     title,
     coverImage,
@@ -447,9 +448,9 @@ function extractNonTextBlock(block: Element, articleId: string, index: number): 
     return tweetRef;
   }
 
-  const refCard = extractRefCardBlock(block, blockId(articleId, index));
-  if (refCard) {
-    return refCard;
+  const simpleTweet = extractSimpleTweetBlock(block, blockId(articleId, index));
+  if (simpleTweet) {
+    return simpleTweet;
   }
 
   const image = extractImageFromElement(block, blockId(articleId, index));
@@ -471,7 +472,7 @@ function extractTweetRefBlock(block: Element, id: string): ArticleBlock | null {
     return null;
   }
 
-  const articleCard = extractRefCardBlock(tweet, id);
+  const articleCard = extractSimpleTweetBlock(tweet, id);
   if (articleCard) {
     return articleCard;
   }
@@ -481,7 +482,7 @@ function extractTweetRefBlock(block: Element, id: string): ArticleBlock | null {
   const text = normalizeText(tweet.textContent ?? block.textContent ?? '');
   return {
     id,
-    type: 'ref-card',
+    type: 'simple-tweet',
     coverUrl: '',
     source: 'X Tweet',
     title: text || 'X Tweet',
@@ -513,7 +514,7 @@ function extractLinkBlock(block: Element, id: string): ArticleBlock | null {
   };
 }
 
-function extractRefCardBlock(block: Element, id: string): ArticleBlock | null {
+function extractSimpleTweetBlock(block: Element, id: string): ArticleBlock | null {
   const coverRoot = block.querySelector('[data-testid="article-cover-image"]');
   if (!coverRoot) {
     return null;
@@ -525,13 +526,13 @@ function extractRefCardBlock(block: Element, id: string): ArticleBlock | null {
     return null;
   }
 
-  const href = block.querySelector('a[href]')?.getAttribute('href') ?? undefined;
+  const href = getSimpleTweetHref(block);
   const title = normalizeText(getTextAfterCover(coverRoot, 0));
   const excerpt = normalizeText(getTextAfterCover(coverRoot, 1));
 
   return {
     id,
-    type: 'ref-card',
+    type: 'simple-tweet',
     coverUrl,
     coverAlt: coverImage?.alt || undefined,
     source: 'X Article',
@@ -539,6 +540,15 @@ function extractRefCardBlock(block: Element, id: string): ArticleBlock | null {
     excerpt,
     href
   };
+}
+
+function getSimpleTweetHref(block: Element): string | undefined {
+  const statusHref = Array.from(block.querySelectorAll<HTMLAnchorElement>('a[href*="/status/"]'))
+    .map((anchor) => anchor.getAttribute('href') ?? '')
+    .find((href) => /\/status\/(?!.*analytics)/.test(href));
+
+  const href = statusHref || block.querySelector('a[href]')?.getAttribute('href');
+  return href ? new URL(href, X_CANONICAL_ORIGIN).toString() : undefined;
 }
 
 function getTextAfterCover(coverRoot: Element, offset: number): string {
@@ -730,7 +740,7 @@ function validateArticle(article: Article) {
   const textLength = article.blocks.reduce((total, block) => total + getBlockTextLength(block), 0);
   const hasTextBlock = article.blocks.some((block) => isTextBlock(block));
   const hasMediaBlock = article.blocks.some(
-    (block) => block.type === 'image' || block.type === 'embed' || block.type === 'ref-card' || block.type === 'link'
+    (block) => block.type === 'image' || block.type === 'embed' || block.type === 'simple-tweet' || block.type === 'link'
   );
 
   if (textLength <= 200 && !(hasTextBlock && hasMediaBlock)) {
@@ -753,7 +763,7 @@ function getBlockTextLength(block: ArticleBlock): number {
     return normalizeText(`${block.label} ${block.text ?? ''}`).length;
   }
 
-  if (block.type === 'ref-card') {
+  if (block.type === 'simple-tweet') {
     return normalizeText(`${block.source} ${block.title} ${block.excerpt}`).length;
   }
   if (block.type === 'link') {

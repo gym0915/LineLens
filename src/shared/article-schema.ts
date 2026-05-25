@@ -9,7 +9,7 @@ export type {
   ListBlock,
   ParagraphBlock,
   QuoteBlock,
-  RefCardBlock,
+  SimpleTweetBlock,
   TextAnnotation
 } from './article.js';
 export type { FocusUnit } from './focus.js';

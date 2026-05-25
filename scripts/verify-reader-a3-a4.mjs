@@ -81,6 +81,10 @@ class ElementLike extends NodeLike {
 
   setAttribute(name, value) {
     this.attributes[name] = value;
+    if (name === 'class') {
+      this.className = value;
+      this.classList.values = new Set(value.split(/\s+/).filter(Boolean));
+    }
   }
 
   remove() {
@@ -100,6 +104,9 @@ class ElementLike extends NodeLike {
 
 globalThis.document = {
   createElement(tagName) {
+    return new ElementLike(tagName);
+  },
+  createElementNS(_namespace, tagName) {
     return new ElementLike(tagName);
   },
   createTextNode(text) {
@@ -147,13 +154,23 @@ assert(
   'image should expose source aspect ratio for proportional rendering'
 );
 assert(rendered.querySelector('[data-block-id="embed1"]')?.tagName === 'ASIDE', 'embed should render as aside');
-assert(rendered.querySelector('[data-block-id="ref1"]')?.tagName === 'ASIDE', 'ref card should render as aside');
-assert(findByClass(rendered.querySelector('[data-block-id="ref1"]'), 'reader-ref-card-cover')?.tagName === 'IMG', 'ref card should render cover image');
-assert(findByClass(rendered.querySelector('[data-block-id="ref1"]'), 'reader-ref-card-source')?.textContent === 'X Article', 'ref card source should render');
+assert(rendered.querySelector('[data-block-id="tweet1"]')?.tagName === 'ASIDE', 'simple tweet should render as aside');
+assert(findByClass(rendered.querySelector('[data-block-id="tweet1"]'), 'reader-simple-tweet-cover')?.tagName === 'IMG', 'simple tweet should render cover image');
+const simpleTweetSource = findByClass(rendered.querySelector('[data-block-id="tweet1"]'), 'reader-simple-tweet-source');
+assert(simpleTweetSource?.attributes['aria-label'] === 'X Article', 'simple tweet source should keep an accessible source label');
+assert(simpleTweetSource?.textContent === 'Article', 'simple tweet source should keep the Article text next to the X logo');
+const simpleTweetSourceIcon = findByClass(rendered.querySelector('[data-block-id="tweet1"]'), 'reader-simple-tweet-source-icon');
+assert(simpleTweetSourceIcon?.tagName === 'SVG', 'simple tweet source should render the X logo as svg');
+assert(findByClass(rendered.querySelector('[data-block-id="tweet1"]'), 'reader-simple-tweet-source-text')?.textContent === 'Article', 'simple tweet source text should be separately styleable');
 assert(
-  findByClass(rendered.querySelector('[data-block-id="ref1"]'), 'reader-ref-card-title')?.textContent ===
+  simpleTweetSourceIcon?.children[0]?.attributes.d ===
+    'M21.742 21.75l-7.563-11.179 7.056-8.321h-2.456l-5.691 6.714-4.54-6.714H2.359l7.29 10.776L2.25 21.75h2.456l6.035-7.118 4.818 7.118h6.191-.008zM7.739 3.818L18.81 20.182h-2.447L5.29 3.818h2.447z',
+  'simple tweet source svg should use the X path'
+);
+assert(
+  findByClass(rendered.querySelector('[data-block-id="tweet1"]'), 'reader-simple-tweet-title')?.textContent ===
     'The Science of Attention: Why Your Brain Needs Boredom',
-  'ref card title should render'
+  'simple tweet title should render'
 );
 assert(rendered.querySelector('[data-block-id="list1"]')?.tagName === 'UL', 'unordered list should render as ul');
 const orderedListRendered = renderArticleShell({
@@ -193,7 +210,7 @@ assert(focusBuild.units.some((unit) => unit.type === 'block' && unit.blockType =
 assert(focusBuild.units.some((unit) => unit.type === 'block' && unit.blockType === 'quote'), 'quote block FocusUnit missing');
 assert(focusBuild.units.some((unit) => unit.type === 'block' && unit.blockType === 'image'), 'image block FocusUnit missing');
 assert(focusBuild.units.some((unit) => unit.type === 'block' && unit.blockType === 'embed'), 'embed block FocusUnit missing');
-assert(focusBuild.units.some((unit) => unit.type === 'block' && unit.blockType === 'ref-card'), 'ref card block FocusUnit missing');
+assert(focusBuild.units.some((unit) => unit.type === 'block' && unit.blockType === 'simple-tweet'), 'simple tweet block FocusUnit missing');
 const linkFocusBuild = buildFocusUnits(linkRendered.children[0] ? { ...mediaArticle, blocks: [{ id: 'link1', type: 'link', text: '原文链接', href: 'https://x.com/example/status/1' }] } : mediaArticle, linkRendered);
 assert(linkFocusBuild.units.some((unit) => unit.type === 'block' && unit.blockType === 'link'), 'link block should be a single FocusUnit');
 const listUnits = focusBuild.units.filter((unit) => unit.type === 'reading-text' && unit.blockId === 'list1');
@@ -330,6 +347,8 @@ assert(css.includes('.focus-unit a'), 'inline paragraph links should share hyper
 assert(!css.includes('--reader-link'), 'reader links should not use a dedicated blue hyperlink token');
 assert(css.includes('.reader-link'), 'reader link block should have explicit hyperlink styling');
 assert(css.includes('.reader-link.focus-unit.is-active'), 'reader link block should use active highlight styling');
+assert(css.includes('text-decoration: none'), 'simple tweet anchor should not show hyperlink underline');
+assert(css.includes('.reader-simple-tweet-source-icon'), 'simple tweet source should style the X logo icon');
 
 console.log('Reader A3/A4 verification passed.');
 

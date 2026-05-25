@@ -58,8 +58,8 @@ function renderBlock(block: ArticleBlock): HTMLElement {
       return renderListBlock(block.id, block.items, block.kind);
     case 'link':
       return renderLinkBlock(block.id, block.text, block.href, block.target);
-    case 'ref-card':
-      return renderRefCardBlock(block.id, block.coverUrl, block.coverAlt, block.source, block.title, block.excerpt);
+    case 'simple-tweet':
+      return renderSimpleTweetBlock(block.id, block.coverUrl, block.coverAlt, block.source, block.title, block.excerpt, block.href);
     case 'embed':
       return renderEmbedBlock(block.id, block.label, block.text);
   }
@@ -164,63 +164,93 @@ function renderLinkBlock(blockId: string, text: string, href: string, target?: s
   return element;
 }
 
-function renderRefCardBlock(
+function renderSimpleTweetBlock(
   blockId: string,
   coverUrl: string,
   coverAlt = '',
   source: string,
   title: string,
-  excerpt: string
+  excerpt: string,
+  href?: string
 ): HTMLElement {
-  const card = document.createElement('aside');
-  card.className = 'reader-block reader-ref-card';
+  const card = href ? document.createElement('a') : document.createElement('aside');
+  card.className = 'reader-block reader-simple-tweet';
   card.dataset.blockId = blockId;
-  card.dataset.blockType = 'ref-card';
+  card.dataset.blockType = 'simple-tweet';
+  if (href) {
+    card.setAttribute('href', href);
+    card.setAttribute('rel', 'noreferrer');
+  }
 
   const shell = document.createElement('div');
-  shell.className = 'reader-ref-card-shell';
+  shell.className = 'reader-simple-tweet-shell';
 
   if (coverUrl) {
     const media = document.createElement('div');
-    media.className = 'reader-ref-card-media';
+    media.className = 'reader-simple-tweet-media';
 
     const image = document.createElement('img');
-    image.className = 'reader-ref-card-cover';
+    image.className = 'reader-simple-tweet-cover';
     image.src = coverUrl;
     image.alt = coverAlt;
     image.loading = 'lazy';
     media.append(image);
 
     const sourceBadge = document.createElement('span');
-    sourceBadge.className = 'reader-ref-card-source';
-    sourceBadge.textContent = source;
+    sourceBadge.className = 'reader-simple-tweet-source';
+    sourceBadge.setAttribute('aria-label', source);
+    sourceBadge.append(renderXLogoIcon(), renderSourceLabelText('Article'));
 
     media.append(sourceBadge);
     shell.append(media);
   }
 
   const content = document.createElement('div');
-  content.className = 'reader-ref-card-content';
+  content.className = 'reader-simple-tweet-content';
 
   if (!coverUrl) {
     const sourceBadge = document.createElement('span');
-    sourceBadge.className = 'reader-ref-card-source reader-ref-card-source-inline';
-    sourceBadge.textContent = source;
+    sourceBadge.className = 'reader-simple-tweet-source reader-simple-tweet-source-inline';
+    sourceBadge.setAttribute('aria-label', source);
+    sourceBadge.append(renderXLogoIcon(), renderSourceLabelText('Article'));
     content.append(sourceBadge);
   }
 
   const titleElement = document.createElement('div');
-  titleElement.className = 'reader-ref-card-title';
+  titleElement.className = 'reader-simple-tweet-title';
   titleElement.textContent = title;
 
   const excerptElement = document.createElement('div');
-  excerptElement.className = 'reader-ref-card-excerpt';
+  excerptElement.className = 'reader-simple-tweet-excerpt';
   excerptElement.textContent = excerpt;
 
   content.append(titleElement, excerptElement);
   shell.append(content);
   card.append(shell);
   return card;
+}
+
+function renderXLogoIcon(): SVGSVGElement {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('class', 'reader-simple-tweet-source-icon');
+
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  path.setAttribute(
+    'd',
+    'M21.742 21.75l-7.563-11.179 7.056-8.321h-2.456l-5.691 6.714-4.54-6.714H2.359l7.29 10.776L2.25 21.75h2.456l6.035-7.118 4.818 7.118h6.191-.008zM7.739 3.818L18.81 20.182h-2.447L5.29 3.818h2.447z'
+  );
+
+  svg.append(path);
+  return svg;
+}
+
+function renderSourceLabelText(text: string): HTMLSpanElement {
+  const element = document.createElement('span');
+  element.className = 'reader-simple-tweet-source-text';
+  element.textContent = text;
+  return element;
 }
 
 function renderEmbedBlock(blockId: string, label: string, text?: string): HTMLElement {

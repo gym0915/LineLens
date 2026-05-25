@@ -19,7 +19,7 @@ export type ArticleBlock =
   | ImageBlock
   | ListBlock
   | LinkBlock
-  | RefCardBlock
+  | SimpleTweetBlock
   | EmbedBlock;
 
 export type HeadingBlock = {
@@ -68,9 +68,9 @@ export type LinkBlock = {
   target?: string;
 };
 
-export type RefCardBlock = {
+export type SimpleTweetBlock = {
   id: string;
-  type: 'ref-card';
+  type: 'simple-tweet';
   coverUrl: string;
   coverAlt?: string;
   source: string;
