@@ -17,7 +17,7 @@
       "run_at": "document_idle"
     }
   ],
-  "permissions": ["action", "storage", "tabs"],
+  "permissions": ["action", "storage", "tabs", "webNavigation", "scripting"],
   "host_permissions": ["https://x.com/*", "https://twitter.com/*"],
   "web_accessible_resources": [
     {

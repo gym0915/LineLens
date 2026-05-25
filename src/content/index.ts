@@ -42,6 +42,14 @@ type ArticleBlock =
       title: string;
       excerpt: string;
       href?: string;
+      photos?: TweetPhoto[];
+      authorName?: string;
+      authorHandle?: string;
+      authorAvatarUrl?: string;
+      authorVerified?: boolean;
+      publishedAt?: string;
+      publishedAtText?: string;
+      metrics?: TweetMetrics;
     }
   | {
       id: string;
@@ -57,6 +65,20 @@ type ImageBlock = {
   src: string;
   alt?: string;
   href?: string;
+};
+
+type TweetPhoto = {
+  src: string;
+  alt?: string;
+  href?: string;
+};
+
+type TweetMetrics = {
+  replies?: string;
+  reposts?: string;
+  likes?: string;
+  views?: string;
+  bookmarks?: string;
 };
 
 type TextAnnotation = {
@@ -78,6 +100,10 @@ type ExtensionMessage =
     }
   | {
       type: 'EXTRACT_CURRENT_ARTICLE';
+    }
+  | {
+      type: 'LINELENS_ROUTE_CHANGED';
+      url: string;
     }
   | {
       type: 'ARTICLE_EXTRACTED';
@@ -111,12 +137,13 @@ const X_ARTICLE_SELECTORS = {
 
 const X_CANONICAL_ORIGIN = 'https://x.com';
 const X_ARTICLE_HOSTS = new Set(['x.com', 'twitter.com']);
-const X_ARTICLE_PATH_PATTERN = /^\/([^/]+)\/article\/(\d+)\/?$/;
+const X_ARTICLE_PATH_PATTERN = /^\/([^/]+)\/(?:article|status)\/(\d+)\/?$/;
 const MIN_READY_BLOCKS = 3;
 const MIN_READY_TEXT_LENGTH = 200;
 const MAX_READY_CHECKS = 40;
 const READY_CHECK_INTERVAL_MS = 250;
 const LOG_PREFIX = '[LineLens Content]';
+let activeReadinessCleanup: (() => void) | undefined;
 
 void monitorArticleState();
 
@@ -125,9 +152,19 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     void extractCurrentArticle().then(sendResponse);
     return true;
   }
+
+  if (message.type === 'LINELENS_ROUTE_CHANGED') {
+    console.info(LOG_PREFIX, 'route changed; restarting article monitor', {
+      url: message.url
+    });
+    void monitorArticleState().then(() => sendResponse({ ok: true }));
+    return true;
+  }
 });
 
 async function monitorArticleState() {
+  stopActiveReadinessMonitor();
+
   if (!isXArticleUrl(location.href)) {
     console.info(LOG_PREFIX, 'unsupported URL', {
       url: location.href
@@ -163,6 +200,7 @@ async function reportWhenReady() {
     void check();
   }, READY_CHECK_INTERVAL_MS);
 
+  activeReadinessCleanup = cleanup;
   await check();
 
   async function check() {
@@ -198,9 +236,17 @@ async function reportWhenReady() {
   }
 
   function cleanup() {
+    if (activeReadinessCleanup === cleanup) {
+      activeReadinessCleanup = undefined;
+    }
     observer.disconnect();
     window.clearInterval(timer);
   }
+}
+
+function stopActiveReadinessMonitor() {
+  activeReadinessCleanup?.();
+  activeReadinessCleanup = undefined;
 }
 
 async function sendArticleState(message: ExtensionMessage) {
@@ -448,14 +494,14 @@ function extractNonTextBlock(block: Element, articleId: string, index: number): 
     return tweetRef;
   }
 
-  const simpleTweet = extractSimpleTweetBlock(block, blockId(articleId, index));
-  if (simpleTweet) {
-    return simpleTweet;
-  }
-
   const image = extractImageFromElement(block, blockId(articleId, index));
   if (image) {
     return image;
+  }
+
+  const simpleTweet = extractSimpleTweetBlock(block, blockId(articleId, index));
+  if (simpleTweet) {
+    return simpleTweet;
   }
 
   const link = extractLinkBlock(block, blockId(articleId, index));
@@ -472,23 +518,125 @@ function extractTweetRefBlock(block: Element, id: string): ArticleBlock | null {
     return null;
   }
 
-  const articleCard = extractSimpleTweetBlock(tweet, id);
+  const articleCard = extractSimpleTweetBlock(block, id) ?? extractSimpleTweetBlock(tweet, id);
   if (articleCard) {
     return articleCard;
   }
 
-  const statusLink = tweet.querySelector<HTMLAnchorElement>('a[href*="/status/"]');
-  const href = statusLink?.getAttribute('href') ?? tweet.querySelector('a[href]')?.getAttribute('href') ?? block.querySelector('a[href]')?.getAttribute('href') ?? undefined;
-  const text = normalizeText(tweet.textContent ?? block.textContent ?? '');
+  return extractTweetSummaryBlock(tweet, id, block);
+}
+
+function extractTweetSummaryBlock(tweet: Element, id: string, fallbackBlock?: Element): ArticleBlock {
+  const profile = extractTweetProfile(tweet);
+  const metrics = extractTweetMetrics(tweet);
+  const authorLine = buildTweetAuthorLine(profile);
+  const body = extractTweetBodyText(tweet);
+  const fallbackText = normalizeText(tweet.querySelector('[data-testid="User-Name"]') ? '' : (tweet.textContent ?? fallbackBlock?.textContent ?? ''));
+  const title = authorLine || (body ? 'X Tweet' : fallbackText || 'X Tweet');
+  const excerpt = body || (authorLine ? '' : fallbackText);
+  const href = getSimpleTweetHref(tweet) ?? (fallbackBlock ? getSimpleTweetHref(fallbackBlock) : undefined);
+
   return {
     id,
     type: 'simple-tweet',
     coverUrl: '',
     source: 'X Tweet',
-    title: text || 'X Tweet',
-    excerpt: '',
-    href
+    title,
+    excerpt,
+    href,
+    ...profile,
+    ...(hasTweetMetrics(metrics) ? { metrics } : {})
   };
+}
+
+function extractTweetProfile(tweet: Element): {
+  authorName?: string;
+  authorHandle?: string;
+  authorAvatarUrl?: string;
+  authorVerified?: boolean;
+  publishedAt?: string;
+  publishedAtText?: string;
+} {
+  const authorRoot = tweet.querySelector('[data-testid="User-Name"]');
+  const authorTexts = Array.from(authorRoot?.querySelectorAll('span') ?? [])
+    .map((element) => normalizeText(element.textContent ?? ''))
+    .filter(Boolean);
+  const authorName = authorTexts.find((text) => text !== '·' && !text.startsWith('@') && !isTweetDateText(text));
+  const authorHandle =
+    authorTexts.find((text) => text.startsWith('@')) ??
+    Array.from(tweet.querySelectorAll('span'))
+      .map((element) => normalizeText(element.textContent ?? ''))
+      .find((text) => /^@[\w_]+$/.test(text));
+  const time = tweet.querySelector<HTMLTimeElement>('time');
+  const authorAvatar = tweet.querySelector<HTMLImageElement>('[data-testid="Tweet-User-Avatar"] img');
+
+  return {
+    ...(authorName ? { authorName } : {}),
+    ...(authorHandle ? { authorHandle } : {}),
+    ...(authorAvatar?.src ? { authorAvatarUrl: authorAvatar.currentSrc || authorAvatar.src } : {}),
+    ...(tweet.querySelector('[data-testid="icon-verified"], [aria-label="Verified account"]') ? { authorVerified: true } : {}),
+    ...(time?.dateTime ? { publishedAt: time.dateTime } : {}),
+    ...(time?.textContent ? { publishedAtText: normalizeText(time.textContent) } : {})
+  };
+}
+
+function buildTweetAuthorLine(profile: ReturnType<typeof extractTweetProfile>): string {
+  return [profile.authorName, profile.authorHandle, profile.publishedAtText ? `· ${profile.publishedAtText}` : '']
+    .filter(Boolean)
+    .join(' ');
+}
+
+function extractTweetMetrics(tweet: Element): TweetMetrics {
+  return {
+    ...extractTweetMetric(tweet, 'reply', 'replies'),
+    ...extractTweetMetric(tweet, 'retweet', 'reposts'),
+    ...extractTweetMetric(tweet, 'like', 'likes'),
+    ...extractTweetMetric(tweet, 'bookmark', 'bookmarks'),
+    ...extractTweetViewsMetric(tweet)
+  };
+}
+
+function extractTweetMetric(tweet: Element, testId: string, key: keyof TweetMetrics): TweetMetrics {
+  const root = tweet.querySelector(`[data-testid="${testId}"]`);
+  const value = normalizeText(root?.textContent ?? '') || parseTweetMetricLabel(root?.getAttribute('aria-label') ?? '');
+  return value ? { [key]: value } : {};
+}
+
+function extractTweetViewsMetric(tweet: Element): TweetMetrics {
+  const analytics = tweet.querySelector('a[href*="/analytics"]');
+  const value = normalizeText(analytics?.textContent ?? '') || parseTweetMetricLabel(analytics?.getAttribute('aria-label') ?? '');
+  return value ? { views: value } : {};
+}
+
+function parseTweetMetricLabel(label: string): string {
+  return normalizeText(label).match(/\d+(?:\.\d+)?[KMB]?/)?.[0] ?? '';
+}
+
+function hasTweetMetrics(metrics: TweetMetrics): boolean {
+  return Object.values(metrics).some(Boolean);
+}
+
+function extractTweetBodyText(tweet: Element): string {
+  const explicitTweetText = normalizeText(tweet.querySelector('[data-testid="tweetText"]')?.textContent ?? '');
+  if (explicitTweetText) {
+    return explicitTweetText;
+  }
+
+  const authorRoot = tweet.querySelector('[data-testid="User-Name"]');
+  const candidates = Array.from(tweet.querySelectorAll<HTMLElement>('div[dir="auto"]'))
+    .filter((element) => !authorRoot?.contains(element))
+    .map((element) => normalizeText(element.textContent ?? ''))
+    .filter((text) => text && !isTweetMetricText(text) && !isTweetDateText(text));
+
+  return candidates[0] ?? '';
+}
+
+function isTweetDateText(text: string): boolean {
+  return /^(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2}$/i.test(text);
+}
+
+function isTweetMetricText(text: string): boolean {
+  return /^(?:\d+(?:\.\d+)?[KMB]?|\d+\s+(?:replies|reposts|likes|bookmarks|views))$/i.test(text);
 }
 
 function extractLinkBlock(block: Element, id: string): ArticleBlock | null {
@@ -515,6 +663,26 @@ function extractLinkBlock(block: Element, id: string): ArticleBlock | null {
 }
 
 function extractSimpleTweetBlock(block: Element, id: string): ArticleBlock | null {
+  if (isSimpleTweetArticleCard(block)) {
+    return extractSimpleTweetArticleCard(block, id);
+  }
+
+  if (!isSimpleTweetCard(block)) {
+    return null;
+  }
+
+  return extractSimpleTweetImageCard(block, id);
+}
+
+function isSimpleTweetCard(block: Element): boolean {
+  return block.matches('[data-testid="simpleTweet"]') || Boolean(block.querySelector('[data-testid="simpleTweet"]'));
+}
+
+function isSimpleTweetArticleCard(block: Element): boolean {
+  return Boolean(block.querySelector('[data-testid="article-cover-image"]'));
+}
+
+function extractSimpleTweetArticleCard(block: Element, id: string): ArticleBlock | null {
   const coverRoot = block.querySelector('[data-testid="article-cover-image"]');
   if (!coverRoot) {
     return null;
@@ -529,6 +697,8 @@ function extractSimpleTweetBlock(block: Element, id: string): ArticleBlock | nul
   const href = getSimpleTweetHref(block);
   const title = normalizeText(getTextAfterCover(coverRoot, 0));
   const excerpt = normalizeText(getTextAfterCover(coverRoot, 1));
+  const profile = extractTweetProfile(block);
+  const metrics = extractTweetMetrics(block);
 
   return {
     id,
@@ -538,8 +708,60 @@ function extractSimpleTweetBlock(block: Element, id: string): ArticleBlock | nul
     source: 'X Article',
     title: title || 'X Article',
     excerpt,
-    href
+    href,
+    ...profile,
+    ...(hasTweetMetrics(metrics) ? { metrics } : {})
   };
+}
+
+function extractSimpleTweetImageCard(block: Element, id: string): ArticleBlock | null {
+  const photos = Array.from(block.querySelectorAll<HTMLElement>(X_ARTICLE_SELECTORS.tweetPhoto))
+    .map(tweetPhotoElementToPhoto)
+    .filter((photo): photo is NonNullable<ReturnType<typeof tweetPhotoElementToPhoto>> => Boolean(photo));
+
+  if (photos.length === 0) {
+    return null;
+  }
+
+  const tweet = block.querySelector(X_ARTICLE_SELECTORS.tweetBlock) ?? block;
+  const body = extractTweetBodyText(tweet);
+  const profile = extractTweetProfile(tweet);
+  const metrics = extractTweetMetrics(tweet);
+
+  return {
+    id,
+    type: 'simple-tweet',
+    coverUrl: '',
+    source: 'X Tweet',
+    title: buildTweetAuthorLine(profile) || 'X Tweet',
+    excerpt: body,
+    href: getSimpleTweetHref(block),
+    photos,
+    ...profile,
+    ...(hasTweetMetrics(metrics) ? { metrics } : {})
+  };
+}
+
+function tweetPhotoElementToPhoto(element: HTMLElement): { src: string; alt?: string; href?: string } | null {
+  const image = element.querySelector<HTMLImageElement>('img');
+  const src = image?.currentSrc || image?.src || getTweetPhotoBackgroundUrl(element);
+  if (!src) {
+    return null;
+  }
+
+  const href = element.closest('a[href]')?.getAttribute('href') ?? undefined;
+  return {
+    src,
+    alt: image?.alt || undefined,
+    ...(href ? { href: new URL(href, X_CANONICAL_ORIGIN).toString() } : {})
+  };
+}
+
+function getTweetPhotoBackgroundUrl(element: Element): string {
+  const backgroundLayer = element.querySelector<HTMLElement>('[style*="background-image"]');
+  const style = backgroundLayer?.style.backgroundImage || backgroundLayer?.getAttribute('style') || '';
+  const match = /url\((?:"|&quot;)?([^")]+)(?:"|&quot;)?\)/.exec(style);
+  return match?.[1]?.replace(/&amp;/g, '&') ?? '';
 }
 
 function getSimpleTweetHref(block: Element): string | undefined {

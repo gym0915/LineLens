@@ -154,7 +154,13 @@ assert(
   'image should expose source aspect ratio for proportional rendering'
 );
 assert(rendered.querySelector('[data-block-id="embed1"]')?.tagName === 'ASIDE', 'embed should render as aside');
-assert(rendered.querySelector('[data-block-id="tweet1"]')?.tagName === 'ASIDE', 'simple tweet should render as aside');
+assert(rendered.querySelector('[data-block-id="tweet1"]')?.tagName === 'A', 'simple tweet should keep a single outer anchor');
+assert(findByClass(rendered.querySelector('[data-block-id="tweet1"]'), 'reader-simple-tweet-frame')?.tagName === 'DIV', 'simple tweet should render the outer tweet frame');
+assert(findByClass(rendered.querySelector('[data-block-id="tweet1"]'), 'reader-simple-tweet-avatar')?.tagName === 'IMG', 'simple tweet should render the author avatar');
+assert(findByClass(rendered.querySelector('[data-block-id="tweet1"]'), 'reader-simple-tweet-display-name')?.textContent === 'karin.', 'simple tweet should render the display name');
+assert(findByClass(rendered.querySelector('[data-block-id="tweet1"]'), 'reader-simple-tweet-verified-icon')?.tagName === 'SVG', 'simple tweet should render the verified badge');
+assert(findByClass(rendered.querySelector('[data-block-id="tweet1"]'), 'reader-simple-tweet-grok-icon')?.tagName === 'SVG', 'simple tweet should render the Grok icon');
+assert(findByClass(rendered.querySelector('[data-block-id="tweet1"]'), 'reader-simple-tweet-actions')?.tagName === 'DIV', 'simple tweet should render non-interactive action metrics');
 assert(findByClass(rendered.querySelector('[data-block-id="tweet1"]'), 'reader-simple-tweet-cover')?.tagName === 'IMG', 'simple tweet should render cover image');
 const simpleTweetSource = findByClass(rendered.querySelector('[data-block-id="tweet1"]'), 'reader-simple-tweet-source');
 assert(simpleTweetSource?.attributes['aria-label'] === 'X Article', 'simple tweet source should keep an accessible source label');

@@ -19,17 +19,26 @@ const detail2Snapshot = readFileSync(
   resolve(rootDir, 'assets/x-article-detail2.html'),
   'utf8'
 );
+const statusSnapshot = readFileSync(
+  resolve(rootDir, 'assets/x-article-status.html'),
+  'utf8'
+);
 const mainSnapshot = readFileSync(
   resolve(rootDir, 'assets/x-article-main.html'),
+  'utf8'
+);
+const picTweetSnapshot = readFileSync(
+  resolve(rootDir, 'assets/x-article-pic-tweet.html'),
   'utf8'
 );
 const completeDomLinkBlock = `<div class="longform-unstyled-narrow" data-block="true" data-editor="2vhgc" data-offset-key="5upd3-0-0"><div data-offset-key="5upd3-0-0" class="public-DraftStyleDefault-block public-DraftStyleDefault-ltr"><div class="css-175oi2r r-1loqt21 r-1471scf r-o7ynqc r-6416eg r-1ny4l3l"><a href="https://kvcache.ai/tools/kv-cache-calculator/" dir="ltr" rel="noopener noreferrer nofollow" target="_blank" role="link" class="css-146c3p1 r-bcqeeo r-1ttztb7 r-qvutc0 r-37j5jr r-1inkyih r-rjixqe r-16dba41 r-1ddef8g r-tjvw6i r-1loqt21" style="color: rgb(15, 20, 25);"><span data-offset-key="5upd3-0-0"><span data-text="true">https://kvcache.ai/tools/kv-cache-calculator/</span></span></a></div></div></div>`;
 
 assert.equal(isXArticleUrl('https://x.com/dotey/article/2058421725256171718'), true);
 assert.equal(isXArticleUrl('https://twitter.com/dotey/article/2058421725256171718'), true);
-assert.equal(isXArticleUrl('https://x.com/dotey/status/2058421725256171718'), false);
+assert.equal(isXArticleUrl('https://x.com/hwwaanng/status/2056919573778292757'), true);
 assert.equal(isXArticleUrl('https://example.com/dotey/article/2058421725256171718'), false);
 assert.equal(getXArticleIdFromUrl('https://x.com/dotey/article/2058421725256171718'), '2058421725256171718');
+assert.equal(getXArticleIdFromUrl('https://x.com/hwwaanng/status/2056919573778292757'), '2056919573778292757');
 
 assert.equal(normalizeText('  DeepSeek\n\t  的战略  '), 'DeepSeek 的战略');
 
@@ -39,6 +48,11 @@ const match = registry.match({
 });
 assert.equal(match?.extractor.id, 'x.article');
 assert.equal(match?.result.reason, 'x_article_url');
+const statusMatch = registry.match({
+  url: new URL('https://x.com/hwwaanng/status/2056919573778292757')
+});
+assert.equal(statusMatch?.extractor.id, 'x.article');
+assert.equal(statusMatch?.result.reason, 'x_article_url');
 
 assert.equal(X_ARTICLE_SELECTORS.readView, '[data-testid="twitterArticleReadView"]');
 assert.equal(X_ARTICLE_SELECTORS.title, '[data-testid="twitter-article-title"]');
@@ -63,6 +77,15 @@ assert.equal(detailText.boldSpanCount > 0, true, 'snapshot should include bold t
 assert.equal(detailText.simpleTweetCount > 0, true, 'snapshot should include embedded simple tweets');
 assert.equal(detailText.tweetCount > 0, true, 'snapshot should include data-testid tweet source links');
 assert.equal(detailText.articleCoverImageCount > 0, true, 'snapshot should include embedded X article cards');
+const picTweetText = extractSnapshotPicTweet(picTweetSnapshot);
+assert.equal(picTweetText.hasArticleCoverImage, false, 'pic tweet fixture should represent the non-article simple tweet card path');
+assert.equal(picTweetText.tweetText, "Got the new Gemini UI, it's very beautiful!");
+assert.equal(picTweetText.photoCount, 2, 'pic tweet fixture should expose two tweetPhoto containers');
+assert.equal(
+  picTweetText.photoSrcs.join(' '),
+  'https://pbs.twimg.com/media/HIq4IqNbEAADZQM?format=jpg&amp;name=small https://pbs.twimg.com/media/HIq4IrAa4AAyVGC?format=jpg&amp;name=small',
+  'pic tweet fixture should expose both image card sources'
+);
 
 const detail2Text = extractSnapshotLongformText(detail2Snapshot);
 assert.equal(detail2Text.title, '为什么 AI 会“忘记”中间的信息');
@@ -73,6 +96,15 @@ assert.equal(
 );
 assert.equal(detail2Text.headingOneCount > 0, true, 'detail2 should include X article h1 content blocks');
 assert.equal(detail2Text.boldSpanCount > 0, true, 'detail2 should include bold text spans');
+const statusText = extractSnapshotLongformText(statusSnapshot);
+assert.equal(statusText.title, '为啥 Gemini 新 UI 和 ChatGPT 几乎一模一样？');
+assert.equal(statusText.textLength > 200, true, 'status article snapshot should expose stable longform text');
+assert.equal(statusText.blockCount >= 3, true, 'status article snapshot should expose enough Draft.js blocks');
+assert.equal(
+  statusText.hasReadView && statusText.hasTitle && statusText.hasRichTextView && statusText.hasLongform,
+  true,
+  'status article snapshot should expose the core X article DOM selectors'
+);
 assert.deepEqual(extractStandaloneLinkBlockFixture(completeDomLinkBlock), {
   text: 'https://kvcache.ai/tools/kv-cache-calculator/',
   href: 'https://kvcache.ai/tools/kv-cache-calculator/',
@@ -106,13 +138,33 @@ for (const source of [modularExtractorSource, liveExtractorSource]) {
   assert.match(source, /pendingListKind/, 'extractor should preserve ordered versus unordered lists');
   assert.match(source, /function extractTweetRefBlock/, 'extractor should parse data-testid tweet reference blocks');
   assert.match(source, /tweetBlock/, 'extractor should use the tweet data-testid selector');
+  assert.match(source, /function extractTweetSummaryBlock/, 'tweet references should build a summary without collapsing author, date, body, and metrics');
+  assert.match(source, /function extractTweetBodyText/, 'tweet references should extract the tweet body without appending engagement metrics');
+  assert.doesNotMatch(source, /title: text \|\| 'X Tweet'/, 'tweet references should not collapse full tweet textContent into a single title');
   assert.match(source, /function getSimpleTweetHref/, 'simple tweets should use a dedicated href extractor');
+  assert.match(source, /function extractSimpleTweetImageCard/, 'simple tweets should parse image-card tweets without article covers');
+  assert.match(source, /function isSimpleTweetCard/, 'image-card simple tweet parsing should be gated by data-testid simpleTweet');
+  assert.match(
+    source,
+    /const image = extractImageFromElement\(block, blockId\(articleId, index\)\);[\s\S]*?const simpleTweet = extractSimpleTweetBlock/,
+    'plain section tweetPhoto image blocks should be extracted before simpleTweet fallback'
+  );
+  assert.match(source, /querySelectorAll<HTMLElement>\(X_ARTICLE_SELECTORS\.tweetPhoto\)/, 'image-card simple tweets should enumerate tweetPhoto containers');
+  assert.match(source, /function getTweetPhotoBackgroundUrl/, 'image-card simple tweets should keep the lazy background-image fallback');
+  assert.match(source, /function extractTweetProfile/, 'simple tweets should extract dynamic author profile fields');
+  assert.match(source, /function extractTweetMetrics/, 'simple tweets should extract dynamic action metrics');
   assert.match(source, /status\/(?!.*analytics)/, 'simple tweet href extraction should prefer tweet status links over profile or analytics links');
   assert.match(source, /new URL\(href, X_CANONICAL_ORIGIN\)\.toString\(\)/, 'simple tweet href extraction should normalize relative X hrefs to absolute x.com URLs');
   assert.doesNotMatch(source, /section\[data-block="true"\]\[contenteditable="false"\]/, 'image detection should not rely on contenteditable=false section blocks');
 }
 assert.match(articleModelSource, /kind\?: 'ordered' \| 'unordered'/, 'list model should include ordered/unordered kind');
-assert.match(readerRendererSource, /renderSimpleTweetBlock\(block\.id, block\.coverUrl, block\.coverAlt, block\.source, block\.title, block\.excerpt, block\.href\)/, 'reader should pass simple-tweet href into rendering');
+assert.match(articleModelSource, /photos\?: TweetPhoto\[\]/, 'simple tweet model should include optional photo cards');
+assert.match(articleModelSource, /authorName\?: string/, 'simple tweet model should include dynamic author name');
+assert.match(articleModelSource, /metrics\?: TweetMetrics/, 'simple tweet model should include dynamic action metrics');
+assert.match(readerRendererSource, /renderSimpleTweetBlock\(block\)/, 'reader should render simple tweets from the complete block data');
+assert.match(readerRendererSource, /renderSimpleTweetPhotoGrid/, 'reader should render simple tweet image cards as a photo grid');
+assert.match(readerRendererSource, /renderSimpleTweetAvatar\(block\)/, 'reader should use dynamic avatar data');
+assert.match(readerRendererSource, /renderSimpleTweetActions\(block\.metrics\)/, 'reader should use dynamic action metrics');
 assert.match(readerRendererSource, /createElement\('a'\)/, 'reader should render linked simple tweets as anchors');
 
 const validation = validateArticle({
@@ -163,6 +215,11 @@ function extractSnapshotLongformText(html) {
   const text = textItems.join('\\n');
   return {
     title,
+    hasReadView: html.includes('data-testid="twitterArticleReadView"'),
+    hasTitle: html.includes('data-testid="twitter-article-title"'),
+    hasRichTextView: html.includes('data-testid="twitterArticleRichTextView"'),
+    hasLongform: html.includes('data-testid="longformRichTextComponent"'),
+    blockCount: countMatches(longform, 'data-block="true"'),
     textCount: textItems.length,
     textLength: text.length,
     hash: createHash('sha256').update(text).digest('hex'),
@@ -177,6 +234,21 @@ function extractSnapshotLongformText(html) {
     firstParagraph: textItems[5],
     secondParagraph: textItems[7],
     thirdParagraph: textItems[9]
+  };
+}
+
+function extractSnapshotPicTweet(html) {
+  const tweetText = normalizeText(decodeHtml(
+    html
+      .slice(html.indexOf('data-testid="tweetText"'))
+      .match(/<span[^>]*>([\s\S]*?)<\/span>/)?.[1] ?? ''
+  ));
+  const photos = [...html.matchAll(/data-testid="tweetPhoto"[\s\S]*?<img[^>]+src="([^"]+)"/g)];
+  return {
+    hasArticleCoverImage: html.includes('data-testid="article-cover-image"'),
+    tweetText,
+    photoCount: countMatches(html, 'data-testid="tweetPhoto"'),
+    photoSrcs: photos.map((match) => match[1])
   };
 }
 

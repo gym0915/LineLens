@@ -67,11 +67,17 @@ const calls = {
   icons: [],
   titles: [],
   createdTabs: [],
-  sentMessages: []
+  sentMessages: [],
+  executedScripts: []
 };
 
 let runtimeMessageListener;
 let actionClickedListener;
+let tabsUpdatedListener;
+let tabsActivatedListener;
+let historyStateUpdatedListener;
+const mockTabs = new Map();
+const sendMessageFailures = new Map();
 
 globalThis.chrome = {
   action: {
@@ -135,13 +141,47 @@ globalThis.chrome = {
     }
   },
   tabs: {
+    onUpdated: {
+      addListener(callback) {
+        tabsUpdatedListener = callback;
+      }
+    },
+    onActivated: {
+      addListener(callback) {
+        tabsActivatedListener = callback;
+      }
+    },
     async create(details) {
       calls.createdTabs.push(details);
       return { id: 99, url: details.url };
     },
+    async get(tabId) {
+      return mockTabs.get(tabId) ?? { id: tabId };
+    },
     async sendMessage(tabId, message) {
       calls.sentMessages.push({ tabId, message });
+      const remainingFailures = sendMessageFailures.get(tabId) ?? 0;
+      if (remainingFailures > 0) {
+        sendMessageFailures.set(tabId, remainingFailures - 1);
+        throw new Error('Receiving end does not exist.');
+      }
+      if (message.type === 'LINELENS_ROUTE_CHANGED') {
+        return { ok: true };
+      }
       return { type: 'ARTICLE_EXTRACTED', article };
+    }
+  },
+  scripting: {
+    async executeScript(details) {
+      calls.executedScripts.push(details);
+      return [];
+    }
+  },
+  webNavigation: {
+    onHistoryStateUpdated: {
+      addListener(callback) {
+        historyStateUpdatedListener = callback;
+      }
     }
   }
 };
@@ -158,15 +198,63 @@ assert.deepEqual(loaded, article);
 await import('../dist/background/index.js');
 assert.equal(typeof runtimeMessageListener, 'function', 'background should register runtime message listener');
 assert.equal(typeof actionClickedListener, 'function', 'background should register action click listener');
+assert.equal(typeof tabsUpdatedListener, 'function', 'background should register tab update listener');
+assert.equal(typeof historyStateUpdatedListener, 'function', 'background should register SPA history listener');
+assert.equal(typeof tabsActivatedListener, 'function', 'background should register tab activation listener');
 assert.deepEqual(calls.disabledTabs, [], 'toolbar action should stay enabled so clicks reach onClicked');
 
-await actionClickedListener({ id: 41, url: article.sourceUrl });
-assert.deepEqual(calls.sentMessages, [
-  {
-    tabId: 41,
-    message: { type: 'EXTRACT_CURRENT_ARTICLE' }
+await tabsUpdatedListener(43, { status: 'complete' }, {
+  id: 43,
+  url: 'https://x.com/dotey/article/2058421725256171718'
+});
+assert.deepEqual(calls.enabledTabs, [43], 'normal article page load should refresh action as clickable');
+assert.equal(calls.icons.at(-1).tabId, 43);
+
+await historyStateUpdatedListener({
+  tabId: 44,
+  frameId: 0,
+  url: 'https://x.com/AlchainHust/article/2058732869363827129'
+});
+assert.deepEqual(calls.enabledTabs, [43, 44], 'SPA route into an X article should refresh action as clickable');
+assert.equal(calls.icons.at(-1).tabId, 44);
+assert.deepEqual(calls.sentMessages.at(-1), {
+  tabId: 44,
+  message: {
+    type: 'LINELENS_ROUTE_CHANGED',
+    url: 'https://x.com/AlchainHust/article/2058732869363827129'
   }
-]);
+});
+
+await historyStateUpdatedListener({
+  tabId: 45,
+  frameId: 1,
+  url: 'https://x.com/AlchainHust/article/2058732869363827129'
+});
+assert.deepEqual(calls.enabledTabs, [43, 44], 'subframe history updates should be ignored');
+
+mockTabs.set(46, {
+  id: 46,
+  url: 'https://twitter.com/dotey/article/2058421725256171718'
+});
+await tabsActivatedListener({ tabId: 46 });
+assert.deepEqual(calls.enabledTabs, [43, 44, 46], 'switching to an article tab should refresh action as clickable');
+assert.equal(calls.icons.at(-1).tabId, 46);
+
+mockTabs.set(47, {
+  id: 47,
+  url: 'https://example.com/not-supported'
+});
+await tabsActivatedListener({ tabId: 47 });
+assert.equal(calls.titles.at(-1).tabId, 47);
+assert.equal(calls.titles.at(-1).title, 'LineLens: unsupported page');
+
+await actionClickedListener({ id: 41, url: article.sourceUrl });
+assert.deepEqual(calls.sentMessages.at(-1), {
+  tabId: 41,
+  message: { type: 'EXTRACT_CURRENT_ARTICLE' }
+});
+
+const messagesBeforeSecondClick = calls.sentMessages.length;
 
 runtimeMessageListener(
   {
@@ -176,22 +264,39 @@ runtimeMessageListener(
   { tab: { id: 42, url: article.sourceUrl } },
   () => {}
 );
-assert.deepEqual(calls.enabledTabs, [42]);
+assert.equal(calls.enabledTabs.at(-1), 42);
 assert.equal(calls.icons.at(-1).tabId, 42);
 assert.deepEqual(Object.keys(calls.icons.at(-1).imageData).sort(), ['16', '32', '48']);
 
 await actionClickedListener({ id: 42, url: article.sourceUrl });
-assert.deepEqual(calls.sentMessages, [
-  {
-    tabId: 41,
-    message: { type: 'EXTRACT_CURRENT_ARTICLE' }
-  },
+assert.deepEqual(calls.sentMessages.slice(messagesBeforeSecondClick), [
   {
     tabId: 42,
     message: { type: 'EXTRACT_CURRENT_ARTICLE' }
   }
 ]);
 assert.deepEqual(await getArticle(article.id), article);
+assert.equal(
+  calls.createdTabs.at(-1).url,
+  'chrome-extension://linelens/reader.html?articleId=2058421725256171718'
+);
+
+sendMessageFailures.set(48, 1);
+await actionClickedListener({ id: 48, url: article.sourceUrl });
+assert.deepEqual(calls.executedScripts.at(-1), {
+  target: { tabId: 48 },
+  files: ['content.js']
+});
+assert.deepEqual(calls.sentMessages.slice(-2), [
+  {
+    tabId: 48,
+    message: { type: 'EXTRACT_CURRENT_ARTICLE' }
+  },
+  {
+    tabId: 48,
+    message: { type: 'EXTRACT_CURRENT_ARTICLE' }
+  }
+]);
 assert.equal(
   calls.createdTabs.at(-1).url,
   'chrome-extension://linelens/reader.html?articleId=2058421725256171718'
@@ -204,6 +309,8 @@ assert.match(contentSource, /extractXArticle/);
 assert.match(contentSource, /ARTICLE_READY/);
 assert.match(contentSource, /ARTICLE_NOT_READY/);
 assert.match(contentSource, /EXTRACT_CURRENT_ARTICLE/);
+assert.match(contentSource, /LINELENS_ROUTE_CHANGED/);
+assert.match(contentSource, /monitorArticleState/);
 assert.match(contentSource, /MutationObserver/);
 assert.match(contentSource, /MAX_READY_CHECKS/);
 assert.match(contentSource, /LineLens Content/);

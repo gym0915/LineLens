@@ -1,6 +1,7 @@
 import type { Article } from '../shared/article';
 import { saveArticle } from '../shared/article-store.js';
 import type { ExtensionMessage } from '../shared/messages';
+import { isXArticleUrl } from '../shared/url.js';
 
 const readyTabs = new Map<number, string>();
 const LOG_PREFIX = '[LineLens SW]';
@@ -12,12 +13,46 @@ chrome.runtime.onInstalled.addListener(() => {
   void chrome.action.setTitle({ title: 'Open in LineLens' });
 });
 
-chrome.action.onClicked.addListener((tab) => {
+chrome.action.onClicked.addListener(async (tab) => {
   console.info(LOG_PREFIX, 'toolbar icon clicked', {
     tabId: tab.id,
     url: tab.url
   });
-  void extractCurrentTabArticle(tab);
+  await extractCurrentTabArticle(tab);
+});
+
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+  const url = changeInfo.url ?? tab.url;
+  if (changeInfo.status !== 'complete' && !changeInfo.url) {
+    return;
+  }
+
+  await refreshActionStateForTab(tabId, url);
+});
+
+chrome.webNavigation.onHistoryStateUpdated.addListener(
+  async (details) => {
+    if (details.frameId !== 0) {
+      return;
+    }
+
+    await refreshActionStateForTab(details.tabId, details.url);
+  },
+  {
+    url: [{ hostSuffix: 'x.com' }, { hostSuffix: 'twitter.com' }]
+  }
+);
+
+chrome.tabs.onActivated.addListener(async (activeInfo) => {
+  try {
+    const tab = await chrome.tabs.get(activeInfo.tabId);
+    await refreshActionStateForTab(activeInfo.tabId, tab.url);
+  } catch (error) {
+    console.warn(LOG_PREFIX, 'failed to inspect activated tab', {
+      tabId: activeInfo.tabId,
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -77,6 +112,36 @@ function getMessageTabId(message: ExtensionMessage) {
   return undefined;
 }
 
+async function refreshActionStateForTab(tabId: number, url: string | undefined) {
+  if (!url || !isXArticleUrl(url)) {
+    readyTabs.delete(tabId);
+    await setActionIcon(tabId, IDLE_ICON_COLOR);
+    await chrome.action.setTitle({ tabId, title: 'LineLens: unsupported page' });
+    console.info(LOG_PREFIX, 'action refreshed: unsupported tab', {
+      tabId,
+      url
+    });
+    return;
+  }
+
+  readyTabs.set(tabId, 'x.article');
+  await chrome.action.enable(tabId);
+  await setActionIcon(tabId, READY_ICON_COLOR);
+  await chrome.action.setTitle({ tabId, title: 'Open in LineLens' });
+  await notifyRouteChanged(tabId, url);
+  console.info(LOG_PREFIX, 'action refreshed: X article tab', {
+    tabId,
+    url
+  });
+}
+
+async function notifyRouteChanged(tabId: number, url: string) {
+  await sendTabMessage(tabId, {
+    type: 'LINELENS_ROUTE_CHANGED',
+    url
+  });
+}
+
 async function openReader(article: Article) {
   const readerUrl = new URL(chrome.runtime.getURL('reader.html'));
   readerUrl.searchParams.set('articleId', article.id);
@@ -92,17 +157,7 @@ async function extractCurrentTabArticle(tab: chrome.tabs.Tab) {
   console.info(LOG_PREFIX, 'requesting article extraction', {
     tabId: tab.id
   });
-  const response = await chrome.tabs
-    .sendMessage(tab.id, {
-      type: 'EXTRACT_CURRENT_ARTICLE'
-    })
-    .catch((error) => {
-      console.warn(LOG_PREFIX, 'content script did not respond', {
-        tabId: tab.id,
-        error: error instanceof Error ? error.message : String(error)
-      });
-      return null;
-    });
+  const response = await sendExtractMessage(tab.id);
 
   console.info(LOG_PREFIX, 'extract response received', {
     tabId: tab.id,
@@ -113,6 +168,40 @@ async function extractCurrentTabArticle(tab: chrome.tabs.Tab) {
   if (response?.type === 'ARTICLE_EXTRACTED') {
     await saveAndOpenReader(response.article);
   }
+}
+
+async function sendExtractMessage(tabId: number): Promise<ExtensionMessage | null> {
+  const message: ExtensionMessage = {
+    type: 'EXTRACT_CURRENT_ARTICLE'
+  };
+  const firstResponse = await sendTabMessage(tabId, message);
+  if (firstResponse) {
+    return firstResponse;
+  }
+
+  await injectContentScript(tabId);
+  return sendTabMessage(tabId, message);
+}
+
+async function sendTabMessage(tabId: number, message: ExtensionMessage): Promise<ExtensionMessage | null> {
+  return chrome.tabs.sendMessage(tabId, message).catch((error) => {
+    console.warn(LOG_PREFIX, 'content script did not respond', {
+      tabId,
+      type: message.type,
+      error: error instanceof Error ? error.message : String(error)
+    });
+    return null;
+  });
+}
+
+async function injectContentScript(tabId: number) {
+  console.info(LOG_PREFIX, 'injecting content script fallback', {
+    tabId
+  });
+  await chrome.scripting.executeScript({
+    target: { tabId },
+    files: ['content.js']
+  });
 }
 
 async function saveAndOpenReader(article: Article) {

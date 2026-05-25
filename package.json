@@ -11,7 +11,8 @@
     "verify:reader-a6-a7": "npm run build && node scripts/verify-reader-a6-a7.mjs",
     "verify:reader-a8-a9": "npm run build && node scripts/verify-reader-a8-a9.mjs",
     "verify:x-article-b1-b9": "npm run build && node scripts/verify-x-article-b1-b9.mjs",
-    "verify:x-article-b10-b15": "npm run build && node scripts/verify-x-article-b10-b15.mjs"
+    "verify:x-article-b10-b15": "npm run build && node scripts/verify-x-article-b10-b15.mjs",
+    "verify:x-article-b29": "npm run verify:x-article-b10-b15"
   },
   "devDependencies": {
     "typescript": "^5.5.4"

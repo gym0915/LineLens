@@ -15,6 +15,10 @@ export type ExtensionMessage =
       type: 'EXTRACT_CURRENT_ARTICLE';
     }
   | {
+      type: 'LINELENS_ROUTE_CHANGED';
+      url: string;
+    }
+  | {
       type: 'ARTICLE_EXTRACTED';
       article: Article;
     }

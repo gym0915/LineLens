@@ -52,6 +52,20 @@ export type ImageBlock = {
   aspectRatio?: number;
 };
 
+export type TweetPhoto = {
+  src: string;
+  alt?: string;
+  href?: string;
+};
+
+export type TweetMetrics = {
+  replies?: string;
+  reposts?: string;
+  likes?: string;
+  views?: string;
+  bookmarks?: string;
+};
+
 export type ListBlock = {
   id: string;
   type: 'list';
@@ -77,6 +91,14 @@ export type SimpleTweetBlock = {
   title: string;
   excerpt: string;
   href?: string;
+  photos?: TweetPhoto[];
+  authorName?: string;
+  authorHandle?: string;
+  authorAvatarUrl?: string;
+  authorVerified?: boolean;
+  publishedAt?: string;
+  publishedAtText?: string;
+  metrics?: TweetMetrics;
 };
 
 export type EmbedBlock = {
