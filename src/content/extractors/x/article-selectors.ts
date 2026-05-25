@@ -5,6 +5,7 @@ export const X_ARTICLE_SELECTORS = {
   longform: '[data-testid="longformRichTextComponent"]',
   block: '[data-block="true"]',
   quoteBlock: 'blockquote.longform-blockquote[data-block="true"]',
-  nonTextBlock: 'section[data-block="true"][contenteditable="false"]',
+  tweetBlock: '[data-testid="tweet"]',
+  tweetPhoto: '[data-testid="tweetPhoto"]',
   tweetPhotoImage: '[data-testid="tweetPhoto"] img'
 } as const;

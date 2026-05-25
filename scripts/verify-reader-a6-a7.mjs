@@ -222,8 +222,15 @@ dispatchKey(keydown, 'Home');
 assert(findByClass(root, 'is-active')?.dataset.unitId === 'p1-u1', 'Home should move to first FocusUnit');
 dispatchKey(keydown, 'e');
 assert(findByClass(root, 'is-active')?.dataset.unitId === lastUnitId, 'E should move to last FocusUnit');
+const firstUnit = walk(root).find((element) => element.dataset.unitId === 'p1-u1');
+const firstScrollCountBeforeHomeShortcut = firstUnit?.scrollCalls.length ?? 0;
 dispatchKey(keydown, 'h');
 assert(findByClass(root, 'is-active')?.dataset.unitId === 'p1-u1', 'H should move to first FocusUnit');
+assert(
+  (firstUnit?.scrollCalls.length ?? 0) === firstScrollCountBeforeHomeShortcut + 1,
+  'H should scroll the first FocusUnit into view after jumping from the end'
+);
+assert(firstUnit?.scrollCalls.at(-1)?.block === 'center', 'H should center the first FocusUnit');
 
 const beforeArrowDown = findByClass(root, 'is-active')?.dataset.unitId;
 dispatchKey(keydown, 'ArrowDown');

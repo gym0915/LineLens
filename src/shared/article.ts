@@ -18,6 +18,7 @@ export type ArticleBlock =
   | QuoteBlock
   | ImageBlock
   | ListBlock
+  | LinkBlock
   | RefCardBlock
   | EmbedBlock;
 
@@ -54,8 +55,17 @@ export type ImageBlock = {
 export type ListBlock = {
   id: string;
   type: 'list';
+  kind?: 'ordered' | 'unordered';
   items: string[];
   itemAnnotations?: TextAnnotation[][];
+};
+
+export type LinkBlock = {
+  id: string;
+  type: 'link';
+  text: string;
+  href: string;
+  target?: string;
 };
 
 export type RefCardBlock = {
@@ -81,4 +91,6 @@ export type TextAnnotation = {
   startOffset: number;
   endOffset: number;
   bold?: boolean;
+  href?: string;
+  target?: string;
 };

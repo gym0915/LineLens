@@ -24,11 +24,16 @@ export function mountReaderApp(root: HTMLElement, article: Article): void {
   const savedProgress = progressStore.get(article.id);
   const initialIndex = resolveInitialIndex(savedProgress?.unitId, units);
   let activeUnit: FocusUnit | null = null;
+  let activeIndex: number | null = null;
+  let hasRenderedInitialFocus = false;
   let refreshFrame = 0;
 
   const engine = new FocusEngine(units, (unit, index) => {
+    const shouldScroll = hasRenderedInitialFocus && index !== activeIndex;
     activeUnit = unit;
-    highlightLayer.update(unit, elements, { scroll: index !== initialIndex });
+    activeIndex = index;
+    highlightLayer.update(unit, elements, { scroll: shouldScroll });
+    hasRenderedInitialFocus = true;
     progressStore.save({
       articleId: article.id,
       unitId: unit.unitId,

@@ -76,6 +76,7 @@ function extractBlocks(longform: Element, articleId: string): ArticleBlock[] {
   const blocks: ArticleBlock[] = [];
   let pendingListItems: string[] = [];
   let pendingListItemAnnotations: TextAnnotation[][] = [];
+  let pendingListKind: 'ordered' | 'unordered' = 'unordered';
 
   function flushPendingList() {
     if (pendingListItems.length === 0) {
@@ -85,6 +86,7 @@ function extractBlocks(longform: Element, articleId: string): ArticleBlock[] {
     const listBlock: ArticleBlock = {
       id: blockId(articleId, blocks.length + 1),
       type: 'list',
+      kind: pendingListKind,
       items: pendingListItems
     };
     if (pendingListItemAnnotations.some((annotations) => annotations.length > 0)) {
@@ -94,12 +96,20 @@ function extractBlocks(longform: Element, articleId: string): ArticleBlock[] {
     blocks.push(listBlock);
     pendingListItems = [];
     pendingListItemAnnotations = [];
+    pendingListKind = 'unordered';
   }
 
   longform.querySelectorAll(X_ARTICLE_SELECTORS.block).forEach((block) => {
-    if (isDraftListItem(block)) {
+    const listKind = getListKind(block);
+    if (listKind) {
       const extracted = extractTextWithAnnotations(block);
       if (extracted.text) {
+        if (pendingListItems.length === 0) {
+          pendingListKind = listKind;
+        } else if (pendingListKind !== listKind) {
+          flushPendingList();
+          pendingListKind = listKind;
+        }
         pendingListItems.push(extracted.text);
         pendingListItemAnnotations.push(extracted.annotations);
       }
@@ -118,13 +128,24 @@ function extractBlocks(longform: Element, articleId: string): ArticleBlock[] {
   return blocks;
 }
 
-function isDraftListItem(block: Element): boolean {
-  return (
-    block.classList.contains('public-DraftStyleDefault-unorderedListItem') ||
+function getListKind(block: Element): 'ordered' | 'unordered' | null {
+  if (
+    block.closest('ol') ||
     block.classList.contains('public-DraftStyleDefault-orderedListItem') ||
-    block.classList.contains('longform-unordered-list-item') ||
     block.classList.contains('longform-ordered-list-item')
-  );
+  ) {
+    return 'ordered';
+  }
+
+  if (
+    block.closest('ul') ||
+    block.classList.contains('public-DraftStyleDefault-unorderedListItem') ||
+    block.classList.contains('longform-unordered-list-item')
+  ) {
+    return 'unordered';
+  }
+
+  return null;
 }
 
 function extractBlock(block: Element, articleId: string, index: number): ArticleBlock | null {
@@ -140,8 +161,9 @@ function extractBlock(block: Element, articleId: string, index: number): Article
       : null;
   }
 
-  if (block.matches(X_ARTICLE_SELECTORS.nonTextBlock)) {
-    return extractNonTextBlock(block, articleId, index);
+  const nonTextBlock = extractNonTextBlock(block, articleId, index);
+  if (nonTextBlock) {
+    return nonTextBlock;
   }
 
   const extracted = extractTextWithAnnotations(block);
@@ -171,6 +193,11 @@ function extractBlock(block: Element, articleId: string, index: number): Article
 }
 
 function extractNonTextBlock(block: Element, articleId: string, index: number): ArticleBlock | null {
+  const tweetRef = extractTweetRefBlock(block, blockId(articleId, index));
+  if (tweetRef) {
+    return tweetRef;
+  }
+
   const refCard = extractRefCardBlock(block, blockId(articleId, index));
   if (refCard) {
     return refCard;
@@ -181,13 +208,59 @@ function extractNonTextBlock(block: Element, articleId: string, index: number): 
     return image;
   }
 
-  const text = normalizeText(block.textContent ?? '');
+  const link = extractLinkBlock(block, blockId(articleId, index));
+  if (link) {
+    return link;
+  }
+
+  return null;
+}
+
+function extractTweetRefBlock(block: Element, id: string): ArticleBlock | null {
+  const tweet = block.querySelector(X_ARTICLE_SELECTORS.tweetBlock);
+  if (!tweet) {
+    return null;
+  }
+
+  const articleCard = extractRefCardBlock(tweet, id);
+  if (articleCard) {
+    return articleCard;
+  }
+
+  const statusLink = tweet.querySelector<HTMLAnchorElement>('a[href*="/status/"]');
+  const href = statusLink?.getAttribute('href') ?? tweet.querySelector('a[href]')?.getAttribute('href') ?? block.querySelector('a[href]')?.getAttribute('href') ?? undefined;
+  const text = normalizeText(tweet.textContent ?? block.textContent ?? '');
   return {
-    id: blockId(articleId, index),
-    type: 'embed',
-    label: 'Embedded content',
-    text: text || undefined,
-    href: block.querySelector('a[href]')?.getAttribute('href') ?? undefined
+    id,
+    type: 'ref-card',
+    coverUrl: '',
+    source: 'X Tweet',
+    title: text || 'X Tweet',
+    excerpt: '',
+    href
+  };
+}
+
+function extractLinkBlock(block: Element, id: string): ArticleBlock | null {
+  const anchor = block.querySelector<HTMLAnchorElement>('a[href][role="link"], a[href]');
+  if (!anchor) {
+    return null;
+  }
+
+  const href = anchor.getAttribute('href');
+  const text = normalizeText(anchor.textContent ?? '');
+  const blockText = normalizeText(block.textContent ?? '');
+  if (!href || !text || text !== blockText) {
+    return null;
+  }
+
+  const target = anchor.getAttribute('target') ?? undefined;
+  return {
+    id,
+    type: 'link',
+    text,
+    href,
+    ...(target ? { target } : {})
   };
 }
 
@@ -348,6 +421,10 @@ function isBoldTextElement(textElement: HTMLElement): boolean {
   return fontWeight === 'bold' || fontWeight === '700';
 }
 
+function isEmojiTextElement(textElement: HTMLElement): boolean {
+  return Boolean(textElement.closest<HTMLElement>('[style*="clip-path: circle"]'));
+}
+
 function extractTextWithAnnotations(element: Element): { text: string; annotations: TextAnnotation[] } {
   const textElements = Array.from(element.querySelectorAll<HTMLElement>('[data-text="true"]'));
   if (textElements.length === 0) {
@@ -356,6 +433,7 @@ function extractTextWithAnnotations(element: Element): { text: string; annotatio
 
   let text = '';
   const annotations: TextAnnotation[] = [];
+  const linkAnnotations: TextAnnotation[] = [];
   for (const textElement of textElements) {
     const segment = textElement.textContent ?? '';
     const startOffset = text.length;
@@ -365,9 +443,26 @@ function extractTextWithAnnotations(element: Element): { text: string; annotatio
     if (endOffset > startOffset && isBoldTextElement(textElement)) {
       annotations.push({ startOffset, endOffset, bold: true });
     }
+    const anchor = textElement.closest<HTMLAnchorElement>('a[href][role="link"], a[href]');
+    if (endOffset > startOffset && anchor) {
+      const href = anchor.getAttribute('href');
+      if (href) {
+        linkAnnotations.push({
+          startOffset,
+          endOffset,
+          href,
+          target: anchor.getAttribute('target') ?? undefined
+        });
+      }
+    }
+    if (isEmojiTextElement(textElement)) {
+      // X renders emoji through a background image and hides the real glyph with
+      // `clip-path: circle(...)`; keep the underlying text so sentence units
+      // include the emoji instead of dropping it from the reading flow.
+    }
   }
 
-  return { text: normalizeText(text), annotations };
+  return { text: normalizeText(text), annotations: [...annotations, ...linkAnnotations] };
 }
 
 function blockId(articleId: string, index: number): string {

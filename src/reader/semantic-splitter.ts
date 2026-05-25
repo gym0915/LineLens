@@ -162,11 +162,12 @@ function splitByBreaks(
 
     // Strong punctuation maps to natural reading stops; keep nearby closing quotes
     // or brackets with the same unit so punctuation context is not stranded.
-    if (breakChars.has(char) && !isProtectedIndex(index, protectedRanges)) {
-      let end = index + 1;
+    if (breakChars.has(char) && !isProtectedIndex(index, protectedRanges) && !isProtectedBreak(text, index)) {
+      let end = consumeBreakTail(text, index + 1);
       while (end < text.length && CLOSING_PUNCTUATION.has(text[end] ?? '')) {
         end += 1;
       }
+      end = consumeTrailingDecorations(text, end);
       pushUnit(units, text, start, end, baseOffset);
       start = end;
       index = end;
@@ -178,6 +179,59 @@ function splitByBreaks(
 
   pushUnit(units, text, start, text.length, baseOffset);
   return units;
+}
+
+function isProtectedBreak(text: string, index: number): boolean {
+  const char = text[index] ?? '';
+  if (char !== '.') {
+    return false;
+  }
+
+  const before = text[index - 1] ?? '';
+  const after = text[index + 1] ?? '';
+  return isAsciiWordChar(before) && isAsciiWordChar(after);
+}
+
+function consumeBreakTail(text: string, start: number): number {
+  let end = start;
+  while (end < text.length && isRepeatedBreakMark(text[end] ?? '')) {
+    end += 1;
+  }
+  return end;
+}
+
+function isRepeatedBreakMark(char: string): boolean {
+  return char === '.' || char === '。' || char === '!' || char === '?' || char === '！' || char === '？';
+}
+
+function consumeTrailingDecorations(text: string, start: number): number {
+  let index = start;
+  let cursor = start;
+
+  let consumedDecoration = false;
+  while (cursor < text.length) {
+    let next = cursor;
+    while (next < text.length && /\s/.test(text[next] ?? '')) {
+      next += 1;
+    }
+
+    const nextChar = readChar(text, next);
+    const emojiEnd = consumeEmojiSequence(text, next);
+    if (emojiEnd === next && !isRepeatedBreakMark(nextChar)) {
+      break;
+    }
+    cursor = emojiEnd > next ? emojiEnd : next + nextChar.length;
+    consumedDecoration = true;
+
+    while (cursor < text.length && CLOSING_PUNCTUATION.has(text[cursor] ?? '')) {
+      cursor += 1;
+    }
+  }
+
+  if (consumedDecoration) {
+    index = cursor;
+  }
+  return index;
 }
 
 function splitBySafeBoundary(segment: ReadingUnit): ReadingUnit[] {
@@ -265,6 +319,59 @@ function consumeLeadingSpaces(text: string, start: number): number {
 
 function isAsciiWordChar(char: string): boolean {
   return /[A-Za-z0-9_]/.test(char);
+}
+
+function isEmojiLike(char: string): boolean {
+  return /\p{Extended_Pictographic}/u.test(char);
+}
+
+function readChar(text: string, index: number): string {
+  return Array.from(text.slice(index))[0] ?? '';
+}
+
+function consumeEmojiSequence(text: string, start: number): number {
+  let cursor = start;
+  let consumedEmoji = false;
+
+  while (cursor < text.length) {
+    const char = readChar(text, cursor);
+    if (!isEmojiLike(char)) {
+      break;
+    }
+
+    cursor += char.length;
+    cursor = consumeEmojiModifiers(text, cursor);
+    consumedEmoji = true;
+
+    if (text[cursor] !== '\u200D') {
+      break;
+    }
+
+    const afterJoiner = consumeEmojiModifiers(text, cursor + 1);
+    if (!isEmojiLike(readChar(text, afterJoiner))) {
+      break;
+    }
+    cursor = afterJoiner;
+  }
+
+  return consumedEmoji ? cursor : start;
+}
+
+function consumeEmojiModifiers(text: string, start: number): number {
+  let cursor = start;
+  while (cursor < text.length) {
+    const char = readChar(text, cursor);
+    if (char === '\uFE0E' || char === '\uFE0F' || isEmojiSkinTone(char)) {
+      cursor += char.length;
+      continue;
+    }
+    break;
+  }
+  return cursor;
+}
+
+function isEmojiSkinTone(char: string): boolean {
+  return /\p{Emoji_Modifier}/u.test(char);
 }
 
 type Range = {

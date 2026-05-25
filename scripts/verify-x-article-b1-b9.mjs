@@ -23,6 +23,7 @@ const mainSnapshot = readFileSync(
   resolve(rootDir, 'assets/x-article-main.html'),
   'utf8'
 );
+const completeDomLinkBlock = `<div class="longform-unstyled-narrow" data-block="true" data-editor="2vhgc" data-offset-key="5upd3-0-0"><div data-offset-key="5upd3-0-0" class="public-DraftStyleDefault-block public-DraftStyleDefault-ltr"><div class="css-175oi2r r-1loqt21 r-1471scf r-o7ynqc r-6416eg r-1ny4l3l"><a href="https://kvcache.ai/tools/kv-cache-calculator/" dir="ltr" rel="noopener noreferrer nofollow" target="_blank" role="link" class="css-146c3p1 r-bcqeeo r-1ttztb7 r-qvutc0 r-37j5jr r-1inkyih r-rjixqe r-16dba41 r-1ddef8g r-tjvw6i r-1loqt21" style="color: rgb(15, 20, 25);"><span data-offset-key="5upd3-0-0"><span data-text="true">https://kvcache.ai/tools/kv-cache-calculator/</span></span></a></div></div></div>`;
 
 assert.equal(isXArticleUrl('https://x.com/dotey/article/2058421725256171718'), true);
 assert.equal(isXArticleUrl('https://twitter.com/dotey/article/2058421725256171718'), true);
@@ -42,6 +43,8 @@ assert.equal(match?.result.reason, 'x_article_url');
 assert.equal(X_ARTICLE_SELECTORS.readView, '[data-testid="twitterArticleReadView"]');
 assert.equal(X_ARTICLE_SELECTORS.title, '[data-testid="twitter-article-title"]');
 assert.equal(X_ARTICLE_SELECTORS.longform, '[data-testid="longformRichTextComponent"]');
+assert.equal(X_ARTICLE_SELECTORS.tweetBlock, '[data-testid="tweet"]');
+assert.equal(X_ARTICLE_SELECTORS.tweetPhoto, '[data-testid="tweetPhoto"]');
 
 const detailText = extractSnapshotLongformText(detailSnapshot);
 const mainText = extractSnapshotLongformText(mainSnapshot);
@@ -58,6 +61,7 @@ assert.equal(
 );
 assert.equal(detailText.boldSpanCount > 0, true, 'snapshot should include bold text spans');
 assert.equal(detailText.simpleTweetCount > 0, true, 'snapshot should include embedded simple tweets');
+assert.equal(detailText.tweetCount > 0, true, 'snapshot should include data-testid tweet source links');
 assert.equal(detailText.articleCoverImageCount > 0, true, 'snapshot should include embedded X article cards');
 
 const detail2Text = extractSnapshotLongformText(detail2Snapshot);
@@ -69,14 +73,20 @@ assert.equal(
 );
 assert.equal(detail2Text.headingOneCount > 0, true, 'detail2 should include X article h1 content blocks');
 assert.equal(detail2Text.boldSpanCount > 0, true, 'detail2 should include bold text spans');
+assert.deepEqual(extractStandaloneLinkBlockFixture(completeDomLinkBlock), {
+  text: 'https://kvcache.ai/tools/kv-cache-calculator/',
+  href: 'https://kvcache.ai/tools/kv-cache-calculator/',
+  target: '_blank'
+});
 
 const modularExtractorSource = readFileSync(
   resolve(rootDir, 'LineLens/src/content/extractors/x/article-extractor.ts'),
   'utf8'
 );
 const liveExtractorSource = readFileSync(resolve(rootDir, 'LineLens/src/content/index.ts'), 'utf8');
+const articleModelSource = readFileSync(resolve(rootDir, 'LineLens/src/shared/article.ts'), 'utf8');
 for (const source of [modularExtractorSource, liveExtractorSource]) {
-  assert.match(source, /function isDraftListItem/, 'extractor should detect Draft.js list items');
+  assert.match(source, /function getListKind/, 'extractor should detect Draft.js list items and preserve list kind');
   assert.match(source, /flushPendingList/, 'extractor should group consecutive list items');
   assert.match(source, /function extractCoverImage/, 'extractor should have dedicated cover extraction');
   assert.match(source, /findImageBeforeTitle/, 'cover extraction should be constrained to images before the title');
@@ -87,7 +97,16 @@ for (const source of [modularExtractorSource, liveExtractorSource]) {
   assert.doesNotMatch(source, /guessTextBlockType/, 'extractor should not infer headings from short text');
   assert.match(source, /function extractRefCardBlock/, 'extractor should parse embedded X article cards');
   assert.match(source, /data-testid="article-cover-image"/, 'extractor should target article cover cards');
+  assert.match(source, /function extractLinkBlock/, 'extractor should preserve text links as clickable blocks');
+  assert.match(source, /linkAnnotations/, 'extractor should preserve inline links as annotations');
+  assert.match(source, /clip-path: circle/, 'extractor should include emoji spans hidden by clip-path circle');
+  assert.match(source, /role="link"/, 'extractor should inspect role=link anchors');
+  assert.match(source, /pendingListKind/, 'extractor should preserve ordered versus unordered lists');
+  assert.match(source, /function extractTweetRefBlock/, 'extractor should parse data-testid tweet reference blocks');
+  assert.match(source, /tweetBlock/, 'extractor should use the tweet data-testid selector');
+  assert.doesNotMatch(source, /section\[data-block="true"\]\[contenteditable="false"\]/, 'image detection should not rely on contenteditable=false section blocks');
 }
+assert.match(articleModelSource, /kind\?: 'ordered' \| 'unordered'/, 'list model should include ordered/unordered kind');
 
 const validation = validateArticle({
   id: '2058421725256171718',
@@ -146,10 +165,31 @@ function extractSnapshotLongformText(html) {
     headingOneCount: countMatches(longform, 'longform-header-one'),
     boldSpanCount: countMatches(longform, 'font-weight: bold'),
     simpleTweetCount: countMatches(longform, 'data-testid="simpleTweet"'),
+    tweetCount: countMatches(longform, 'data-testid="tweet"'),
     articleCoverImageCount: countMatches(longform, 'data-testid="article-cover-image"'),
     firstParagraph: textItems[5],
     secondParagraph: textItems[7],
     thirdParagraph: textItems[9]
+  };
+}
+
+function extractStandaloneLinkBlockFixture(html) {
+  const anchor = html.match(/<a\b[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/);
+  const blockText = normalizeText(decodeHtml(html.replace(/<[^>]+>/g, '')));
+  if (!anchor) {
+    return null;
+  }
+
+  const text = normalizeText(decodeHtml(anchor[2].replace(/<[^>]+>/g, '')));
+  if (!text || text !== blockText) {
+    return null;
+  }
+
+  const target = anchor[0].match(/\btarget="([^"]+)"/)?.[1];
+  return {
+    text,
+    href: decodeHtml(anchor[1]),
+    ...(target ? { target } : {})
   };
 }
 

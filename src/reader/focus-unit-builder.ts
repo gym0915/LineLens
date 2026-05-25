@@ -92,10 +92,13 @@ function appendAnnotatedText(
   annotations: TextAnnotation[] = []
 ): void {
   const relevantAnnotations = annotations
-    .filter((annotation) => annotation.bold && annotation.endOffset > startOffset && annotation.startOffset < endOffset)
+    .filter((annotation) => (annotation.bold || annotation.href) && annotation.endOffset > startOffset && annotation.startOffset < endOffset)
     .map((annotation) => ({
       startOffset: Math.max(annotation.startOffset, startOffset),
-      endOffset: Math.min(annotation.endOffset, endOffset)
+      endOffset: Math.min(annotation.endOffset, endOffset),
+      bold: annotation.bold,
+      href: annotation.href,
+      target: annotation.target
     }))
     .sort((a, b) => a.startOffset - b.startOffset);
 
@@ -106,9 +109,30 @@ function appendAnnotatedText(
     }
 
     if (annotation.endOffset > annotation.startOffset) {
-      const strong = document.createElement('strong');
-      strong.textContent = sourceText.slice(annotation.startOffset, annotation.endOffset);
-      container.append(strong);
+      const text = sourceText.slice(annotation.startOffset, annotation.endOffset);
+      let annotatedNode: HTMLElement;
+      if (annotation.href) {
+        const link = document.createElement('a');
+        link.setAttribute('href', annotation.href);
+        if (annotation.target) {
+          link.setAttribute('target', annotation.target);
+        }
+        link.setAttribute('rel', 'noreferrer');
+        link.textContent = text;
+        annotatedNode = link;
+      } else {
+        const strong = document.createElement('strong');
+        strong.textContent = text;
+        annotatedNode = strong;
+      }
+
+      if (annotation.bold && annotation.href) {
+        const strong = document.createElement('strong');
+        strong.append(annotatedNode);
+        container.append(strong);
+      } else {
+        container.append(annotatedNode);
+      }
     }
     cursor = annotation.endOffset;
   }

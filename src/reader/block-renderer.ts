@@ -55,7 +55,9 @@ function renderBlock(block: ArticleBlock): HTMLElement {
     case 'image':
       return renderImageBlock(block.id, block.src, block.alt, block.aspectRatio);
     case 'list':
-      return renderListBlock(block.id, block.items);
+      return renderListBlock(block.id, block.items, block.kind);
+    case 'link':
+      return renderLinkBlock(block.id, block.text, block.href, block.target);
     case 'ref-card':
       return renderRefCardBlock(block.id, block.coverUrl, block.coverAlt, block.source, block.title, block.excerpt);
     case 'embed':
@@ -121,8 +123,8 @@ function applyMediaAspectRatio(element: HTMLElement, aspectRatio?: number): void
   element.setAttribute('style', `--reader-media-aspect-ratio: ${value};`);
 }
 
-function renderListBlock(blockId: string, items: string[]): HTMLElement {
-  const list = document.createElement('ul');
+function renderListBlock(blockId: string, items: string[], kind: 'ordered' | 'unordered' = 'unordered'): HTMLElement {
+  const list = document.createElement(kind === 'ordered' ? 'ol' : 'ul');
   list.className = 'reader-block reader-list';
   list.dataset.blockId = blockId;
   list.dataset.blockType = 'list';
@@ -135,7 +137,7 @@ function renderListBlock(blockId: string, items: string[]): HTMLElement {
     const bullet = document.createElement('span');
     bullet.className = 'reader-list-bullet';
     bullet.setAttribute('aria-hidden', 'true');
-    bullet.textContent = '•';
+    bullet.textContent = kind === 'ordered' ? `${index + 1}.` : '•';
 
     const content = document.createElement('span');
     content.className = 'reader-list-text';
@@ -146,6 +148,20 @@ function renderListBlock(blockId: string, items: string[]): HTMLElement {
   });
 
   return list;
+}
+
+function renderLinkBlock(blockId: string, text: string, href: string, target?: string): HTMLElement {
+  const element = document.createElement('a');
+  element.className = 'reader-block reader-link';
+  element.dataset.blockId = blockId;
+  element.dataset.blockType = 'link';
+  element.textContent = text;
+  element.setAttribute('href', href);
+  if (target) {
+    element.setAttribute('target', target);
+  }
+  element.setAttribute('rel', 'noreferrer');
+  return element;
 }
 
 function renderRefCardBlock(
@@ -164,23 +180,34 @@ function renderRefCardBlock(
   const shell = document.createElement('div');
   shell.className = 'reader-ref-card-shell';
 
-  const media = document.createElement('div');
-  media.className = 'reader-ref-card-media';
+  if (coverUrl) {
+    const media = document.createElement('div');
+    media.className = 'reader-ref-card-media';
 
-  const image = document.createElement('img');
-  image.className = 'reader-ref-card-cover';
-  image.src = coverUrl;
-  image.alt = coverAlt;
-  image.loading = 'lazy';
+    const image = document.createElement('img');
+    image.className = 'reader-ref-card-cover';
+    image.src = coverUrl;
+    image.alt = coverAlt;
+    image.loading = 'lazy';
+    media.append(image);
 
-  const sourceBadge = document.createElement('span');
-  sourceBadge.className = 'reader-ref-card-source';
-  sourceBadge.textContent = source;
+    const sourceBadge = document.createElement('span');
+    sourceBadge.className = 'reader-ref-card-source';
+    sourceBadge.textContent = source;
 
-  media.append(image, sourceBadge);
+    media.append(sourceBadge);
+    shell.append(media);
+  }
 
   const content = document.createElement('div');
   content.className = 'reader-ref-card-content';
+
+  if (!coverUrl) {
+    const sourceBadge = document.createElement('span');
+    sourceBadge.className = 'reader-ref-card-source reader-ref-card-source-inline';
+    sourceBadge.textContent = source;
+    content.append(sourceBadge);
+  }
 
   const titleElement = document.createElement('div');
   titleElement.className = 'reader-ref-card-title';
@@ -191,7 +218,7 @@ function renderRefCardBlock(
   excerptElement.textContent = excerpt;
 
   content.append(titleElement, excerptElement);
-  shell.append(media, content);
+  shell.append(content);
   card.append(shell);
   return card;
 }

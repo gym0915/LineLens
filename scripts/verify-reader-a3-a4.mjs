@@ -155,7 +155,20 @@ assert(
     'The Science of Attention: Why Your Brain Needs Boredom',
   'ref card title should render'
 );
-assert(rendered.querySelector('[data-block-id="list1"]')?.tagName === 'UL', 'list should render as ul');
+assert(rendered.querySelector('[data-block-id="list1"]')?.tagName === 'UL', 'unordered list should render as ul');
+const orderedListRendered = renderArticleShell({
+  ...mediaArticle,
+  blocks: [{ id: 'ordered-list', type: 'list', kind: 'ordered', items: ['第一项', '第二项'] }]
+});
+assert(orderedListRendered.querySelector('[data-block-id="ordered-list"]')?.tagName === 'OL', 'ordered list should render as ol');
+const linkRendered = renderArticleShell({
+  ...mediaArticle,
+  blocks: [{ id: 'link1', type: 'link', text: '原文链接', href: 'https://x.com/example/status/1', target: '_blank' }]
+});
+const linkElement = linkRendered.querySelector('[data-block-id="link1"]');
+assert(linkElement?.tagName === 'A', 'link block should render as anchor');
+assert(linkElement.attributes.href === 'https://x.com/example/status/1', 'link block should preserve href');
+assert(linkElement.attributes.target === '_blank', 'link block should preserve target');
 const explicitHeadingRendered = renderArticleShell({
   ...mediaArticle,
   blocks: [{ id: 'explicit-h1', type: 'heading', level: 1, text: '1. 看一眼 Transformer 的 Attention Heatmap' }]
@@ -181,6 +194,8 @@ assert(focusBuild.units.some((unit) => unit.type === 'block' && unit.blockType =
 assert(focusBuild.units.some((unit) => unit.type === 'block' && unit.blockType === 'image'), 'image block FocusUnit missing');
 assert(focusBuild.units.some((unit) => unit.type === 'block' && unit.blockType === 'embed'), 'embed block FocusUnit missing');
 assert(focusBuild.units.some((unit) => unit.type === 'block' && unit.blockType === 'ref-card'), 'ref card block FocusUnit missing');
+const linkFocusBuild = buildFocusUnits(linkRendered.children[0] ? { ...mediaArticle, blocks: [{ id: 'link1', type: 'link', text: '原文链接', href: 'https://x.com/example/status/1' }] } : mediaArticle, linkRendered);
+assert(linkFocusBuild.units.some((unit) => unit.type === 'block' && unit.blockType === 'link'), 'link block should be a single FocusUnit');
 const listUnits = focusBuild.units.filter((unit) => unit.type === 'reading-text' && unit.blockId === 'list1');
 assert(listUnits.length === 3, 'list items should become individual FocusUnits');
 
@@ -241,6 +256,57 @@ assert(
   annotatedUnit?.textContent.includes('GPT-5、Claude、TypeScript 5'),
   'bold annotations should not change FocusUnit text content'
 );
+const protectedDotUnits = splitIntoReadingUnits(
+  'V3.2-Exp 时，DeepSeek 已经在 V3.1-Terminus 的基础上引入了 DSA。DeepSeek-V2 报告了 93.3% 的 KV Cache 减少和最高 5.76 倍的生成吞吐提升。'
+);
+assert(
+  !protectedDotUnits.some((unit) => ['V3.', '2-Exp 时，', '3% 的 KV Cache 减少和最高 5.', '76 倍的生成吞吐提升。'].includes(unit.text)),
+  'version numbers and decimals should not be split at periods'
+);
+assert(
+  protectedDotUnits.some((unit) => unit.text.includes('V3.2-Exp')) &&
+    protectedDotUnits.some((unit) => unit.text.includes('93.3%')) &&
+    protectedDotUnits.some((unit) => unit.text.includes('5.76 倍')),
+  'semantic splitter should keep version numbers and decimal metrics intact'
+);
+const emojiUnits = splitIntoReadingUnits('由此，现在你已经走完了一半啦，马上就完成了✅，再坚持一下。 。 😊');
+assert(
+  emojiUnits.some((unit) => unit.text.includes('。 。 😊')),
+  'trailing repeated periods and emoji should stay with the same reading unit'
+);
+const draftEmojiUnits = splitIntoReadingUnits('⚠️⚠️⚠️输入= 后面的，不要带等于号。😮‍💨');
+assert(
+  JSON.stringify(draftEmojiUnits.map((unit) => unit.text)) === JSON.stringify(['⚠️⚠️⚠️输入= 后面的，不要带等于号。😮‍💨']),
+  'Draft.js inline emoji before and after sentence text should stay inside one FocusUnit'
+);
+const inlineLinkArticle = {
+  ...mediaArticle,
+  blocks: [
+    {
+      id: 'inline-link-p',
+      type: 'paragraph',
+      text: '你可以参考这篇博客：https://www.lmsys.org/blog/2025-09-25-gb200-part-2/ 。下面继续解释。',
+      annotations: [
+        {
+          startOffset: '你可以参考这篇博客：'.length,
+          endOffset: '你可以参考这篇博客：https://www.lmsys.org/blog/2025-09-25-gb200-part-2/'.length,
+          href: 'https://www.lmsys.org/blog/2025-09-25-gb200-part-2/',
+          target: '_blank'
+        }
+      ]
+    }
+  ]
+};
+const inlineLinkRendered = renderArticleShell(inlineLinkArticle);
+buildFocusUnits(inlineLinkArticle, inlineLinkRendered);
+const inlineLink = inlineLinkRendered.querySelector('a');
+assert(inlineLink?.tagName === 'A', 'inline paragraph link should render as anchor');
+assert(inlineLink.attributes.href === 'https://www.lmsys.org/blog/2025-09-25-gb200-part-2/', 'inline paragraph link should preserve href');
+assert(inlineLink.attributes.target === '_blank', 'inline paragraph link should preserve target');
+assert(
+  walk(inlineLinkRendered).some((element) => element.dataset.unitId && element.textContent.includes('https://www.lmsys.org/blog/2025-09-25-gb200-part-2/')),
+  'inline paragraph link should stay inside a FocusUnit instead of becoming Embedded content'
+);
 
 const css = readFileSync(join(root, 'public', 'reader.css'), 'utf8');
 for (const token of [
@@ -259,6 +325,11 @@ for (const token of [
 assert(css.includes('aspect-ratio: var(--reader-media-aspect-ratio)'), 'reader image should use extracted aspect ratio');
 assert(!css.includes('height: 230px'), 'reader image should not force a fixed media height');
 assert(css.includes('object-fit: contain'), 'reader image should preserve the complete source image');
+assert(css.includes('.reader-article a'), 'all anchors inside the reader should inherit focus color');
+assert(css.includes('.focus-unit a'), 'inline paragraph links should share hyperlink styling');
+assert(!css.includes('--reader-link'), 'reader links should not use a dedicated blue hyperlink token');
+assert(css.includes('.reader-link'), 'reader link block should have explicit hyperlink styling');
+assert(css.includes('.reader-link.focus-unit.is-active'), 'reader link block should use active highlight styling');
 
 console.log('Reader A3/A4 verification passed.');
 

@@ -5,6 +5,7 @@ export type {
   EmbedBlock,
   HeadingBlock,
   ImageBlock,
+  LinkBlock,
   ListBlock,
   ParagraphBlock,
   QuoteBlock,
