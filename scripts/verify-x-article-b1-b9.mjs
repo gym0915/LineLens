@@ -31,6 +31,10 @@ const picTweetSnapshot = readFileSync(
   resolve(rootDir, 'assets/x-article-pic-tweet.html'),
   'utf8'
 );
+const videoGifSnapshot = readFileSync(
+  resolve(rootDir, 'assets/x-article-video-gif.html'),
+  'utf8'
+);
 const codeBlockSnapshot = readFileSync(
   resolve(rootDir, 'assets/x-article-codeblock.html'),
   'utf8'
@@ -99,6 +103,20 @@ assert.deepEqual(extractSnapshotCodeBlock(codeBlockSnapshot), {
   copyPath:
     'M19.5 2C20.88 2 22 3.12 22 4.5v11c0 1.21-.86 2.22-2 2.45V4.5c0-.28-.22-.5-.5-.5H6.05c.23-1.14 1.24-2 2.45-2h11zm-4 4C16.88 6 18 7.12 18 8.5v11c0 1.38-1.12 2.5-2.5 2.5h-11C3.12 22 2 20.88 2 19.5v-11C2 7.12 3.12 6 4.5 6h11zM4 19.5c0 .28.22.5.5.5h11c.28 0 .5-.22.5-.5v-11c0-.28-.22-.5-.5-.5h-11c-.28 0-.5.22-.5.5v11z'
 });
+assert.deepEqual(extractSnapshotVideoGif(videoGifSnapshot), {
+  mediaCount: 2,
+  gifSrc: 'https://video.twimg.com/tweet_video/HID76EIbYAItygh.mp4',
+  gifPoster: 'https://pbs.twimg.com/tweet_video_thumb/HID76EIbYAItygh.jpg',
+  gifLabel: 'GIF',
+  gifPausedLabel: 'Pause',
+  gifBackgroundColor: 'black',
+  gifTop: '0%',
+  gifLeft: '0%',
+  gifTransformIncludesScale: true,
+  gifAspectRatio: 1.7771,
+  videoHasBlobSource: true,
+  videoPoster: 'https://pbs.twimg.com/amplify_video_thumb/2053916866964590592/img/3pE8XJrlgNBM7EQC.jpg'
+});
 
 const detail2Text = extractSnapshotLongformText(detail2Snapshot);
 assert.equal(detail2Text.title, '为什么 AI 会“忘记”中间的信息');
@@ -134,6 +152,11 @@ const readerRendererSource = readFileSync(resolve(rootDir, 'LineLens/src/reader/
 for (const source of [modularExtractorSource, liveExtractorSource]) {
   assert.match(source, /X_CANONICAL_ORIGIN/, 'extractor should use a dedicated X canonical origin constant');
   assert.match(source, /function getListKind/, 'extractor should detect Draft.js list items and preserve list kind');
+  assert.match(source, /function extractHandwrittenOrderedListItem/, 'extractor should normalize handwritten ordered list markers');
+  assert.match(source, /getHandwrittenOrderedListMarker/, 'extractor should strip handwritten ordered list markers from item text');
+  assert.match(source, /\[ivxlcdm\]/, 'extractor should recognize handwritten roman numeral list markers');
+  assert.match(source, /[一二三四五六七八九十百千]/, 'extractor should recognize handwritten Chinese numeral list markers');
+  assert.match(source, /hasNonTextContent/, 'handwritten list detection should skip media, code, tweets, and link-like rich blocks');
   assert.match(source, /flushPendingList/, 'extractor should group consecutive list items');
   assert.match(source, /function extractCoverImage/, 'extractor should have dedicated cover extraction');
   assert.match(source, /findImageBeforeTitle/, 'cover extraction should be constrained to images before the title');
@@ -159,6 +182,10 @@ for (const source of [modularExtractorSource, liveExtractorSource]) {
   assert.doesNotMatch(source, /title: text \|\| 'X Tweet'/, 'tweet references should not collapse full tweet textContent into a single title');
   assert.match(source, /function getSimpleTweetHref/, 'simple tweets should use a dedicated href extractor');
   assert.match(source, /function extractSimpleTweetImageCard/, 'simple tweets should parse image-card tweets without article covers');
+  assert.match(source, /function extractGifFromElement/, 'extractor should parse GIF media inside tweetPhoto videoPlayer');
+  assert.match(source, /data-testid="videoPlayer"/, 'GIF extraction should branch on the videoPlayer marker under tweetPhoto');
+  assert.match(source, /source\[src\^="blob:"\]/, 'GIF extraction should exclude real videos that expose blob sources');
+  assert.match(source, /video\.src/, 'GIF extraction should read the direct video src');
   assert.match(source, /function isSimpleTweetCard/, 'image-card simple tweet parsing should be gated by data-testid simpleTweet');
   assert.match(
     source,
@@ -178,8 +205,14 @@ assert.match(articleModelSource, /photos\?: TweetPhoto\[\]/, 'simple tweet model
 assert.match(articleModelSource, /authorName\?: string/, 'simple tweet model should include dynamic author name');
 assert.match(articleModelSource, /metrics\?: TweetMetrics/, 'simple tweet model should include dynamic action metrics');
 assert.match(articleModelSource, /type: 'code'/, 'article model should include code blocks');
+assert.match(articleModelSource, /GifBlock/, 'article model should include GIF blocks');
+assert.match(articleModelSource, /type: 'gif'/, 'GIF model should use a dedicated block type');
+assert.match(articleModelSource, /backgroundColor\?: string/, 'GIF model should preserve media background color');
 assert.match(readerRendererSource, /renderSimpleTweetBlock\(block\)/, 'reader should render simple tweets from the complete block data');
 assert.match(readerRendererSource, /renderCodeBlock\(block\.id, block\.text, block\.language\)/, 'reader should render code blocks with dynamic language');
+assert.match(readerRendererSource, /renderGifBlock\(block\)/, 'reader should render GIF blocks');
+assert.match(readerRendererSource, /reader-gif-badge/, 'reader should render the GIF badge overlay');
+assert.match(readerRendererSource, /reader-gif-pause-icon/, 'reader should render the GIF pause overlay icon');
 assert.match(readerRendererSource, /renderSimpleTweetPhotoGrid/, 'reader should render simple tweet image cards as a photo grid');
 assert.match(readerRendererSource, /renderSimpleTweetAvatar\(block\)/, 'reader should use dynamic avatar data');
 assert.match(readerRendererSource, /renderSimpleTweetActions\(block\.metrics\)/, 'reader should use dynamic action metrics');
@@ -281,6 +314,33 @@ function extractSnapshotCodeBlock(html) {
     textIncludesToolView: codeText.includes('<tool_view>') && codeText.includes('</tool_view>'),
     preservesIndentedListLines: codeText.includes('\n  - shell.exec') && codeText.includes('\n  - file.read'),
     copyPath
+  };
+}
+
+function extractSnapshotVideoGif(html) {
+  const gifSection = html.slice(html.indexOf('GIF'), html.indexOf('VIDEO'));
+  const videoSection = html.slice(html.indexOf('VIDEO'));
+  const media = [...html.matchAll(/data-testid="videoPlayer"/g)];
+  const gif = gifSection;
+  const video = videoSection;
+  const gifVideo = gif.match(/<video\b([^>]*)>/)?.[1] ?? '';
+  const videoTag = video.match(/<video\b([^>]*)>/)?.[1] ?? '';
+  const gifStyle = gifVideo.match(/\bstyle="([\s\S]*?)"/)?.[1] ?? '';
+  const paddingBottom = Number(gif.match(/padding-bottom:\s*([0-9.]+)%/)?.[1] ?? 0);
+
+  return {
+    mediaCount: media.length,
+    gifSrc: decodeHtml(gifVideo.match(/\bsrc="([^"]+)"/)?.[1] ?? ''),
+    gifPoster: decodeHtml(gifVideo.match(/\bposter="([^"]+)"/)?.[1] ?? ''),
+    gifLabel: gif.includes('>GIF</span') ? 'GIF' : '',
+    gifPausedLabel: decodeHtml(gif.match(/<button[^>]+\baria-label="([^"]+)"/)?.[1] ?? ''),
+    gifBackgroundColor: gifStyle.match(/background-color:\s*([^;]+)/)?.[1]?.trim() ?? '',
+    gifTop: gifStyle.match(/top:\s*([^;]+)/)?.[1]?.trim() ?? '',
+    gifLeft: gifStyle.match(/left:\s*([^;]+)/)?.[1]?.trim() ?? '',
+    gifTransformIncludesScale: /transform:[\s\S]*scale\(/.test(gifStyle),
+    gifAspectRatio: Math.round((100 / paddingBottom) * 10000) / 10000,
+    videoHasBlobSource: /<source\b[^>]+\bsrc="blob:/.test(video),
+    videoPoster: decodeHtml(videoTag.match(/\bposter="([^"]+)"/)?.[1] ?? '')
   };
 }
 

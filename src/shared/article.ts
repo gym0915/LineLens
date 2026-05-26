@@ -20,6 +20,7 @@ export type ArticleBlock =
   | ListBlock
   | LinkBlock
   | CodeBlock
+  | GifBlock
   | SimpleTweetBlock
   | EmbedBlock;
 
@@ -88,6 +89,19 @@ export type CodeBlock = {
   type: 'code';
   language?: string;
   text: string;
+};
+
+export type GifBlock = {
+  id: string;
+  type: 'gif';
+  src: string;
+  poster?: string;
+  aspectRatio?: number;
+  backgroundColor?: string;
+  top?: string;
+  left?: string;
+  transform?: string;
+  paused?: boolean;
 };
 
 export type SimpleTweetBlock = {

@@ -1,4 +1,4 @@
-import type { Article, ArticleBlock, SimpleTweetBlock, TextAnnotation, TweetMetrics, TweetPhoto } from '../shared/article-schema.js';
+import type { Article, ArticleBlock, GifBlock, SimpleTweetBlock, TextAnnotation, TweetMetrics, TweetPhoto } from '../shared/article-schema.js';
 
 export function renderArticleShell(article: Article): HTMLElement {
   const articleElement = document.createElement('article');
@@ -60,6 +60,8 @@ function renderBlock(block: ArticleBlock): HTMLElement {
       return renderLinkBlock(block.id, block.text, block.href, block.target);
     case 'code':
       return renderCodeBlock(block.id, block.text, block.language);
+    case 'gif':
+      return renderGifBlock(block);
     case 'simple-tweet':
       return renderSimpleTweetBlock(block);
     case 'embed':
@@ -171,6 +173,82 @@ function renderCoverImageBlock(blockId: string, src: string, alt = '', aspectRat
   return figure;
 }
 
+function renderGifBlock(block: GifBlock): HTMLElement {
+  const figure = document.createElement('figure');
+  figure.className = 'reader-block reader-media reader-gif';
+  figure.dataset.blockId = block.id;
+  figure.dataset.blockType = 'gif';
+  applyMediaAspectRatio(figure, block.aspectRatio);
+
+  const media = document.createElement('div');
+  media.className = 'reader-gif-media';
+  if (block.backgroundColor) {
+    media.style.backgroundColor = block.backgroundColor;
+  }
+
+  const video = document.createElement('video');
+  video.className = 'reader-gif-video';
+  video.src = block.src;
+  if (block.poster) {
+    video.poster = block.poster;
+  }
+  video.autoplay = true;
+  video.loop = true;
+  video.muted = true;
+  video.playsInline = true;
+  video.setAttribute('aria-label', 'GIF');
+  if (block.top) {
+    video.style.top = block.top;
+  }
+  if (block.left) {
+    video.style.left = block.left;
+  }
+  if (block.transform) {
+    video.style.transform = block.transform;
+  }
+  video.addEventListener('error', () => {
+    figure.classList.add('is-load-error');
+    video.remove();
+    const fallback = document.createElement('figcaption');
+    fallback.textContent = 'GIF 加载失败';
+    figure.append(fallback);
+  });
+
+  const overlay = document.createElement('div');
+  overlay.className = 'reader-gif-overlay';
+
+  const pause = document.createElement('button');
+  pause.type = 'button';
+  pause.className = 'reader-gif-pause';
+  pause.setAttribute('aria-label', 'Pause');
+  pause.append(renderGifPauseIcon());
+  let isPlaying = true;
+  pause.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!isPlaying) {
+      void video.play();
+      isPlaying = true;
+      pause.setAttribute('aria-label', 'Pause');
+      replaceGifControlIcon(pause, renderGifPauseIcon());
+      return;
+    }
+    video.pause();
+    isPlaying = false;
+    pause.setAttribute('aria-label', 'Play');
+    replaceGifControlIcon(pause, renderGifPlayIcon());
+  });
+
+  const badge = document.createElement('span');
+  badge.className = 'reader-gif-badge';
+  badge.textContent = 'GIF';
+
+  overlay.append(pause, badge);
+  media.append(video, overlay);
+  figure.append(media);
+  return figure;
+}
+
 function applyMediaAspectRatio(element: HTMLElement, aspectRatio?: number): void {
   if (!aspectRatio || !Number.isFinite(aspectRatio) || aspectRatio <= 0) {
     return;
@@ -179,6 +257,40 @@ function applyMediaAspectRatio(element: HTMLElement, aspectRatio?: number): void
   const value = String(aspectRatio);
   element.dataset.aspectRatio = value;
   element.setAttribute('style', `--reader-media-aspect-ratio: ${value};`);
+}
+
+function replaceGifControlIcon(button: HTMLButtonElement, icon: SVGSVGElement): void {
+  button.replaceChildren(icon);
+}
+
+function renderGifPauseIcon(): SVGSVGElement {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('class', 'reader-gif-pause-icon');
+
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  path.setAttribute(
+    'd',
+    'M7.5 5c.465 0 .697 0 .89.038.794.158 1.414.778 1.572 1.571.038.194.038.426.038.891v9c0 .465 0 .697-.038.89-.158.794-.778 1.414-1.571 1.572C8.197 19 7.965 19 7.5 19s-.697 0-.89-.038c-.794-.158-1.414-.778-1.572-1.571C5 17.197 5 16.965 5 16.5v-9c0-.465 0-.697.038-.89.158-.794.778-1.414 1.571-1.572C6.803 5 7.035 5 7.5 5zm9 0c.465 0 .697 0 .89.038.794.158 1.414.778 1.572 1.571.038.194.038.426.038.891v9c0 .465 0 .697-.038.89-.158.794-.778 1.414-1.571 1.572-.194.038-.426.038-.891.038s-.697 0-.89-.038c-.794-.158-1.414-.778-1.572-1.571C14 17.197 14 16.965 14 16.5v-9c0-.465 0-.697.038-.89.158-.794.778-1.414 1.571-1.572C15.803 5 16.035 5 16.5 5z'
+  );
+  svg.append(path);
+  return svg;
+}
+
+function renderGifPlayIcon(): SVGSVGElement {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('class', 'reader-gif-play-icon');
+
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  path.setAttribute(
+    'd',
+    'M6 17.928V6.072C6 4.508 7.712 3.55 9.045 4.366l9.673 5.929c1.273.78 1.273 2.63 0 3.41l-9.673 5.929C7.712 20.45 6 19.49 6 17.928z'
+  );
+  svg.append(path);
+  return svg;
 }
 
 function renderListBlock(blockId: string, items: string[], kind: 'ordered' | 'unordered' = 'unordered'): HTMLElement {

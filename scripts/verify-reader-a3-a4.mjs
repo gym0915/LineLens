@@ -256,7 +256,10 @@ const longParagraph = longArticle.blocks.find((block) => block.type === 'paragra
 assert(longParagraph, 'long paragraph fixture should have paragraph');
 const longUnits = splitIntoReadingUnits(longParagraph.text);
 assert(longUnits.length > 1, 'long paragraph should split into multiple units');
-assert(longUnits.every((unit) => unit.text.length <= 80), 'long units should be capped at 80 chars');
+assert(
+  longUnits.every((unit) => longParagraph.text.slice(unit.startOffset, unit.endOffset) === unit.text),
+  'long paragraph units should keep stable offsets even when units exceed the soft length target'
+);
 
 const englishUnits = splitIntoReadingUnits(
   'A vibrant outdoor portrait of a smiling woman on a sunny beach. She is wearing a uniquely designed swimsuit, a monokini with a prominent vertical cutout connecting the bandeau top section and the high-waisted bottom section, resembling the shape of katakana "エ".'
@@ -268,6 +271,21 @@ assert(
 assert(
   englishUnits[1]?.text.startsWith('She is wearing a uniquely designed swimsuit'),
   'English sentence after period should start a new reading unit'
+);
+assert(
+  !englishUnits.some((unit) => unit.text === 'a monokini with a prominent vertical cutout connecting the bandeau top section'),
+  'Long English sentence should not be split by fallback length at plain spaces'
+);
+const memoryToolUnits = splitIntoReadingUnits(
+  "And let's be honest, there are a LOT of memory related tools available and there are a LOT of write-ups about them. I see new articles on X every week about some new memory setup."
+);
+assert(
+  memoryToolUnits.some((unit) => unit.text === 'there are a LOT of memory related tools available and there are a LOT of write-ups about them.'),
+  'Long English clause should keep its full meaning instead of being split by fallback length'
+);
+assert(
+  memoryToolUnits.at(-1)?.text === 'I see new articles on X every week about some new memory setup.',
+  'Sentence boundary should still create the next English reading unit'
 );
 
 const mixedParagraph = mixedArticle.blocks.find((block) => block.type === 'paragraph' && block.text.includes('https://example.com'));

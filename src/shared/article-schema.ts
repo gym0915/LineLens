@@ -4,6 +4,7 @@ export type {
   ArticleSource,
   CodeBlock,
   EmbedBlock,
+  GifBlock,
   HeadingBlock,
   ImageBlock,
   LinkBlock,

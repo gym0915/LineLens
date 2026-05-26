@@ -1,4 +1,4 @@
-import type { Article, ArticleBlock, ImageBlock, TextAnnotation } from '../../../shared/article.js';
+import type { Article, ArticleBlock, GifBlock, ImageBlock, TextAnnotation } from '../../../shared/article.js';
 import { validateArticle } from '../../../shared/article-validator.js';
 import type { ArticleExtractor, ExtractorContext } from '../../../shared/extractor-types.js';
 import { normalizeCodeText, normalizePreWrapText, normalizeText } from '../../../shared/text.js';
@@ -121,6 +121,19 @@ function extractBlocks(longform: Element, articleId: string): ArticleBlock[] {
       return;
     }
 
+    const handwrittenOrderedListItem = extractHandwrittenOrderedListItem(block);
+    if (handwrittenOrderedListItem) {
+      if (pendingListItems.length === 0) {
+        pendingListKind = 'ordered';
+      } else if (pendingListKind !== 'ordered') {
+        flushPendingList();
+        pendingListKind = 'ordered';
+      }
+      pendingListItems.push(handwrittenOrderedListItem.text);
+      pendingListItemAnnotations.push(handwrittenOrderedListItem.annotations);
+      return;
+    }
+
     flushPendingList();
     const articleBlock = extractBlock(block, articleId, blocks.length + 1);
     if (articleBlock) {
@@ -151,6 +164,52 @@ function getListKind(block: Element): 'ordered' | 'unordered' | null {
   }
 
   return null;
+}
+
+function extractHandwrittenOrderedListItem(block: Element): { text: string; annotations: TextAnnotation[] } | null {
+  if (block.matches(X_ARTICLE_SELECTORS.quoteBlock) || isHeadingBlock(block) || hasNonTextContent(block)) {
+    return null;
+  }
+
+  const extracted = extractTextWithAnnotations(block);
+  const marker = getHandwrittenOrderedListMarker(extracted.text);
+  if (!marker) {
+    return null;
+  }
+
+  const text = extracted.text.slice(marker.length).trim();
+  if (!text) {
+    return null;
+  }
+
+  return {
+    text,
+    annotations: shiftAnnotations(extracted.annotations, marker.length, text.length)
+  };
+}
+
+function getHandwrittenOrderedListMarker(text: string): string | null {
+  return text.match(/^\s*(?:(?:\d+|[ivxlcdm]+)\s*[.)、:：]|[一二三四五六七八九十百千]+\s*[、.．:：])\s*/i)?.[0] ?? null;
+}
+
+function shiftAnnotations(annotations: TextAnnotation[], markerLength: number, textLength: number): TextAnnotation[] {
+  return annotations
+    .map((annotation) => ({
+      ...annotation,
+      startOffset: Math.max(0, annotation.startOffset - markerLength),
+      endOffset: Math.min(textLength, annotation.endOffset - markerLength)
+    }))
+    .filter((annotation) => annotation.endOffset > annotation.startOffset);
+}
+
+function hasNonTextContent(block: Element): boolean {
+  return Boolean(
+    block.matches(X_ARTICLE_SELECTORS.codeBlock) ||
+      block.querySelector(X_ARTICLE_SELECTORS.codeBlock) ||
+      block.querySelector(X_ARTICLE_SELECTORS.tweetBlock) ||
+      block.querySelector(X_ARTICLE_SELECTORS.tweetPhoto) ||
+      block.querySelector('[data-testid="simpleTweet"], [data-testid="article-cover-image"], img, video, iframe')
+  );
 }
 
 function extractBlock(block: Element, articleId: string, index: number): ArticleBlock | null {
@@ -201,6 +260,11 @@ function extractNonTextBlock(block: Element, articleId: string, index: number): 
   const tweetRef = extractTweetRefBlock(block, blockId(articleId, index));
   if (tweetRef) {
     return tweetRef;
+  }
+
+  const gif = extractGifFromElement(block, blockId(articleId, index));
+  if (gif) {
+    return gif;
   }
 
   const image = extractImageFromElement(block, blockId(articleId, index));
@@ -541,6 +605,45 @@ function extractCoverImage(readView: Element, articleId: string): ImageBlock | u
   return image ? (imageElementToBlock(image, `${articleId}-cover`) ?? undefined) : undefined;
 }
 
+function extractGifFromElement(element: Element, id: string): GifBlock | null {
+  const tweetPhoto = element.matches(X_ARTICLE_SELECTORS.tweetPhoto)
+    ? element
+    : element.querySelector(X_ARTICLE_SELECTORS.tweetPhoto);
+  const videoPlayer = tweetPhoto?.querySelector('[data-testid="videoPlayer"]');
+  if (!tweetPhoto || !videoPlayer) {
+    return null;
+  }
+
+  const video = videoPlayer.querySelector<HTMLVideoElement>('video');
+  if (!video || video.querySelector('source[src^="blob:"]')) {
+    return null;
+  }
+
+  const src = video.currentSrc || video.src || video.getAttribute('src') || '';
+  if (!src) {
+    return null;
+  }
+
+  const aspectRatio = getMediaAspectRatio(video, tweetPhoto);
+  const backgroundColor = video.style.backgroundColor || getInlineStyleValue(video, 'background-color');
+  const top = video.style.top || getInlineStyleValue(video, 'top');
+  const left = video.style.left || getInlineStyleValue(video, 'left');
+  const transform = video.style.transform || getInlineStyleValue(video, 'transform');
+
+  return {
+    id,
+    type: 'gif',
+    src,
+    ...(video.poster ? { poster: video.poster } : {}),
+    ...(aspectRatio ? { aspectRatio } : {}),
+    ...(backgroundColor ? { backgroundColor } : {}),
+    ...(top ? { top } : {}),
+    ...(left ? { left } : {}),
+    ...(transform ? { transform } : {}),
+    paused: video.paused
+  };
+}
+
 function extractImageFromElement(element: Element, id: string): ImageBlock | null {
   const image = element.querySelector<HTMLImageElement>(X_ARTICLE_SELECTORS.tweetPhotoImage);
   if (!image) {
@@ -548,6 +651,29 @@ function extractImageFromElement(element: Element, id: string): ImageBlock | nul
   }
 
   return imageElementToBlock(image, id);
+}
+
+function getMediaAspectRatio(media: HTMLMediaElement, container: Element): number | undefined {
+  const video = media as HTMLVideoElement;
+  const intrinsicRatio = toValidAspectRatio(video.videoWidth, video.videoHeight);
+  if (intrinsicRatio) {
+    return intrinsicRatio;
+  }
+
+  for (let element: Element | null = container; element; element = element.parentElement) {
+    const paddingRatio = getPaddingBottomAspectRatio(element);
+    if (paddingRatio) {
+      return paddingRatio;
+    }
+  }
+
+  return undefined;
+}
+
+function getInlineStyleValue(element: HTMLElement, property: string): string {
+  const style = element.getAttribute('style') ?? '';
+  const match = new RegExp(`${property}:\\s*([^;]+)`, 'i').exec(style);
+  return match?.[1]?.replace(/\s+/g, ' ').trim() ?? '';
 }
 
 function findImageBeforeTitle(readView: Element, title: Element): HTMLImageElement | null {

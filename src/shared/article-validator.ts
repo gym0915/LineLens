@@ -29,7 +29,13 @@ export function validateArticle(article: Article): ValidationResult {
   const textLength = article.blocks.reduce((total, block) => total + getBlockTextLength(block), 0);
   const hasTextBlock = article.blocks.some((block) => isTextBlock(block));
   const hasMediaBlock = article.blocks.some(
-    (block) => block.type === 'image' || block.type === 'embed' || block.type === 'simple-tweet' || block.type === 'link' || block.type === 'code'
+    (block) =>
+      block.type === 'image' ||
+      block.type === 'gif' ||
+      block.type === 'embed' ||
+      block.type === 'simple-tweet' ||
+      block.type === 'link' ||
+      block.type === 'code'
   );
 
   if (textLength <= MIN_TEXT_LENGTH && !(hasTextBlock && hasMediaBlock)) {

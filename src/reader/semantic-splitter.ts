@@ -4,7 +4,6 @@ export type ReadingUnit = {
   endOffset: number;
 };
 
-const MAX_UNIT_LENGTH = 80;
 const MIN_UNIT_LENGTH = 18;
 const TARGET_UNIT_LENGTH = 62;
 const STRONG_BREAKS = new Set(['。', '！', '？', '!', '?', '.']);
@@ -23,11 +22,6 @@ export function splitIntoReadingUnits(text: string): ReadingUnit[] {
   const units: ReadingUnit[] = [];
 
   for (const segment of strongSegments) {
-    if (segment.text.length <= MAX_UNIT_LENGTH) {
-      units.push(segment);
-      continue;
-    }
-
     units.push(...splitLongSegment(segment));
   }
 
@@ -45,7 +39,7 @@ function splitLongSegment(segment: ReadingUnit): ReadingUnit[] {
   const result: ReadingUnit[] = [];
 
   for (const mediumSegment of mediumSegments) {
-    if (mediumSegment.text.length <= MAX_UNIT_LENGTH) {
+    if (mediumSegment.text.length <= TARGET_UNIT_LENGTH) {
       result.push(mediumSegment);
       continue;
     }
@@ -57,11 +51,7 @@ function splitLongSegment(segment: ReadingUnit): ReadingUnit[] {
       findProtectedRanges(mediumSegment.text)
     ));
     for (const weakSegment of weakSegments) {
-      if (weakSegment.text.length <= MAX_UNIT_LENGTH) {
-        result.push(weakSegment);
-      } else {
-        result.push(...splitBySafeBoundary(weakSegment));
-      }
+      result.push(weakSegment);
     }
   }
 
@@ -98,7 +88,7 @@ function coalesceShortUnits(units: ReadingUnit[]): ReadingUnit[] {
     const previous = result.at(-1);
     const mergedText = previous ? mergeText(previous, pending) : '';
 
-    if (previous && pending.text.length < MIN_UNIT_LENGTH && mergedText.length <= MAX_UNIT_LENGTH) {
+    if (previous && pending.text.length < MIN_UNIT_LENGTH) {
       result[result.length - 1] = {
         text: mergedText,
         startOffset: previous.startOffset,
@@ -122,15 +112,13 @@ function mergeShortUnitsForward(units: ReadingUnit[]): ReadingUnit[] {
 
     if (current && next && current.text.length < MIN_UNIT_LENGTH) {
       const mergedText = mergeText(current, next);
-      if (mergedText.length <= MAX_UNIT_LENGTH) {
-        result.push({
-          text: mergedText,
-          startOffset: current.startOffset,
-          endOffset: next.endOffset
-        });
-        index += 2;
-        continue;
-      }
+      result.push({
+        text: mergedText,
+        startOffset: current.startOffset,
+        endOffset: next.endOffset
+      });
+      index += 2;
+      continue;
     }
 
     if (current) {
@@ -232,53 +220,6 @@ function consumeTrailingDecorations(text: string, start: number): number {
     index = cursor;
   }
   return index;
-}
-
-function splitBySafeBoundary(segment: ReadingUnit): ReadingUnit[] {
-  const units: ReadingUnit[] = [];
-  let start = 0;
-  const text = segment.text;
-  const protectedRanges = findProtectedRanges(text);
-
-  while (start < text.length) {
-    const end = findSafeEnd(text, start, protectedRanges);
-    pushUnit(units, text, start, end, segment.startOffset);
-    start = consumeLeadingSpaces(text, end);
-  }
-
-  return units;
-}
-
-function findSafeEnd(text: string, start: number, protectedRanges: Range[]): number {
-  const target = Math.min(text.length, start + MAX_UNIT_LENGTH);
-  if (target === text.length) {
-    return text.length;
-  }
-
-  for (let index = target; index > start + 20; index -= 1) {
-    if (!isProtectedIndex(index, protectedRanges) && isSafeBoundary(text, index)) {
-      return index;
-    }
-  }
-
-  return target;
-}
-
-function isSafeBoundary(text: string, index: number): boolean {
-  const before = text[index - 1] ?? '';
-  const after = text[index] ?? '';
-
-  // URLs, English words, and numeric units should stay intact because splitting
-  // inside them destroys recognizability and breaks future progress offsets.
-  if (isAsciiWordChar(before) && isAsciiWordChar(after)) {
-    return false;
-  }
-
-  if (before === '/' || after === '/' || before === '-' || after === '-') {
-    return false;
-  }
-
-  return /\s/.test(after) || CLOSING_PUNCTUATION.has(before);
 }
 
 function pushUnit(

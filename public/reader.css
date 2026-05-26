@@ -144,6 +144,81 @@ body {
   aspect-ratio: var(--reader-media-aspect-ratio);
 }
 
+.reader-gif-media {
+  position: relative;
+  width: 100%;
+  aspect-ratio: var(--reader-media-aspect-ratio, 16 / 9);
+  overflow: hidden;
+  border-radius: var(--reader-radius-media);
+  background: #000;
+}
+
+.reader-gif-video {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: saturate(0.5);
+  transition: filter 300ms ease;
+}
+
+.reader-gif-overlay {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  pointer-events: auto;
+}
+
+.reader-gif-pause,
+.reader-gif-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  height: 24px;
+  min-height: 24px;
+  line-height: 24px;
+  border-radius: 0;
+  color: #fff;
+}
+
+.reader-gif-pause {
+  width: 28px;
+  border: 0;
+  padding: 0;
+  background: rgba(15, 20, 25, 0.82);
+  cursor: pointer;
+  border-radius: 4px 0 0 4px;
+}
+
+.reader-gif-badge {
+  padding: 0 9px;
+  background: rgba(150, 150, 150, 0.78);
+  font-family: "DM Sans", system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0;
+  border-radius: 0 4px 4px 0;
+}
+
+.reader-gif-pause-icon {
+  width: 15px;
+  height: 15px;
+  fill: currentColor;
+}
+
+.reader-gif-play-icon {
+  width: 15px;
+  height: 15px;
+  fill: currentColor;
+}
+
 .reader-media.is-load-error {
   min-height: 140px;
   display: flex;
@@ -178,7 +253,7 @@ body {
   align-items: center;
   justify-content: space-between;
   min-height: 36px;
-  padding: 8px 14px;
+  padding: 0 14px;
   border-bottom: 1px solid rgba(44, 37, 33, 0.08);
   background: var(--reader-code-header);
 }
@@ -213,7 +288,7 @@ body {
   box-sizing: border-box;
   width: 100%;
   margin: 0;
-  padding: 18px 24px 22px;
+  padding: 18px 24px 10px;
   overflow-x: auto;
   background: rgba(255, 255, 255, 0.36);
   color: var(--reader-code-ink);
@@ -721,6 +796,10 @@ p .focus-unit.is-active {
   filter: saturate(0.68);
 }
 
+.reader-media.focus-unit.is-muted:hover .reader-gif-video {
+  filter: saturate(0.68);
+}
+
 .reader-media.focus-unit.is-active {
   box-sizing: border-box;
   width: var(--reader-media-active-width);
@@ -739,6 +818,14 @@ p .focus-unit.is-active {
   height: auto;
   margin: 0;
   border-radius: var(--reader-radius-media);
+  filter: none;
+}
+
+.reader-media.focus-unit.is-active .reader-gif-media {
+  border-radius: var(--reader-radius-media);
+}
+
+.reader-media.focus-unit.is-active .reader-gif-video {
   filter: none;
 }
 
@@ -770,7 +857,7 @@ p .focus-unit.is-active {
 }
 
 .reader-code.focus-unit.is-active {
-  padding: 6px;
+  padding: 0;
   opacity: 1;
 }
 
