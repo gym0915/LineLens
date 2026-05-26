@@ -35,6 +35,12 @@ type ArticleBlock =
     }
   | {
       id: string;
+      type: 'code';
+      language?: string;
+      text: string;
+    }
+  | {
+      id: string;
       type: 'simple-tweet';
       coverUrl: string;
       coverAlt?: string;
@@ -131,6 +137,7 @@ const X_ARTICLE_SELECTORS = {
   block: '[data-block="true"]',
   quoteBlock: 'blockquote.longform-blockquote[data-block="true"]',
   tweetBlock: '[data-testid="tweet"]',
+  codeBlock: '[data-testid="markdown-code-block"]',
   tweetPhoto: '[data-testid="tweetPhoto"]',
   tweetPhotoImage: '[data-testid="tweetPhoto"] img'
 } as const;
@@ -446,7 +453,7 @@ function getListKind(block: Element): 'ordered' | 'unordered' | null {
 
 function extractBlock(block: Element, articleId: string, index: number): ArticleBlock | null {
   if (block.matches(X_ARTICLE_SELECTORS.quoteBlock)) {
-    const extracted = extractTextWithAnnotations(block);
+    const extracted = extractTextWithAnnotations(block, { preserveLineBreaks: true });
     return extracted.text
       ? {
           id: blockId(articleId, index),
@@ -509,7 +516,46 @@ function extractNonTextBlock(block: Element, articleId: string, index: number): 
     return link;
   }
 
+  const code = extractCodeBlock(block, blockId(articleId, index));
+  if (code) {
+    return code;
+  }
+
   return null;
+}
+
+function extractCodeBlock(block: Element, id: string): ArticleBlock | null {
+  // X Article wraps fenced markdown code in data-testid="markdown-code-block".
+  const codeRoot = block.matches(X_ARTICLE_SELECTORS.codeBlock)
+    ? block
+    : block.querySelector(X_ARTICLE_SELECTORS.codeBlock);
+  if (!codeRoot) {
+    return null;
+  }
+
+  const code = codeRoot.querySelector('pre code');
+  const pre = codeRoot.querySelector('pre');
+  const text = normalizeCodeText(code?.textContent ?? pre?.textContent ?? '');
+  if (!text) {
+    return null;
+  }
+
+  const languageClass = Array.from(code?.classList ?? [])
+    .find((className) => className.startsWith('language-'))
+    ?.replace(/^language-/, '');
+  const headerLanguage = normalizeText(codeRoot.querySelector<HTMLElement>(':scope > div:first-child span')?.textContent ?? '');
+  const language = normalizeCodeLanguage(languageClass || headerLanguage);
+
+  return {
+    id,
+    type: 'code',
+    text,
+    ...(language ? { language } : {})
+  };
+}
+
+function normalizeCodeLanguage(language: string): string {
+  return normalizeText(language).replace(/^language-/, '').toLowerCase();
 }
 
 function extractTweetRefBlock(block: Element, id: string): ArticleBlock | null {
@@ -896,10 +942,14 @@ function getHeadingLevel(block: Element): 1 | 2 | 3 | 4 | 5 | 6 | undefined {
   return undefined;
 }
 
-function extractTextWithAnnotations(element: Element): { text: string; annotations: TextAnnotation[] } {
+function extractTextWithAnnotations(
+  element: Element,
+  options: { preserveLineBreaks?: boolean } = {}
+): { text: string; annotations: TextAnnotation[] } {
+  const normalize = options.preserveLineBreaks ? normalizePreWrapText : normalizeText;
   const textElements = Array.from(element.querySelectorAll<HTMLElement>('[data-text="true"]'));
   if (textElements.length === 0) {
-    return { text: normalizeText(element.textContent ?? ''), annotations: [] };
+    return { text: normalize(element.textContent ?? ''), annotations: [] };
   }
 
   let text = '';
@@ -933,7 +983,7 @@ function extractTextWithAnnotations(element: Element): { text: string; annotatio
     }
   }
 
-  return { text: normalizeText(text), annotations: [...annotations, ...linkAnnotations] };
+  return { text: normalize(text), annotations: [...annotations, ...linkAnnotations] };
 }
 
 function isBoldTextElement(textElement: HTMLElement): boolean {
@@ -1036,6 +1086,20 @@ function toUrl(value: string | URL): URL | null {
 
 function normalizeText(value: string): string {
   return value.replace(/\s+/g, ' ').trim();
+}
+
+function normalizePreWrapText(value: string): string {
+  return value
+    .replace(/\r\n?/g, '\n')
+    .split('\n')
+    .map((line) => line.replace(/[^\S\n]+/g, ' ').trim())
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function normalizeCodeText(value: string): string {
+  return value.replace(/\r\n?/g, '\n').replace(/^\n+|\n+$/g, '');
 }
 
 function hasMeaningfulText(value: string): boolean {

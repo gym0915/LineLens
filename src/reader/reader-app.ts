@@ -11,11 +11,15 @@ export function mountReaderApp(root: HTMLElement, article: Article): void {
   const articleElement = renderArticleShell(article);
   const status = document.createElement('footer');
   status.className = 'reader-status';
+  const toast = document.createElement('div');
+  toast.className = 'reader-toast';
+  toast.setAttribute('role', 'status');
+  toast.setAttribute('aria-live', 'polite');
   const hint = document.createElement('p');
   hint.className = 'reader-hint';
   hint.textContent = '使用 ← → 逐步阅读，Home / End 跳到首尾';
 
-  root.append(articleElement, hint, status);
+  root.append(articleElement, hint, status, toast);
 
   const { units, elements } = buildFocusUnits(article, articleElement);
   const highlightLayer = new HighlightLayer();
@@ -46,7 +50,15 @@ export function mountReaderApp(root: HTMLElement, article: Article): void {
 
   root.addEventListener('click', (event) => {
     const target = event.target;
-    if (!(target instanceof HTMLElement)) {
+    if (!(target instanceof Element)) {
+      return;
+    }
+
+    const copyButton = target.closest<HTMLButtonElement>('button[data-copy-code]');
+    if (copyButton) {
+      event.preventDefault();
+      event.stopPropagation();
+      void copyCodeToClipboard(copyButton.dataset.copyCode ?? '', toast);
       return;
     }
 
@@ -121,6 +133,45 @@ export function mountReaderApp(root: HTMLElement, article: Article): void {
     image.addEventListener('load', scheduleHighlightRefresh);
     image.addEventListener('error', scheduleHighlightRefresh);
   });
+}
+
+async function copyCodeToClipboard(text: string, toast: HTMLElement): Promise<void> {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+    } else {
+      copyCodeWithFallback(text);
+    }
+    showToast(toast, '代码已复制');
+  } catch {
+    try {
+      copyCodeWithFallback(text);
+      showToast(toast, '代码已复制');
+    } catch {
+      showToast(toast, '复制失败');
+    }
+  }
+}
+
+function copyCodeWithFallback(text: string): void {
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.setAttribute('readonly', 'true');
+  textarea.style.position = 'fixed';
+  textarea.style.left = '-9999px';
+  textarea.style.top = '0';
+  document.body.append(textarea);
+  textarea.select();
+  document.execCommand('copy');
+  textarea.remove();
+}
+
+function showToast(toast: HTMLElement, message: string): void {
+  toast.textContent = message;
+  toast.classList.add('is-visible');
+  window.setTimeout(() => {
+    toast.classList.remove('is-visible');
+  }, 1600);
 }
 
 function resolveInitialIndex(unitId: string | undefined, units: FocusUnit[]): number {

@@ -1,7 +1,7 @@
 import type { Article, ArticleBlock, ImageBlock, TextAnnotation } from '../../../shared/article.js';
 import { validateArticle } from '../../../shared/article-validator.js';
 import type { ArticleExtractor, ExtractorContext } from '../../../shared/extractor-types.js';
-import { normalizeText } from '../../../shared/text.js';
+import { normalizeCodeText, normalizePreWrapText, normalizeText } from '../../../shared/text.js';
 import {
   X_CANONICAL_ORIGIN,
   getXArticleAuthorHandleFromUrl,
@@ -155,7 +155,7 @@ function getListKind(block: Element): 'ordered' | 'unordered' | null {
 
 function extractBlock(block: Element, articleId: string, index: number): ArticleBlock | null {
   if (block.matches(X_ARTICLE_SELECTORS.quoteBlock)) {
-    const extracted = extractTextWithAnnotations(block);
+    const extracted = extractTextWithAnnotations(block, { preserveLineBreaks: true });
     return extracted.text
       ? {
           id: blockId(articleId, index),
@@ -218,7 +218,46 @@ function extractNonTextBlock(block: Element, articleId: string, index: number): 
     return link;
   }
 
+  const code = extractCodeBlock(block, blockId(articleId, index));
+  if (code) {
+    return code;
+  }
+
   return null;
+}
+
+function extractCodeBlock(block: Element, id: string): ArticleBlock | null {
+  // X Article wraps fenced markdown code in data-testid="markdown-code-block".
+  const codeRoot = block.matches(X_ARTICLE_SELECTORS.codeBlock)
+    ? block
+    : block.querySelector(X_ARTICLE_SELECTORS.codeBlock);
+  if (!codeRoot) {
+    return null;
+  }
+
+  const code = codeRoot.querySelector('pre code');
+  const pre = codeRoot.querySelector('pre');
+  const text = normalizeCodeText(code?.textContent ?? pre?.textContent ?? '');
+  if (!text) {
+    return null;
+  }
+
+  const languageClass = Array.from(code?.classList ?? [])
+    .find((className) => className.startsWith('language-'))
+    ?.replace(/^language-/, '');
+  const headerLanguage = normalizeText(codeRoot.querySelector<HTMLElement>(':scope > div:first-child span')?.textContent ?? '');
+  const language = normalizeCodeLanguage(languageClass || headerLanguage);
+
+  return {
+    id,
+    type: 'code',
+    text,
+    ...(language ? { language } : {})
+  };
+}
+
+function normalizeCodeLanguage(language: string): string {
+  return normalizeText(language).replace(/^language-/, '').toLowerCase();
 }
 
 function extractTweetRefBlock(block: Element, id: string): ArticleBlock | null {
@@ -622,10 +661,14 @@ function isEmojiTextElement(textElement: HTMLElement): boolean {
   return Boolean(textElement.closest<HTMLElement>('[style*="clip-path: circle"]'));
 }
 
-function extractTextWithAnnotations(element: Element): { text: string; annotations: TextAnnotation[] } {
+function extractTextWithAnnotations(
+  element: Element,
+  options: { preserveLineBreaks?: boolean } = {}
+): { text: string; annotations: TextAnnotation[] } {
+  const normalize = options.preserveLineBreaks ? normalizePreWrapText : normalizeText;
   const textElements = Array.from(element.querySelectorAll<HTMLElement>('[data-text="true"]'));
   if (textElements.length === 0) {
-    return { text: normalizeText(element.textContent ?? ''), annotations: [] };
+    return { text: normalize(element.textContent ?? ''), annotations: [] };
   }
 
   let text = '';
@@ -659,7 +702,7 @@ function extractTextWithAnnotations(element: Element): { text: string; annotatio
     }
   }
 
-  return { text: normalizeText(text), annotations: [...annotations, ...linkAnnotations] };
+  return { text: normalize(text), annotations: [...annotations, ...linkAnnotations] };
 }
 
 function blockId(articleId: string, index: number): string {

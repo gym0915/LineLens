@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { renderArticleShell } from '../dist/reader/block-renderer.js';
 import { buildFocusUnits } from '../dist/reader/focus-unit-builder.js';
 import { splitIntoReadingUnits } from '../dist/reader/semantic-splitter.js';
@@ -192,6 +192,26 @@ const linkElement = linkRendered.querySelector('[data-block-id="link1"]');
 assert(linkElement?.tagName === 'A', 'link block should render as anchor');
 assert(linkElement.attributes.href === 'https://x.com/example/status/1', 'link block should preserve href');
 assert(linkElement.attributes.target === '_blank', 'link block should preserve target');
+const codeRendered = renderArticleShell({
+  ...mediaArticle,
+  blocks: [{ id: 'code1', type: 'code', language: 'rust', text: 'pub struct AgentLoop {\\n  config: AppConfig, // 运行配置\\n}' }]
+});
+const codeElement = codeRendered.querySelector('[data-block-id="code1"]');
+assert(codeElement?.tagName === 'FIGURE', 'code block should render as figure');
+assert(codeElement.dataset.blockType === 'code', 'code block should expose code block type');
+assert(findByClass(codeElement, 'reader-code-language')?.textContent === 'rust', 'code block should render dynamic language label');
+assert(findByClass(codeElement, 'reader-code-copy')?.dataset.copyCode.includes('AgentLoop'), 'code copy button should carry raw code text');
+assert(findByClass(codeElement, 'reader-code-copy')?.dataset.copyCode.includes('\\n  config'), 'code copy button should preserve indentation in raw code text');
+assert(
+  findByClass(codeElement, 'reader-code-copy-icon')?.children[0]?.children[0]?.attributes.d ===
+    'M19.5 2C20.88 2 22 3.12 22 4.5v11c0 1.21-.86 2.22-2 2.45V4.5c0-.28-.22-.5-.5-.5H6.05c.23-1.14 1.24-2 2.45-2h11zm-4 4C16.88 6 18 7.12 18 8.5v11c0 1.38-1.12 2.5-2.5 2.5h-11C3.12 22 2 20.88 2 19.5v-11C2 7.12 3.12 6 4.5 6h11zM4 19.5c0 .28.22.5.5.5h11c.28 0 .5-.22.5-.5v-11c0-.28-.22-.5-.5-.5h-11c-.28 0-.5.22-.5.5v11z',
+  'code copy button should preserve the X markdown-code-block copy svg path'
+);
+assert(findByClass(codeElement, 'reader-code-token-keyword')?.textContent === 'pub', 'code block should render highlighted keyword tokens');
+const readerAppSource = readFileSync(resolve(root, 'src/reader/reader-app.ts'), 'utf8');
+assert(/target instanceof Element/.test(readerAppSource), 'copy event delegation should also work when clicking svg child nodes');
+assert(/button\[data-copy-code\]/.test(readerAppSource), 'copy event delegation should target the copy button from svg descendants');
+assert(/copyCodeWithFallback/.test(readerAppSource), 'copy should include a fallback path when navigator.clipboard is unavailable');
 const explicitHeadingRendered = renderArticleShell({
   ...mediaArticle,
   blocks: [{ id: 'explicit-h1', type: 'heading', level: 1, text: '1. 看一眼 Transformer 的 Attention Heatmap' }]
@@ -219,6 +239,8 @@ assert(focusBuild.units.some((unit) => unit.type === 'block' && unit.blockType =
 assert(focusBuild.units.some((unit) => unit.type === 'block' && unit.blockType === 'simple-tweet'), 'simple tweet block FocusUnit missing');
 const linkFocusBuild = buildFocusUnits(linkRendered.children[0] ? { ...mediaArticle, blocks: [{ id: 'link1', type: 'link', text: '原文链接', href: 'https://x.com/example/status/1' }] } : mediaArticle, linkRendered);
 assert(linkFocusBuild.units.some((unit) => unit.type === 'block' && unit.blockType === 'link'), 'link block should be a single FocusUnit');
+const codeFocusBuild = buildFocusUnits({ ...mediaArticle, blocks: [{ id: 'code1', type: 'code', language: 'rust', text: 'pub struct AgentLoop {}' }] }, codeRendered);
+assert(codeFocusBuild.units.some((unit) => unit.type === 'block' && unit.blockType === 'code'), 'code block should be a single FocusUnit');
 const listUnits = focusBuild.units.filter((unit) => unit.type === 'reading-text' && unit.blockId === 'list1');
 assert(listUnits.length === 3, 'list items should become individual FocusUnits');
 
@@ -329,6 +351,42 @@ assert(inlineLink.attributes.target === '_blank', 'inline paragraph link should 
 assert(
   walk(inlineLinkRendered).some((element) => element.dataset.unitId && element.textContent.includes('https://www.lmsys.org/blog/2025-09-25-gb200-part-2/')),
   'inline paragraph link should stay inside a FocusUnit instead of becoming Embedded content'
+);
+
+const quoteLinkArticle = {
+  ...mediaArticle,
+  blocks: [
+    {
+      id: 'quote-link',
+      type: 'quote',
+      text: '第 1 轮：LLM -> 调用 file.read(path="src/main.rs")\n-> 执行 file.read -> 返回文件内容',
+      annotations: [
+        {
+          startOffset: '第 1 轮：LLM -> 调用 '.length,
+          endOffset: '第 1 轮：LLM -> 调用 file.read'.length,
+          href: '//file.read',
+          target: '_blank'
+        },
+        {
+          startOffset: '第 1 轮：LLM -> 调用 file.read(path="src/main.rs")\n-> 执行 '.length,
+          endOffset: '第 1 轮：LLM -> 调用 file.read(path="src/main.rs")\n-> 执行 file.read'.length,
+          href: '//file.read',
+          target: '_blank'
+        }
+      ]
+    }
+  ]
+};
+const quoteLinkRendered = renderArticleShell(quoteLinkArticle);
+buildFocusUnits(quoteLinkArticle, quoteLinkRendered);
+const quoteElement = quoteLinkRendered.querySelector('blockquote');
+const quoteLinks = walk(quoteElement).filter((element) => element.tagName === 'A');
+assert(quoteLinks.length === 2, 'inline quote links should render inside blockquote text');
+assert(quoteLinks[0].attributes.href === '//file.read', 'inline quote link should preserve href');
+assert(quoteLinks[0].attributes.target === '_blank', 'inline quote link should preserve target');
+assert(
+  quoteElement?.textContent.includes('\n-> 执行 file.read'),
+  'inline quote link rendering should preserve quote line breaks'
 );
 
 const css = readFileSync(join(root, 'public', 'reader.css'), 'utf8');

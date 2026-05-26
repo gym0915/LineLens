@@ -2,6 +2,7 @@ export type {
   Article,
   ArticleBlock,
   ArticleSource,
+  CodeBlock,
   EmbedBlock,
   HeadingBlock,
   ImageBlock,

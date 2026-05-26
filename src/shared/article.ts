@@ -19,6 +19,7 @@ export type ArticleBlock =
   | ImageBlock
   | ListBlock
   | LinkBlock
+  | CodeBlock
   | SimpleTweetBlock
   | EmbedBlock;
 
@@ -80,6 +81,13 @@ export type LinkBlock = {
   text: string;
   href: string;
   target?: string;
+};
+
+export type CodeBlock = {
+  id: string;
+  type: 'code';
+  language?: string;
+  text: string;
 };
 
 export type SimpleTweetBlock = {

@@ -31,6 +31,10 @@ const picTweetSnapshot = readFileSync(
   resolve(rootDir, 'assets/x-article-pic-tweet.html'),
   'utf8'
 );
+const codeBlockSnapshot = readFileSync(
+  resolve(rootDir, 'assets/x-article-codeblock.html'),
+  'utf8'
+);
 const completeDomLinkBlock = `<div class="longform-unstyled-narrow" data-block="true" data-editor="2vhgc" data-offset-key="5upd3-0-0"><div data-offset-key="5upd3-0-0" class="public-DraftStyleDefault-block public-DraftStyleDefault-ltr"><div class="css-175oi2r r-1loqt21 r-1471scf r-o7ynqc r-6416eg r-1ny4l3l"><a href="https://kvcache.ai/tools/kv-cache-calculator/" dir="ltr" rel="noopener noreferrer nofollow" target="_blank" role="link" class="css-146c3p1 r-bcqeeo r-1ttztb7 r-qvutc0 r-37j5jr r-1inkyih r-rjixqe r-16dba41 r-1ddef8g r-tjvw6i r-1loqt21" style="color: rgb(15, 20, 25);"><span data-offset-key="5upd3-0-0"><span data-text="true">https://kvcache.ai/tools/kv-cache-calculator/</span></span></a></div></div></div>`;
 
 assert.equal(isXArticleUrl('https://x.com/dotey/article/2058421725256171718'), true);
@@ -58,6 +62,7 @@ assert.equal(X_ARTICLE_SELECTORS.readView, '[data-testid="twitterArticleReadView
 assert.equal(X_ARTICLE_SELECTORS.title, '[data-testid="twitter-article-title"]');
 assert.equal(X_ARTICLE_SELECTORS.longform, '[data-testid="longformRichTextComponent"]');
 assert.equal(X_ARTICLE_SELECTORS.tweetBlock, '[data-testid="tweet"]');
+assert.equal(X_ARTICLE_SELECTORS.codeBlock, '[data-testid="markdown-code-block"]');
 assert.equal(X_ARTICLE_SELECTORS.tweetPhoto, '[data-testid="tweetPhoto"]');
 
 const detailText = extractSnapshotLongformText(detailSnapshot);
@@ -86,6 +91,14 @@ assert.equal(
   'https://pbs.twimg.com/media/HIq4IqNbEAADZQM?format=jpg&amp;name=small https://pbs.twimg.com/media/HIq4IrAa4AAyVGC?format=jpg&amp;name=small',
   'pic tweet fixture should expose both image card sources'
 );
+assert.deepEqual(extractSnapshotCodeBlock(codeBlockSnapshot), {
+  language: 'xml',
+  classLanguage: 'xml',
+  textIncludesToolView: true,
+  preservesIndentedListLines: true,
+  copyPath:
+    'M19.5 2C20.88 2 22 3.12 22 4.5v11c0 1.21-.86 2.22-2 2.45V4.5c0-.28-.22-.5-.5-.5H6.05c.23-1.14 1.24-2 2.45-2h11zm-4 4C16.88 6 18 7.12 18 8.5v11c0 1.38-1.12 2.5-2.5 2.5h-11C3.12 22 2 20.88 2 19.5v-11C2 7.12 3.12 6 4.5 6h11zM4 19.5c0 .28.22.5.5.5h11c.28 0 .5-.22.5-.5v-11c0-.28-.22-.5-.5-.5h-11c-.28 0-.5.22-.5.5v11z'
+});
 
 const detail2Text = extractSnapshotLongformText(detail2Snapshot);
 assert.equal(detail2Text.title, '为什么 AI 会“忘记”中间的信息');
@@ -137,6 +150,9 @@ for (const source of [modularExtractorSource, liveExtractorSource]) {
   assert.match(source, /role="link"/, 'extractor should inspect role=link anchors');
   assert.match(source, /pendingListKind/, 'extractor should preserve ordered versus unordered lists');
   assert.match(source, /function extractTweetRefBlock/, 'extractor should parse data-testid tweet reference blocks');
+  assert.match(source, /function extractCodeBlock/, 'extractor should parse X markdown code blocks');
+  assert.match(source, /markdown-code-block/, 'extractor should target markdown-code-block DOM');
+  assert.match(source, /normalizeCodeText/, 'code block extraction should preserve line-leading indentation');
   assert.match(source, /tweetBlock/, 'extractor should use the tweet data-testid selector');
   assert.match(source, /function extractTweetSummaryBlock/, 'tweet references should build a summary without collapsing author, date, body, and metrics');
   assert.match(source, /function extractTweetBodyText/, 'tweet references should extract the tweet body without appending engagement metrics');
@@ -161,7 +177,9 @@ assert.match(articleModelSource, /kind\?: 'ordered' \| 'unordered'/, 'list model
 assert.match(articleModelSource, /photos\?: TweetPhoto\[\]/, 'simple tweet model should include optional photo cards');
 assert.match(articleModelSource, /authorName\?: string/, 'simple tweet model should include dynamic author name');
 assert.match(articleModelSource, /metrics\?: TweetMetrics/, 'simple tweet model should include dynamic action metrics');
+assert.match(articleModelSource, /type: 'code'/, 'article model should include code blocks');
 assert.match(readerRendererSource, /renderSimpleTweetBlock\(block\)/, 'reader should render simple tweets from the complete block data');
+assert.match(readerRendererSource, /renderCodeBlock\(block\.id, block\.text, block\.language\)/, 'reader should render code blocks with dynamic language');
 assert.match(readerRendererSource, /renderSimpleTweetPhotoGrid/, 'reader should render simple tweet image cards as a photo grid');
 assert.match(readerRendererSource, /renderSimpleTweetAvatar\(block\)/, 'reader should use dynamic avatar data');
 assert.match(readerRendererSource, /renderSimpleTweetActions\(block\.metrics\)/, 'reader should use dynamic action metrics');
@@ -249,6 +267,20 @@ function extractSnapshotPicTweet(html) {
     tweetText,
     photoCount: countMatches(html, 'data-testid="tweetPhoto"'),
     photoSrcs: photos.map((match) => match[1])
+  };
+}
+
+function extractSnapshotCodeBlock(html) {
+  const language = normalizeText(decodeHtml(html.match(/data-testid="markdown-code-block"[\s\S]*?<span[^>]*>(.*?)<\/span>/)?.[1] ?? ''));
+  const classLanguage = html.match(/class="language-([^"]+)"/)?.[1] ?? '';
+  const codeText = decodeHtml(html.match(/<code[^>]*>([\s\S]*?)<\/code>/)?.[1]?.replace(/<[^>]+>/g, '') ?? '');
+  const copyPath = html.match(/<path d="([^"]+)"/)?.[1] ?? '';
+  return {
+    language,
+    classLanguage,
+    textIncludesToolView: codeText.includes('<tool_view>') && codeText.includes('</tool_view>'),
+    preservesIndentedListLines: codeText.includes('\n  - shell.exec') && codeText.includes('\n  - file.read'),
+    copyPath
   };
 }
 

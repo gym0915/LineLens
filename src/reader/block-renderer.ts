@@ -1,4 +1,4 @@
-import type { Article, ArticleBlock, SimpleTweetBlock, TweetMetrics, TweetPhoto } from '../shared/article-schema.js';
+import type { Article, ArticleBlock, SimpleTweetBlock, TextAnnotation, TweetMetrics, TweetPhoto } from '../shared/article-schema.js';
 
 export function renderArticleShell(article: Article): HTMLElement {
   const articleElement = document.createElement('article');
@@ -49,15 +49,17 @@ function renderBlock(block: ArticleBlock): HTMLElement {
     case 'heading':
       return renderTextBlock(getHeadingTagName(block.level), block.id, block.type, block.text);
     case 'paragraph':
-      return renderTextBlock('p', block.id, block.type, block.text);
+      return renderTextBlock('p', block.id, block.type, block.text, block.annotations);
     case 'quote':
-      return renderTextBlock('blockquote', block.id, block.type, block.text);
+      return renderTextBlock('blockquote', block.id, block.type, block.text, block.annotations);
     case 'image':
       return renderImageBlock(block.id, block.src, block.alt, block.aspectRatio);
     case 'list':
       return renderListBlock(block.id, block.items, block.kind);
     case 'link':
       return renderLinkBlock(block.id, block.text, block.href, block.target);
+    case 'code':
+      return renderCodeBlock(block.id, block.text, block.language);
     case 'simple-tweet':
       return renderSimpleTweetBlock(block);
     case 'embed':
@@ -69,14 +71,70 @@ function renderTextBlock(
   tagName: 'blockquote' | 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'p',
   blockId: string,
   blockType: string,
-  text: string
+  text: string,
+  annotations: TextAnnotation[] = []
 ): HTMLElement {
   const element = document.createElement(tagName);
   element.className = 'reader-block';
   element.dataset.blockId = blockId;
   element.dataset.blockType = blockType;
-  element.textContent = text;
+  appendAnnotatedText(element, text, annotations);
   return element;
+}
+
+function appendAnnotatedText(container: HTMLElement, sourceText: string, annotations: TextAnnotation[] = []): void {
+  const relevantAnnotations = annotations
+    .filter((annotation) => (annotation.bold || annotation.href) && annotation.endOffset > annotation.startOffset)
+    .map((annotation) => ({
+      startOffset: Math.max(annotation.startOffset, 0),
+      endOffset: Math.min(annotation.endOffset, sourceText.length),
+      bold: annotation.bold,
+      href: annotation.href,
+      target: annotation.target
+    }))
+    .filter((annotation) => annotation.endOffset > annotation.startOffset)
+    .sort((a, b) => a.startOffset - b.startOffset);
+
+  let cursor = 0;
+  for (const annotation of relevantAnnotations) {
+    if (annotation.startOffset < cursor) {
+      continue;
+    }
+
+    if (annotation.startOffset > cursor) {
+      container.append(document.createTextNode(sourceText.slice(cursor, annotation.startOffset)));
+    }
+
+    const text = sourceText.slice(annotation.startOffset, annotation.endOffset);
+    let annotatedNode: HTMLElement;
+    if (annotation.href) {
+      const link = document.createElement('a');
+      link.setAttribute('href', annotation.href);
+      if (annotation.target) {
+        link.setAttribute('target', annotation.target);
+      }
+      link.setAttribute('rel', 'noreferrer');
+      link.textContent = text;
+      annotatedNode = link;
+    } else {
+      const strong = document.createElement('strong');
+      strong.textContent = text;
+      annotatedNode = strong;
+    }
+
+    if (annotation.bold && annotation.href) {
+      const strong = document.createElement('strong');
+      strong.append(annotatedNode);
+      container.append(strong);
+    } else {
+      container.append(annotatedNode);
+    }
+    cursor = annotation.endOffset;
+  }
+
+  if (cursor < sourceText.length) {
+    container.append(document.createTextNode(sourceText.slice(cursor)));
+  }
 }
 
 function getHeadingTagName(level: 1 | 2 | 3 | 4 | 5 | 6 = 2): 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' {
@@ -469,4 +527,94 @@ function renderEmbedBlock(blockId: string, label: string, text?: string): HTMLEl
   element.dataset.blockType = 'embed';
   element.textContent = text ? `${label}: ${text}` : label;
   return element;
+}
+
+function renderCodeBlock(blockId: string, text: string, language = ''): HTMLElement {
+  const figure = document.createElement('figure');
+  figure.className = 'reader-block reader-code';
+  figure.dataset.blockId = blockId;
+  figure.dataset.blockType = 'code';
+
+  const header = document.createElement('figcaption');
+  header.className = 'reader-code-header';
+
+  const label = document.createElement('span');
+  label.className = 'reader-code-language';
+  label.textContent = language || detectCodeLanguage(text) || 'text';
+
+  const button = document.createElement('button');
+  button.className = 'reader-code-copy';
+  button.type = 'button';
+  button.setAttribute('aria-label', 'Copy to clipboard');
+  button.dataset.copyCode = text;
+  button.append(renderCopyIcon());
+
+  header.append(label, button);
+
+  const pre = document.createElement('pre');
+  pre.className = 'reader-code-pre';
+  const code = document.createElement('code');
+  code.className = `language-${label.textContent}`;
+  appendHighlightedCode(code, text, label.textContent);
+  pre.append(code);
+  figure.append(header, pre);
+  return figure;
+}
+
+function renderCopyIcon(): SVGSVGElement {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('class', 'reader-code-copy-icon');
+  const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  path.setAttribute(
+    'd',
+    'M19.5 2C20.88 2 22 3.12 22 4.5v11c0 1.21-.86 2.22-2 2.45V4.5c0-.28-.22-.5-.5-.5H6.05c.23-1.14 1.24-2 2.45-2h11zm-4 4C16.88 6 18 7.12 18 8.5v11c0 1.38-1.12 2.5-2.5 2.5h-11C3.12 22 2 20.88 2 19.5v-11C2 7.12 3.12 6 4.5 6h11zM4 19.5c0 .28.22.5.5.5h11c.28 0 .5-.22.5-.5v-11c0-.28-.22-.5-.5-.5h-11c-.28 0-.5.22-.5.5v11z'
+  );
+  group.append(path);
+  svg.append(group);
+  return svg;
+}
+
+function appendHighlightedCode(container: HTMLElement, text: string, language: string): void {
+  const pattern = getCodeTokenPattern(language);
+  let cursor = 0;
+  for (const match of text.matchAll(pattern)) {
+    if (match.index === undefined) continue;
+    if (match.index > cursor) {
+      container.append(document.createTextNode(text.slice(cursor, match.index)));
+    }
+    const span = document.createElement('span');
+    span.className = `reader-code-token reader-code-token-${classifyCodeToken(match[0])}`;
+    span.textContent = match[0];
+    container.append(span);
+    cursor = match.index + match[0].length;
+  }
+  if (cursor < text.length) {
+    container.append(document.createTextNode(text.slice(cursor)));
+  }
+}
+
+function getCodeTokenPattern(language: string): RegExp {
+  if (['xml', 'html', 'jsx', 'tsx'].includes(language)) {
+    return /<\/?[A-Za-z][\w:-]*|>|\/>|"[^"]*"|'[^']*'|\/\/[^\n]*|\b(?:class|function|const|let|var|return|type|interface|export|import|from|extends|pub|struct|impl|fn|let|mut)\b/g;
+  }
+  return /\/\/[^\n]*|"[^"]*"|'[^']*'|\b(?:class|function|const|let|var|return|type|interface|export|import|from|extends|pub|struct|impl|fn|mut|async|await)\b|\b\d+(?:\.\d+)?\b/g;
+}
+
+function classifyCodeToken(token: string): string {
+  if (token.startsWith('//')) return 'comment';
+  if (/^["']/.test(token)) return 'string';
+  if (/^<\/?[A-Za-z]/.test(token)) return 'tag';
+  if (/^\d/.test(token)) return 'number';
+  if (token === '>' || token === '/>') return 'punctuation';
+  return 'keyword';
+}
+
+function detectCodeLanguage(text: string): string {
+  if (/^\s*</.test(text)) return 'xml';
+  if (/\bpub\s+struct\b|\bfn\s+\w+/.test(text)) return 'rust';
+  if (/\bnpm\s+install\b|\bcd\s+/.test(text)) return 'shell';
+  return '';
 }

@@ -26,6 +26,12 @@
   --reader-media-gap: 32px;
   --reader-radius-card: 3px;
   --reader-radius-media: 1px;
+  --reader-code-header: #ddd8cf;
+  --reader-code-surface: #f4f4f1;
+  --reader-code-ink: rgba(44, 37, 33, 0.82);
+  --reader-code-muted: rgba(44, 37, 33, 0.45);
+  --reader-toast-surface: rgba(44, 37, 33, 0.9);
+  --reader-toast-ink: #f7f2ea;
   color: var(--reader-ink);
   background: var(--reader-canvas);
   font-family: "Lora", Georgia, serif;
@@ -83,6 +89,11 @@ body {
 
 .reader-article a {
   color: inherit;
+}
+
+.article blockquote,
+.reader-article blockquote {
+  white-space: pre-wrap;
 }
 
 .reader-block[data-block-type="heading"] {
@@ -151,6 +162,96 @@ body {
   font-family: "Lora", Georgia, serif;
   font-size: 14px;
   line-height: 1.7;
+}
+
+.reader-code {
+  margin: 28px 0;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--reader-code-surface);
+  color: var(--reader-code-ink);
+  font-family: "DM Mono", "Fira Mono", Menlo, Consolas, monospace;
+}
+
+.reader-code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 36px;
+  padding: 8px 14px;
+  border-bottom: 1px solid rgba(44, 37, 33, 0.08);
+  background: var(--reader-code-header);
+}
+
+.reader-code-language {
+  color: var(--reader-ink);
+  font-size: 13px;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.reader-code-copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--reader-ink);
+  cursor: pointer;
+}
+
+.reader-code-copy-icon {
+  width: 22px;
+  height: 22px;
+  fill: currentColor;
+}
+
+.reader-code-pre {
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  padding: 18px 24px 22px;
+  overflow-x: auto;
+  background: rgba(255, 255, 255, 0.36);
+  color: var(--reader-code-ink);
+  font-family: inherit;
+  font-size: 13.5px;
+  line-height: 1.55;
+  tab-size: 2;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.reader-code-pre code {
+  font-family: inherit;
+}
+
+.reader-code-token-keyword {
+  color: #b724b7;
+}
+
+.reader-code-token-tag {
+  color: #bd6500;
+}
+
+.reader-code-token-string {
+  color: #2f73ff;
+}
+
+.reader-code-token-comment {
+  color: rgba(44, 37, 33, 0.42);
+  font-style: italic;
+}
+
+.reader-code-token-number {
+  color: #7a5a00;
+}
+
+.reader-code-token-punctuation {
+  color: rgba(44, 37, 33, 0.72);
 }
 
 .reader-simple-tweet {
@@ -596,6 +697,7 @@ p .focus-unit.is-active {
 
 .reader-media.focus-unit,
 .reader-embed.focus-unit,
+.reader-code.focus-unit,
 .reader-link.focus-unit,
 .reader-simple-tweet.focus-unit,
 .reader-block[data-block-type="heading"].focus-unit,
@@ -649,6 +751,7 @@ p .focus-unit.is-active {
 }
 
 .reader-embed.focus-unit.is-active,
+.reader-code.focus-unit.is-active,
 .reader-link.focus-unit.is-active,
 .reader-simple-tweet.focus-unit.is-active,
 .reader-list-item.focus-unit.is-active {
@@ -656,6 +759,19 @@ p .focus-unit.is-active {
   border-radius: var(--reader-radius-card);
   background: var(--reader-highlight-surface);
   box-shadow: var(--reader-card-shadow);
+}
+
+.reader-code.focus-unit.is-muted {
+  opacity: 0.45;
+}
+
+.reader-code.focus-unit.is-muted:hover {
+  opacity: 0.62;
+}
+
+.reader-code.focus-unit.is-active {
+  padding: 6px;
+  opacity: 1;
 }
 
 .reader-simple-tweet.focus-unit.is-muted:hover {
@@ -706,6 +822,36 @@ p .focus-unit.is-active {
   font-size: 11px;
   letter-spacing: 0.1em;
   text-align: center;
+}
+
+.reader-toast {
+  position: fixed;
+  right: 50%;
+  bottom: 36px;
+  z-index: 40;
+  min-width: 144px;
+  max-width: calc(100vw - 40px);
+  padding: 10px 18px;
+  transform: translateX(50%) translateY(10px);
+  border-radius: 3px;
+  background: var(--reader-toast-surface);
+  color: var(--reader-toast-ink);
+  box-shadow: 0 8px 24px rgba(44, 37, 33, 0.18);
+  font-family: "DM Sans", system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.35;
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
+}
+
+.reader-toast.is-visible {
+  transform: translateX(50%) translateY(0);
+  opacity: 1;
 }
 
 .reader-hint {

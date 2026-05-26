@@ -29,7 +29,7 @@ export function validateArticle(article: Article): ValidationResult {
   const textLength = article.blocks.reduce((total, block) => total + getBlockTextLength(block), 0);
   const hasTextBlock = article.blocks.some((block) => isTextBlock(block));
   const hasMediaBlock = article.blocks.some(
-    (block) => block.type === 'image' || block.type === 'embed' || block.type === 'simple-tweet' || block.type === 'link'
+    (block) => block.type === 'image' || block.type === 'embed' || block.type === 'simple-tweet' || block.type === 'link' || block.type === 'code'
   );
 
   if (textLength <= MIN_TEXT_LENGTH && !(hasTextBlock && hasMediaBlock)) {
@@ -58,10 +58,13 @@ function getBlockTextLength(block: ArticleBlock): number {
   if (block.type === 'link') {
     return normalizeText(block.text).length;
   }
+  if (block.type === 'code') {
+    return normalizeText(`${block.language ?? ''} ${block.text}`).length;
+  }
 
   return 0;
 }
 
 function isTextBlock(block: ArticleBlock): boolean {
-  return block.type === 'paragraph' || block.type === 'heading' || block.type === 'quote' || block.type === 'list' || block.type === 'link';
+  return block.type === 'paragraph' || block.type === 'heading' || block.type === 'quote' || block.type === 'list' || block.type === 'link' || block.type === 'code';
 }
