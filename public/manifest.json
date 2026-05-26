@@ -17,8 +17,8 @@
       "run_at": "document_idle"
     }
   ],
-  "permissions": ["action", "storage", "tabs", "webNavigation", "scripting"],
-  "host_permissions": ["https://x.com/*", "https://twitter.com/*"],
+  "permissions": ["action", "storage", "tabs", "webNavigation", "scripting", "webRequest"],
+  "host_permissions": ["https://x.com/*", "https://twitter.com/*", "https://video.twimg.com/*", "https://pbs.twimg.com/*"],
   "web_accessible_resources": [
     {
       "resources": ["reader.html"],

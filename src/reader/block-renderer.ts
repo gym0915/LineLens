@@ -1,4 +1,4 @@
-import type { Article, ArticleBlock, GifBlock, SimpleTweetBlock, TextAnnotation, TweetMetrics, TweetPhoto } from '../shared/article-schema.js';
+import type { Article, ArticleBlock, GifBlock, SimpleTweetBlock, TextAnnotation, TweetMetrics, TweetPhoto, VideoBlock } from '../shared/article-schema.js';
 
 export function renderArticleShell(article: Article): HTMLElement {
   const articleElement = document.createElement('article');
@@ -62,6 +62,8 @@ function renderBlock(block: ArticleBlock): HTMLElement {
       return renderCodeBlock(block.id, block.text, block.language);
     case 'gif':
       return renderGifBlock(block);
+    case 'video':
+      return renderVideoBlock(block);
     case 'simple-tweet':
       return renderSimpleTweetBlock(block);
     case 'embed':
@@ -245,6 +247,70 @@ function renderGifBlock(block: GifBlock): HTMLElement {
 
   overlay.append(pause, badge);
   media.append(video, overlay);
+  figure.append(media);
+  return figure;
+}
+
+function renderVideoBlock(block: VideoBlock): HTMLElement {
+  const figure = document.createElement('figure');
+  figure.className = 'reader-block reader-media reader-video';
+  figure.dataset.blockId = block.id;
+  figure.dataset.blockType = 'video';
+  applyMediaAspectRatio(figure, block.aspectRatio);
+
+  const media = document.createElement('div');
+  media.className = 'reader-video-media';
+  if (block.backgroundColor) {
+    media.style.backgroundColor = block.backgroundColor;
+  }
+
+  const video = document.createElement('video');
+  video.className = 'reader-video-player';
+  video.controls = true;
+  video.autoplay = true;
+  video.muted = true;
+  if (block.poster) {
+    video.poster = block.poster;
+  }
+  if (block.preload) {
+    video.preload = block.preload;
+  }
+  if (block.playsInline !== undefined) {
+    video.playsInline = block.playsInline;
+  }
+  if (block.tabIndex !== undefined) {
+    video.tabIndex = block.tabIndex;
+  }
+  if (block.ariaLabel) {
+    video.setAttribute('aria-label', block.ariaLabel);
+  }
+  video.style.width = '100%';
+  video.style.height = '100%';
+  video.style.position = 'absolute';
+  video.style.backgroundColor = block.backgroundColor ?? 'black';
+  video.style.top = block.top ?? '0%';
+  video.style.left = block.left ?? '0%';
+  if (block.transform) {
+    video.style.transform = block.transform;
+  }
+
+  const source = document.createElement('source');
+  source.src = block.src;
+  if (block.sourceType) {
+    source.type = block.sourceType;
+  }
+  video.append(source);
+
+  video.addEventListener('error', () => {
+    figure.classList.add('is-load-error');
+    const fallback = document.createElement('figcaption');
+    fallback.textContent = '视频暂不可播放';
+    if (!figure.querySelector('figcaption')) {
+      figure.append(fallback);
+    }
+  });
+
+  media.append(video);
   figure.append(media);
   return figure;
 }

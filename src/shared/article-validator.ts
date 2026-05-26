@@ -32,6 +32,7 @@ export function validateArticle(article: Article): ValidationResult {
     (block) =>
       block.type === 'image' ||
       block.type === 'gif' ||
+      block.type === 'video' ||
       block.type === 'embed' ||
       block.type === 'simple-tweet' ||
       block.type === 'link' ||

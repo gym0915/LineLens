@@ -1,6 +1,7 @@
-import type { Article, ArticleBlock, GifBlock, ImageBlock, TextAnnotation } from '../../../shared/article.js';
+import type { Article, ArticleBlock, GifBlock, ImageBlock, TextAnnotation, VideoBlock } from '../../../shared/article.js';
 import { validateArticle } from '../../../shared/article-validator.js';
 import type { ArticleExtractor, ExtractorContext } from '../../../shared/extractor-types.js';
+import type { CapturedXVideo } from '../../../shared/messages.js';
 import { normalizeCodeText, normalizePreWrapText, normalizeText } from '../../../shared/text.js';
 import {
   X_CANONICAL_ORIGIN,
@@ -10,6 +11,8 @@ import {
 } from '../../../shared/url.js';
 import { detectXArticleDom } from './article-detector.js';
 import { X_ARTICLE_SELECTORS } from './article-selectors.js';
+
+const AMPLIFY_VIDEO_ID_PATTERN = /amplify_video(?:_thumb)?\/(\d+)/;
 
 export const xArticleExtractor: ArticleExtractor = {
   id: 'x.article',
@@ -48,7 +51,8 @@ export const xArticleExtractor: ArticleExtractor = {
       throw new Error('article_not_ready');
     }
 
-    const blocks = extractBlocks(longform, articleId);
+    const capturedVideos = await getCapturedVideos();
+    const blocks = extractBlocks(longform, articleId, capturedVideos);
     const coverImage = extractCoverImage(readView, articleId);
     const article: Article = {
       id: articleId,
@@ -77,7 +81,7 @@ function getRoot(context: ExtractorContext): ParentNode | null {
   return context.root ?? context.document ?? null;
 }
 
-function extractBlocks(longform: Element, articleId: string): ArticleBlock[] {
+function extractBlocks(longform: Element, articleId: string, capturedVideos: CapturedXVideo[]): ArticleBlock[] {
   const blocks: ArticleBlock[] = [];
   let pendingListItems: string[] = [];
   let pendingListItemAnnotations: TextAnnotation[][] = [];
@@ -135,7 +139,7 @@ function extractBlocks(longform: Element, articleId: string): ArticleBlock[] {
     }
 
     flushPendingList();
-    const articleBlock = extractBlock(block, articleId, blocks.length + 1);
+    const articleBlock = extractBlock(block, articleId, blocks.length + 1, capturedVideos);
     if (articleBlock) {
       blocks.push(articleBlock);
     }
@@ -212,7 +216,7 @@ function hasNonTextContent(block: Element): boolean {
   );
 }
 
-function extractBlock(block: Element, articleId: string, index: number): ArticleBlock | null {
+function extractBlock(block: Element, articleId: string, index: number, capturedVideos: CapturedXVideo[]): ArticleBlock | null {
   if (block.matches(X_ARTICLE_SELECTORS.quoteBlock)) {
     const extracted = extractTextWithAnnotations(block, { preserveLineBreaks: true });
     return extracted.text
@@ -225,7 +229,7 @@ function extractBlock(block: Element, articleId: string, index: number): Article
       : null;
   }
 
-  const nonTextBlock = extractNonTextBlock(block, articleId, index);
+  const nonTextBlock = extractNonTextBlock(block, articleId, index, capturedVideos);
   if (nonTextBlock) {
     return nonTextBlock;
   }
@@ -256,10 +260,15 @@ function extractBlock(block: Element, articleId: string, index: number): Article
   return textBlock;
 }
 
-function extractNonTextBlock(block: Element, articleId: string, index: number): ArticleBlock | null {
+function extractNonTextBlock(block: Element, articleId: string, index: number, capturedVideos: CapturedXVideo[]): ArticleBlock | null {
   const tweetRef = extractTweetRefBlock(block, blockId(articleId, index));
   if (tweetRef) {
     return tweetRef;
+  }
+
+  const video = extractVideoFromElement(block, blockId(articleId, index), capturedVideos);
+  if (video) {
+    return video;
   }
 
   const gif = extractGifFromElement(block, blockId(articleId, index));
@@ -644,6 +653,54 @@ function extractGifFromElement(element: Element, id: string): GifBlock | null {
   };
 }
 
+function extractVideoFromElement(element: Element, id: string, capturedVideos: CapturedXVideo[]): VideoBlock | null {
+  const tweetPhoto = element.matches(X_ARTICLE_SELECTORS.tweetPhoto)
+    ? element
+    : element.querySelector(X_ARTICLE_SELECTORS.tweetPhoto);
+  const videoPlayer = tweetPhoto?.querySelector('[data-testid="videoPlayer"]');
+  if (!tweetPhoto || !videoPlayer) {
+    return null;
+  }
+
+  const video = videoPlayer.querySelector<HTMLVideoElement>('video');
+  const source = video?.querySelector<HTMLSourceElement>('source[src^="blob:"]');
+  if (!video || !source) {
+    return null;
+  }
+
+  const capturedVideo = matchCapturedVideo(video, capturedVideos);
+  const src = chooseCapturedVideoSource(capturedVideo);
+  if (!src) {
+    return null;
+  }
+
+  const aspectRatio = getMediaAspectRatio(video, tweetPhoto);
+  const backgroundColor = video.style.backgroundColor || getInlineStyleValue(video, 'background-color');
+  const top = video.style.top || getInlineStyleValue(video, 'top');
+  const left = video.style.left || getInlineStyleValue(video, 'left');
+  const transform = video.style.transform || getInlineStyleValue(video, 'transform');
+  const ariaLabel = video.getAttribute('aria-label') ?? undefined;
+
+  return {
+    id,
+    type: 'video',
+    src,
+    ...(resolveVideoSourceType(src, source.type) ? { sourceType: resolveVideoSourceType(src, source.type) } : {}),
+    transport: 'hls',
+    ...((capturedVideo?.poster || video.poster) ? { poster: capturedVideo?.poster || video.poster } : {}),
+    ...(aspectRatio ? { aspectRatio } : {}),
+    ...(backgroundColor ? { backgroundColor } : {}),
+    ...(top ? { top } : {}),
+    ...(left ? { left } : {}),
+    ...(transform ? { transform } : {}),
+    ...(video.preload ? { preload: video.preload } : {}),
+    playsInline: video.playsInline,
+    tabIndex: video.tabIndex,
+    ...(ariaLabel ? { ariaLabel } : {}),
+    paused: video.paused
+  };
+}
+
 function extractImageFromElement(element: Element, id: string): ImageBlock | null {
   const image = element.querySelector<HTMLImageElement>(X_ARTICLE_SELECTORS.tweetPhotoImage);
   if (!image) {
@@ -668,6 +725,72 @@ function getMediaAspectRatio(media: HTMLMediaElement, container: Element): numbe
   }
 
   return undefined;
+}
+
+async function getCapturedVideos(): Promise<CapturedXVideo[]> {
+  const response = (await chrome.runtime.sendMessage({
+    type: 'GET_CAPTURED_X_VIDEOS'
+  }).catch(() => null)) as GetCapturedXVideosResponse | null;
+  return response?.videos ?? [];
+}
+
+function matchCapturedVideo(video: HTMLVideoElement, capturedVideos: CapturedXVideo[]): CapturedXVideo | undefined {
+  const candidates = [
+    video.poster,
+    video.getAttribute('poster') ?? '',
+    video.currentSrc,
+    video.src
+  ];
+
+  for (const candidate of candidates) {
+    const videoId = getAmplifyVideoId(candidate);
+    if (!videoId) {
+      continue;
+    }
+
+    const matched = capturedVideos.find((item) => item.videoId === videoId);
+    if (matched) {
+      return matched;
+    }
+  }
+
+  return capturedVideos.find((item) => item.poster && item.poster === video.poster);
+}
+
+function chooseCapturedVideoSource(video: CapturedXVideo | undefined): string {
+  if (!video) {
+    return '';
+  }
+
+  if (video.m3u8) {
+    return video.m3u8;
+  }
+
+  const resolutionEntries = Object.entries(video.resolutions ?? {});
+  if (resolutionEntries.length === 0) {
+    return '';
+  }
+
+  return resolutionEntries
+    .sort(([left], [right]) => compareResolutionLabel(right) - compareResolutionLabel(left))[0]?.[1] ?? '';
+}
+
+function resolveVideoSourceType(src: string, fallbackType: string): string {
+  if (src.includes('.m3u8')) {
+    return 'application/x-mpegURL';
+  }
+
+  return fallbackType;
+}
+
+function getAmplifyVideoId(value: string | null | undefined): string | undefined {
+  const match = value?.match(AMPLIFY_VIDEO_ID_PATTERN);
+  return match?.[1];
+}
+
+function compareResolutionLabel(value: string): number {
+  const [width, height] = value.split('x').map((part) => Number(part));
+  return (Number.isFinite(width) ? width : 0) * (Number.isFinite(height) ? height : 0);
 }
 
 function getInlineStyleValue(element: HTMLElement, property: string): string {

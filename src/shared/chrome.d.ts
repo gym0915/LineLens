@@ -1,4 +1,4 @@
-import type { ExtensionMessage } from './messages';
+import type { CapturedXVideo, ExtensionMessage } from './messages';
 
 type RuntimeMessageCallback = (
   message: ExtensionMessage,
@@ -93,6 +93,22 @@ namespace chrome {
     };
   }
 
+  namespace webRequest {
+    type WebRequestDetails = {
+      url: string;
+      tabId: number;
+    };
+
+    const onBeforeRequest: {
+      addListener(
+        callback: (details: WebRequestDetails) => void,
+        filter: {
+          urls: string[];
+        }
+      ): void;
+    };
+  }
+
   namespace storage {
     namespace local {
       function set(values: Record<string, unknown>): Promise<void>;
@@ -101,6 +117,12 @@ namespace chrome {
     }
   }
 }
+}
+
+declare global {
+  type GetCapturedXVideosResponse = {
+    videos: CapturedXVideo[];
+  };
 }
 
 export {};

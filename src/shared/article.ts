@@ -21,6 +21,7 @@ export type ArticleBlock =
   | LinkBlock
   | CodeBlock
   | GifBlock
+  | VideoBlock
   | SimpleTweetBlock
   | EmbedBlock;
 
@@ -101,6 +102,25 @@ export type GifBlock = {
   top?: string;
   left?: string;
   transform?: string;
+  paused?: boolean;
+};
+
+export type VideoBlock = {
+  id: string;
+  type: 'video';
+  src: string;
+  sourceType?: string;
+  transport?: 'hls' | 'direct';
+  poster?: string;
+  aspectRatio?: number;
+  backgroundColor?: string;
+  top?: string;
+  left?: string;
+  transform?: string;
+  preload?: 'auto' | 'metadata' | 'none' | '';
+  playsInline?: boolean;
+  tabIndex?: number;
+  ariaLabel?: string;
   paused?: boolean;
 };
 

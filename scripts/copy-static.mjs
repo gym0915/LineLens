@@ -5,9 +5,15 @@ const root = new URL('..', import.meta.url).pathname;
 const dist = join(root, 'dist');
 const publicDir = join(root, 'public');
 const fixturesDir = join(root, 'fixtures');
+const hlsSource = join(root, 'node_modules', 'hls.js', 'dist', 'hls.min.js');
 
 mkdirSync(dist, { recursive: true });
 cpSync(publicDir, dist, { recursive: true });
+
+if (existsSync(hlsSource)) {
+  mkdirSync(join(dist, 'vendor'), { recursive: true });
+  copyFileSync(hlsSource, join(dist, 'vendor', 'hls.min.js'));
+}
 
 if (existsSync(fixturesDir)) {
   cpSync(fixturesDir, join(dist, 'fixtures'), { recursive: true });

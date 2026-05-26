@@ -115,7 +115,13 @@ assert.deepEqual(extractSnapshotVideoGif(videoGifSnapshot), {
   gifTransformIncludesScale: true,
   gifAspectRatio: 1.7771,
   videoHasBlobSource: true,
-  videoPoster: 'https://pbs.twimg.com/amplify_video_thumb/2053916866964590592/img/3pE8XJrlgNBM7EQC.jpg'
+  videoPoster: 'https://pbs.twimg.com/amplify_video_thumb/2053916866964590592/img/3pE8XJrlgNBM7EQC.jpg',
+  videoPreload: 'none',
+  videoPlaysInline: true,
+  videoTabIndex: '-1',
+  videoAriaLabel: 'Embedded video',
+  videoSourceType: 'video/mp4',
+  videoStyleHasFullSize: true
 });
 
 const detail2Text = extractSnapshotLongformText(detail2Snapshot);
@@ -183,9 +189,28 @@ for (const source of [modularExtractorSource, liveExtractorSource]) {
   assert.match(source, /function getSimpleTweetHref/, 'simple tweets should use a dedicated href extractor');
   assert.match(source, /function extractSimpleTweetImageCard/, 'simple tweets should parse image-card tweets without article covers');
   assert.match(source, /function extractGifFromElement/, 'extractor should parse GIF media inside tweetPhoto videoPlayer');
+  assert.match(source, /function extractVideoFromElement/, 'extractor should parse video media inside tweetPhoto videoPlayer');
+  assert.match(source, /function getCapturedVideos/, 'extractor should ask background for captured network video groups');
+  assert.match(source, /function matchCapturedVideo/, 'extractor should match DOM videos back to captured network groups');
+  assert.match(source, /function chooseCapturedVideoSource/, 'extractor should choose a real playback URL from the captured group');
   assert.match(source, /data-testid="videoPlayer"/, 'GIF extraction should branch on the videoPlayer marker under tweetPhoto');
   assert.match(source, /source\[src\^="blob:"\]/, 'GIF extraction should exclude real videos that expose blob sources');
+  assert.match(
+    source,
+    /const video = extractVideoFromElement\(block, blockId\(articleId, index\), capturedVideos\);[\s\S]*?const gif = extractGifFromElement/,
+    'real videos should be extracted before GIF fallback'
+  );
+  assert.match(source, /type: 'video'/, 'extractor should emit dedicated video blocks');
+  assert.match(source, /source\.type/, 'video extraction should preserve source type');
+  assert.match(source, /video\.preload/, 'video extraction should preserve preload');
+  assert.match(source, /video\.playsInline/, 'video extraction should preserve playsinline');
+  assert.match(source, /video\.tabIndex/, 'video extraction should preserve tabindex');
+  assert.match(source, /aria-label/, 'video extraction should preserve aria-label');
   assert.match(source, /video\.src/, 'GIF extraction should read the direct video src');
+  assert.match(source, /GET_CAPTURED_X_VIDEOS/, 'video extraction should request captured videos from background');
+  assert.match(source, /if \(video\.m3u8\)/, 'video extraction should prefer the main playlist');
+  assert.match(source, /Object\.entries\(video\.resolutions \?\? \{\}\)/, 'video extraction should fall back to grouped resolution playlists');
+  assert.match(source, /application\/x-mpegURL/, 'video extraction should set HLS MIME when source is m3u8');
   assert.match(source, /function isSimpleTweetCard/, 'image-card simple tweet parsing should be gated by data-testid simpleTweet');
   assert.match(
     source,
@@ -207,10 +232,26 @@ assert.match(articleModelSource, /metrics\?: TweetMetrics/, 'simple tweet model 
 assert.match(articleModelSource, /type: 'code'/, 'article model should include code blocks');
 assert.match(articleModelSource, /GifBlock/, 'article model should include GIF blocks');
 assert.match(articleModelSource, /type: 'gif'/, 'GIF model should use a dedicated block type');
+assert.match(articleModelSource, /VideoBlock/, 'article model should include video blocks');
+assert.match(articleModelSource, /type: 'video'/, 'video model should use a dedicated block type');
+assert.match(articleModelSource, /sourceType\?: string/, 'video model should preserve source MIME type');
+assert.match(articleModelSource, /preload\?: 'auto' \| 'metadata' \| 'none' \| ''/, 'video model should preserve preload');
+assert.match(articleModelSource, /playsInline\?: boolean/, 'video model should preserve playsinline');
+assert.match(articleModelSource, /tabIndex\?: number/, 'video model should preserve tabindex');
+assert.match(articleModelSource, /ariaLabel\?: string/, 'video model should preserve aria-label');
 assert.match(articleModelSource, /backgroundColor\?: string/, 'GIF model should preserve media background color');
 assert.match(readerRendererSource, /renderSimpleTweetBlock\(block\)/, 'reader should render simple tweets from the complete block data');
 assert.match(readerRendererSource, /renderCodeBlock\(block\.id, block\.text, block\.language\)/, 'reader should render code blocks with dynamic language');
 assert.match(readerRendererSource, /renderGifBlock\(block\)/, 'reader should render GIF blocks');
+assert.match(readerRendererSource, /renderVideoBlock\(block\)/, 'reader should render video blocks');
+assert.match(readerRendererSource, /createElement\('source'\)/, 'reader should render video sources');
+assert.match(readerRendererSource, /video\.preload = block\.preload/, 'reader should preserve video preload');
+assert.match(readerRendererSource, /video\.playsInline = block\.playsInline/, 'reader should preserve video playsinline');
+assert.match(readerRendererSource, /video\.tabIndex = block\.tabIndex/, 'reader should preserve video tabindex');
+assert.match(readerRendererSource, /setAttribute\('aria-label', block\.ariaLabel\)/, 'reader should preserve video aria-label');
+assert.match(readerRendererSource, /video\.controls = true/, 'reader should enable native video controls');
+assert.match(readerRendererSource, /video\.autoplay = true/, 'reader should autoplay extracted videos');
+assert.match(readerRendererSource, /video\.muted = true/, 'reader should mute autoplay videos by default');
 assert.match(readerRendererSource, /reader-gif-badge/, 'reader should render the GIF badge overlay');
 assert.match(readerRendererSource, /reader-gif-pause-icon/, 'reader should render the GIF pause overlay icon');
 assert.match(readerRendererSource, /renderSimpleTweetPhotoGrid/, 'reader should render simple tweet image cards as a photo grid');
@@ -340,7 +381,19 @@ function extractSnapshotVideoGif(html) {
     gifTransformIncludesScale: /transform:[\s\S]*scale\(/.test(gifStyle),
     gifAspectRatio: Math.round((100 / paddingBottom) * 10000) / 10000,
     videoHasBlobSource: /<source\b[^>]+\bsrc="blob:/.test(video),
-    videoPoster: decodeHtml(videoTag.match(/\bposter="([^"]+)"/)?.[1] ?? '')
+    videoPoster: decodeHtml(videoTag.match(/\bposter="([^"]+)"/)?.[1] ?? ''),
+    videoPreload: decodeHtml(videoTag.match(/\bpreload="([^"]+)"/)?.[1] ?? ''),
+    videoPlaysInline: /\bplaysinline(?:=""|\b)/.test(videoTag),
+    videoTabIndex: decodeHtml(videoTag.match(/\btabindex="([^"]+)"/)?.[1] ?? ''),
+    videoAriaLabel: decodeHtml(videoTag.match(/\baria-label="([^"]+)"/)?.[1] ?? ''),
+    videoSourceType: decodeHtml(video.match(/<source\b[^>]+\btype="([^"]+)"/)?.[1] ?? ''),
+    videoStyleHasFullSize:
+      /width:\s*100%/.test(videoTag) &&
+      /height:\s*100%/.test(videoTag) &&
+      /position:\s*absolute/.test(videoTag) &&
+      /background-color:\s*black/.test(videoTag) &&
+      /top:\s*0%/.test(videoTag) &&
+      /left:\s*0%/.test(videoTag)
   };
 }
 

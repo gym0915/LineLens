@@ -68,7 +68,8 @@ const calls = {
   titles: [],
   createdTabs: [],
   sentMessages: [],
-  executedScripts: []
+  executedScripts: [],
+  webRequestFilters: []
 };
 
 let runtimeMessageListener;
@@ -76,6 +77,7 @@ let actionClickedListener;
 let tabsUpdatedListener;
 let tabsActivatedListener;
 let historyStateUpdatedListener;
+let webRequestListener;
 const mockTabs = new Map();
 const sendMessageFailures = new Map();
 
@@ -183,6 +185,14 @@ globalThis.chrome = {
         historyStateUpdatedListener = callback;
       }
     }
+  },
+  webRequest: {
+    onBeforeRequest: {
+      addListener(callback, filter) {
+        webRequestListener = callback;
+        calls.webRequestFilters.push(filter);
+      }
+    }
   }
 };
 
@@ -201,6 +211,8 @@ assert.equal(typeof actionClickedListener, 'function', 'background should regist
 assert.equal(typeof tabsUpdatedListener, 'function', 'background should register tab update listener');
 assert.equal(typeof historyStateUpdatedListener, 'function', 'background should register SPA history listener');
 assert.equal(typeof tabsActivatedListener, 'function', 'background should register tab activation listener');
+assert.equal(typeof webRequestListener, 'function', 'background should register webRequest listener');
+assert.deepEqual(calls.webRequestFilters, [{ urls: ['https://video.twimg.com/*'] }]);
 assert.deepEqual(calls.disabledTabs, [], 'toolbar action should stay enabled so clicks reach onClicked');
 
 await tabsUpdatedListener(43, { status: 'complete' }, {
@@ -268,6 +280,53 @@ assert.equal(calls.enabledTabs.at(-1), 42);
 assert.equal(calls.icons.at(-1).tabId, 42);
 assert.deepEqual(Object.keys(calls.icons.at(-1).imageData).sort(), ['16', '32', '48']);
 
+webRequestListener({
+  tabId: 42,
+  url: 'https://video.twimg.com/amplify_video/2053916866964590592/pl/playlist.m3u8'
+});
+webRequestListener({
+  tabId: 42,
+  url: 'https://video.twimg.com/amplify_video/2053916866964590592/pl/avc1/1280x720/demo.m3u8'
+});
+webRequestListener({
+  tabId: 42,
+  url: 'https://video.twimg.com/amplify_video/2053916866964590592/pl/avc1/480x270/demo-low.m3u8'
+});
+runtimeMessageListener(
+  {
+    type: 'UPSERT_X_VIDEO_POSTERS',
+    posters: {
+      '2053916866964590592': 'https://pbs.twimg.com/amplify_video_thumb/2053916866964590592/img/demo.jpg'
+    }
+  },
+  { tab: { id: 42, url: article.sourceUrl } },
+  () => {}
+);
+
+let capturedVideosResponse;
+runtimeMessageListener(
+  {
+    type: 'GET_CAPTURED_X_VIDEOS'
+  },
+  { tab: { id: 42, url: article.sourceUrl } },
+  (response) => {
+    capturedVideosResponse = response;
+  }
+);
+assert.deepEqual(capturedVideosResponse, {
+  videos: [
+    {
+      videoId: '2053916866964590592',
+      poster: 'https://pbs.twimg.com/amplify_video_thumb/2053916866964590592/img/demo.jpg',
+      m3u8: 'https://video.twimg.com/amplify_video/2053916866964590592/pl/playlist.m3u8',
+      resolutions: {
+        '1280x720': 'https://video.twimg.com/amplify_video/2053916866964590592/pl/avc1/1280x720/demo.m3u8',
+        '480x270': 'https://video.twimg.com/amplify_video/2053916866964590592/pl/avc1/480x270/demo-low.m3u8'
+      }
+    }
+  ]
+});
+
 await actionClickedListener({ id: 42, url: article.sourceUrl });
 assert.deepEqual(calls.sentMessages.slice(messagesBeforeSecondClick), [
   {
@@ -312,6 +371,9 @@ assert.match(contentSource, /EXTRACT_CURRENT_ARTICLE/);
 assert.match(contentSource, /LINELENS_ROUTE_CHANGED/);
 assert.match(contentSource, /monitorArticleState/);
 assert.match(contentSource, /MutationObserver/);
+assert.match(contentSource, /UPSERT_X_VIDEO_POSTERS/);
+assert.match(contentSource, /GET_CAPTURED_X_VIDEOS/);
+assert.match(contentSource, /startPosterMonitor/);
 assert.match(contentSource, /MAX_READY_CHECKS/);
 assert.match(contentSource, /LineLens Content/);
 assert.doesNotMatch(contentSource, /extractor_not_registered/);
@@ -328,5 +390,9 @@ const backgroundSource = await import('node:fs').then((fs) =>
 assert.doesNotMatch(backgroundSource, /chrome\.action\.disable/);
 assert.match(backgroundSource, /LineLens SW/);
 assert.match(backgroundSource, /chrome\.action\.setIcon/);
+assert.match(backgroundSource, /chrome\.webRequest\.onBeforeRequest/);
+assert.match(backgroundSource, /UPSERT_X_VIDEO_POSTERS/);
+assert.match(backgroundSource, /GET_CAPTURED_X_VIDEOS/);
+assert.match(backgroundSource, /tabVideoMap/);
 
 console.log('B10-B15 X Article chain verification passed.');

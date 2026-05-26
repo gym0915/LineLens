@@ -1,5 +1,12 @@
 import type { Article } from './article';
 
+export type CapturedXVideo = {
+  videoId: string;
+  poster?: string;
+  m3u8?: string;
+  resolutions?: Record<string, string>;
+};
+
 export type ExtensionMessage =
   | {
       type: 'ARTICLE_READY';
@@ -25,4 +32,11 @@ export type ExtensionMessage =
   | {
       type: 'ARTICLE_EXTRACT_FAILED';
       reason: string;
+    }
+  | {
+      type: 'UPSERT_X_VIDEO_POSTERS';
+      posters: Record<string, string>;
+    }
+  | {
+      type: 'GET_CAPTURED_X_VIDEOS';
     };

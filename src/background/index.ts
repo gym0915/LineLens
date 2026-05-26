@@ -1,12 +1,47 @@
 import type { Article } from '../shared/article';
 import { saveArticle } from '../shared/article-store.js';
-import type { ExtensionMessage } from '../shared/messages';
+import type { CapturedXVideo, ExtensionMessage } from '../shared/messages';
 import { isXArticleUrl } from '../shared/url.js';
 
 const readyTabs = new Map<number, string>();
+const tabVideoMap = new Map<number, Map<string, CapturedXVideo>>();
 const LOG_PREFIX = '[LineLens SW]';
 const READY_ICON_COLOR = '#22c55e';
 const IDLE_ICON_COLOR = '#6b7280';
+const AMPLIFY_VIDEO_ID_PATTERN = /amplify_video\/(\d+)\//;
+
+chrome.webRequest.onBeforeRequest.addListener(
+  (details) => {
+    const { tabId, url } = details;
+    if (tabId < 0) {
+      return;
+    }
+
+    const match = url.match(AMPLIFY_VIDEO_ID_PATTERN);
+    if (!match) {
+      return;
+    }
+
+    const videoId = match[1];
+    const videoData = getOrCreateVideoEntry(tabId, videoId);
+
+    if (!url.includes('.m3u8')) {
+      return;
+    }
+
+    if (url.includes('/pl/playlist.m3u8')) {
+      videoData.m3u8 = url;
+      return;
+    }
+
+    const resolutionMatch = url.match(/\/(\d+x\d+)\//);
+    if (resolutionMatch) {
+      videoData.resolutions ??= {};
+      videoData.resolutions[resolutionMatch[1]] = url;
+    }
+  },
+  { urls: ['https://video.twimg.com/*'] }
+);
 
 chrome.runtime.onInstalled.addListener(() => {
   console.info(LOG_PREFIX, 'installed; action click listener active');
@@ -22,6 +57,10 @@ chrome.action.onClicked.addListener(async (tab) => {
 });
 
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+  if (changeInfo.status === 'loading' || changeInfo.url) {
+    tabVideoMap.delete(tabId);
+  }
+
   const url = changeInfo.url ?? tab.url;
   if (changeInfo.status !== 'complete' && !changeInfo.url) {
     return;
@@ -99,6 +138,24 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.type === 'ARTICLE_EXTRACT_FAILED') {
     sendResponse({ ok: false, reason: message.reason });
+    return;
+  }
+
+  if (message.type === 'UPSERT_X_VIDEO_POSTERS') {
+    if (typeof tabId === 'number') {
+      mergeVideoPosters(tabId, message.posters);
+      sendResponse({ ok: true });
+      return;
+    }
+
+    sendResponse({ ok: false, reason: 'missing_tab_id' });
+    return;
+  }
+
+  if (message.type === 'GET_CAPTURED_X_VIDEOS') {
+    sendResponse({
+      videos: typeof tabId === 'number' ? listCapturedVideos(tabId) : []
+    });
     return;
   }
 
@@ -222,6 +279,42 @@ async function setActionIcon(tabId: number, color: string) {
       48: createIconImageData(48, color)
     }
   });
+}
+
+function getOrCreateVideoEntry(tabId: number, videoId: string): CapturedXVideo {
+  let videoMap = tabVideoMap.get(tabId);
+  if (!videoMap) {
+    videoMap = new Map<string, CapturedXVideo>();
+    tabVideoMap.set(tabId, videoMap);
+  }
+
+  let entry = videoMap.get(videoId);
+  if (!entry) {
+    entry = {
+      videoId
+    };
+    videoMap.set(videoId, entry);
+  }
+
+  return entry;
+}
+
+function mergeVideoPosters(tabId: number, posters: Record<string, string>) {
+  for (const [videoId, poster] of Object.entries(posters)) {
+    if (!videoId || !poster) {
+      continue;
+    }
+    getOrCreateVideoEntry(tabId, videoId).poster = poster;
+  }
+}
+
+function listCapturedVideos(tabId: number): CapturedXVideo[] {
+  return Array.from(tabVideoMap.get(tabId)?.values() ?? []).map((video) => ({
+    videoId: video.videoId,
+    ...(video.poster ? { poster: video.poster } : {}),
+    ...(video.m3u8 ? { m3u8: video.m3u8 } : {}),
+    ...(video.resolutions ? { resolutions: { ...video.resolutions } } : {})
+  }));
 }
 
 function createIconImageData(size: number, color: string): ImageData {

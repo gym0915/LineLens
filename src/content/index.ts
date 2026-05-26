@@ -40,6 +40,7 @@ type ArticleBlock =
       text: string;
     }
   | GifBlock
+  | VideoBlock
   | {
       id: string;
       type: 'simple-tweet';
@@ -88,6 +89,25 @@ type GifBlock = {
   paused?: boolean;
 };
 
+type VideoBlock = {
+  id: string;
+  type: 'video';
+  src: string;
+  sourceType?: string;
+  transport?: 'hls' | 'direct';
+  poster?: string;
+  aspectRatio?: number;
+  backgroundColor?: string;
+  top?: string;
+  left?: string;
+  transform?: string;
+  preload?: 'auto' | 'metadata' | 'none' | '';
+  playsInline?: boolean;
+  tabIndex?: number;
+  ariaLabel?: string;
+  paused?: boolean;
+};
+
 type TweetPhoto = {
   src: string;
   alt?: string;
@@ -133,7 +153,21 @@ type ExtensionMessage =
   | {
       type: 'ARTICLE_EXTRACT_FAILED';
       reason: string;
+    }
+  | {
+      type: 'UPSERT_X_VIDEO_POSTERS';
+      posters: Record<string, string>;
+    }
+  | {
+      type: 'GET_CAPTURED_X_VIDEOS';
     };
+
+type CapturedXVideo = {
+  videoId: string;
+  poster?: string;
+  m3u8?: string;
+  resolutions?: Record<string, string>;
+};
 
 type ReadyResult =
   | {
@@ -165,7 +199,9 @@ const MIN_READY_TEXT_LENGTH = 200;
 const MAX_READY_CHECKS = 40;
 const READY_CHECK_INTERVAL_MS = 250;
 const LOG_PREFIX = '[LineLens Content]';
+const AMPLIFY_VIDEO_ID_PATTERN = /amplify_video(?:_thumb)?\/(\d+)/;
 let activeReadinessCleanup: (() => void) | undefined;
+let activePosterCleanup: (() => void) | undefined;
 
 void monitorArticleState();
 
@@ -186,6 +222,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
 async function monitorArticleState() {
   stopActiveReadinessMonitor();
+  stopPosterMonitor();
 
   if (!isXArticleUrl(location.href)) {
     console.info(LOG_PREFIX, 'unsupported URL', {
@@ -198,6 +235,7 @@ async function monitorArticleState() {
     return;
   }
 
+  startPosterMonitor();
   await reportWhenReady();
 }
 
@@ -271,6 +309,28 @@ function stopActiveReadinessMonitor() {
   activeReadinessCleanup = undefined;
 }
 
+function startPosterMonitor() {
+  void publishVideoPosters();
+
+  const observer = new MutationObserver(() => {
+    void publishVideoPosters();
+  });
+
+  observer.observe(document.body ?? document.documentElement, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['poster']
+  });
+
+  activePosterCleanup = () => observer.disconnect();
+}
+
+function stopPosterMonitor() {
+  activePosterCleanup?.();
+  activePosterCleanup = undefined;
+}
+
 async function sendArticleState(message: ExtensionMessage) {
   console.info(LOG_PREFIX, 'sending article state', {
     type: message.type,
@@ -306,7 +366,7 @@ async function extractCurrentArticle(): Promise<ExtensionMessage> {
   }
 
   try {
-    const article = extractXArticle(new URL(location.href), document);
+    const article = await extractXArticle(new URL(location.href), document);
     console.info(LOG_PREFIX, 'extract succeeded', {
       articleId: article.id,
       title: article.title,
@@ -358,7 +418,7 @@ function detectXArticleDom(root: ParentNode): ReadyResult {
   return { ready: true };
 }
 
-function extractXArticle(url: URL, root: ParentNode): Article {
+async function extractXArticle(url: URL, root: ParentNode): Promise<Article> {
   const readView = root.querySelector(X_ARTICLE_SELECTORS.readView);
   const longform = readView?.querySelector(X_ARTICLE_SELECTORS.longform);
   const title = normalizeText(readView?.querySelector(X_ARTICLE_SELECTORS.title)?.textContent ?? '');
@@ -368,7 +428,8 @@ function extractXArticle(url: URL, root: ParentNode): Article {
     throw new Error('article_not_ready');
   }
 
-  const blocks = extractBlocks(longform, articleId);
+  const capturedVideos = await getCapturedVideos();
+  const blocks = extractBlocks(longform, articleId, capturedVideos);
   const coverImage = extractCoverImage(readView, articleId);
   const article: Article = {
     id: articleId,
@@ -390,7 +451,7 @@ function extractXArticle(url: URL, root: ParentNode): Article {
   return article;
 }
 
-function extractBlocks(longform: Element, articleId: string): ArticleBlock[] {
+function extractBlocks(longform: Element, articleId: string, capturedVideos: CapturedXVideo[]): ArticleBlock[] {
   const blocks: ArticleBlock[] = [];
   let pendingListItems: string[] = [];
   let pendingListItemAnnotations: TextAnnotation[][] = [];
@@ -448,7 +509,7 @@ function extractBlocks(longform: Element, articleId: string): ArticleBlock[] {
     }
 
     flushPendingList();
-    const articleBlock = extractBlock(block, articleId, blocks.length + 1);
+    const articleBlock = extractBlock(block, articleId, blocks.length + 1, capturedVideos);
     if (articleBlock) {
       blocks.push(articleBlock);
     }
@@ -525,7 +586,7 @@ function hasNonTextContent(block: Element): boolean {
   );
 }
 
-function extractBlock(block: Element, articleId: string, index: number): ArticleBlock | null {
+function extractBlock(block: Element, articleId: string, index: number, capturedVideos: CapturedXVideo[]): ArticleBlock | null {
   if (block.matches(X_ARTICLE_SELECTORS.quoteBlock)) {
     const extracted = extractTextWithAnnotations(block, { preserveLineBreaks: true });
     return extracted.text
@@ -538,7 +599,7 @@ function extractBlock(block: Element, articleId: string, index: number): Article
       : null;
   }
 
-  const nonTextBlock = extractNonTextBlock(block, articleId, index);
+  const nonTextBlock = extractNonTextBlock(block, articleId, index, capturedVideos);
   if (nonTextBlock) {
     return nonTextBlock;
   }
@@ -569,10 +630,15 @@ function extractBlock(block: Element, articleId: string, index: number): Article
   return textBlock;
 }
 
-function extractNonTextBlock(block: Element, articleId: string, index: number): ArticleBlock | null {
+function extractNonTextBlock(block: Element, articleId: string, index: number, capturedVideos: CapturedXVideo[]): ArticleBlock | null {
   const tweetRef = extractTweetRefBlock(block, blockId(articleId, index));
   if (tweetRef) {
     return tweetRef;
+  }
+
+  const video = extractVideoFromElement(block, blockId(articleId, index), capturedVideos);
+  if (video) {
+    return video;
   }
 
   const gif = extractGifFromElement(block, blockId(articleId, index));
@@ -950,6 +1016,54 @@ function extractGifFromElement(element: Element, id: string): GifBlock | null {
   };
 }
 
+function extractVideoFromElement(element: Element, id: string, capturedVideos: CapturedXVideo[]): VideoBlock | null {
+  const tweetPhoto = element.matches(X_ARTICLE_SELECTORS.tweetPhoto)
+    ? element
+    : element.querySelector(X_ARTICLE_SELECTORS.tweetPhoto);
+  const videoPlayer = tweetPhoto?.querySelector('[data-testid="videoPlayer"]');
+  if (!tweetPhoto || !videoPlayer) {
+    return null;
+  }
+
+  const video = videoPlayer.querySelector<HTMLVideoElement>('video');
+  const source = video?.querySelector<HTMLSourceElement>('source[src^="blob:"]');
+  if (!video || !source) {
+    return null;
+  }
+
+  const capturedVideo = matchCapturedVideo(video, capturedVideos);
+  const src = chooseCapturedVideoSource(capturedVideo);
+  if (!src) {
+    return null;
+  }
+
+  const aspectRatio = getMediaAspectRatio(video, tweetPhoto);
+  const backgroundColor = video.style.backgroundColor || getInlineStyleValue(video, 'background-color');
+  const top = video.style.top || getInlineStyleValue(video, 'top');
+  const left = video.style.left || getInlineStyleValue(video, 'left');
+  const transform = video.style.transform || getInlineStyleValue(video, 'transform');
+  const ariaLabel = video.getAttribute('aria-label') ?? undefined;
+
+  return {
+    id,
+    type: 'video',
+    src,
+    ...(resolveVideoSourceType(src, source.type) ? { sourceType: resolveVideoSourceType(src, source.type) } : {}),
+    transport: 'hls',
+    ...((capturedVideo?.poster || video.poster) ? { poster: capturedVideo?.poster || video.poster } : {}),
+    ...(aspectRatio ? { aspectRatio } : {}),
+    ...(backgroundColor ? { backgroundColor } : {}),
+    ...(top ? { top } : {}),
+    ...(left ? { left } : {}),
+    ...(transform ? { transform } : {}),
+    ...(video.preload ? { preload: video.preload } : {}),
+    playsInline: video.playsInline,
+    tabIndex: video.tabIndex,
+    ...(ariaLabel ? { ariaLabel } : {}),
+    paused: video.paused
+  };
+}
+
 function extractImageFromElement(element: Element, id: string): ImageBlock | null {
   const image = element.querySelector<HTMLImageElement>(X_ARTICLE_SELECTORS.tweetPhotoImage);
   if (!image) {
@@ -974,6 +1088,96 @@ function getMediaAspectRatio(media: HTMLMediaElement, container: Element): numbe
   }
 
   return undefined;
+}
+
+async function publishVideoPosters() {
+  const posters = collectVideoPosters();
+  if (Object.keys(posters).length === 0) {
+    return;
+  }
+
+  await chrome.runtime.sendMessage({
+    type: 'UPSERT_X_VIDEO_POSTERS',
+    posters
+  }).catch(() => {
+    // ignore transient extension reloads
+  });
+}
+
+function collectVideoPosters(): Record<string, string> {
+  const posters: Record<string, string> = {};
+  for (const video of Array.from(document.querySelectorAll<HTMLVideoElement>('video[poster]'))) {
+    const poster = video.getAttribute('poster') ?? '';
+    const videoId = getAmplifyVideoId(poster);
+    if (videoId && poster) {
+      posters[videoId] = poster;
+    }
+  }
+  return posters;
+}
+
+async function getCapturedVideos(): Promise<CapturedXVideo[]> {
+  const response = (await chrome.runtime.sendMessage({
+    type: 'GET_CAPTURED_X_VIDEOS'
+  }).catch(() => null)) as GetCapturedXVideosResponse | null;
+  return response?.videos ?? [];
+}
+
+function matchCapturedVideo(video: HTMLVideoElement, capturedVideos: CapturedXVideo[]): CapturedXVideo | undefined {
+  const candidates = [
+    video.poster,
+    video.getAttribute('poster') ?? '',
+    video.currentSrc,
+    video.src
+  ];
+
+  for (const candidate of candidates) {
+    const videoId = getAmplifyVideoId(candidate);
+    if (!videoId) {
+      continue;
+    }
+    const matched = capturedVideos.find((item) => item.videoId === videoId);
+    if (matched) {
+      return matched;
+    }
+  }
+
+  return capturedVideos.find((item) => item.poster && item.poster === video.poster);
+}
+
+function chooseCapturedVideoSource(video: CapturedXVideo | undefined): string {
+  if (!video) {
+    return '';
+  }
+
+  if (video.m3u8) {
+    return video.m3u8;
+  }
+
+  const resolutionEntries = Object.entries(video.resolutions ?? {});
+  if (resolutionEntries.length === 0) {
+    return '';
+  }
+
+  return resolutionEntries
+    .sort(([left], [right]) => compareResolutionLabel(right) - compareResolutionLabel(left))[0]?.[1] ?? '';
+}
+
+function resolveVideoSourceType(src: string, fallbackType: string): string {
+  if (src.includes('.m3u8')) {
+    return 'application/x-mpegURL';
+  }
+  return fallbackType;
+}
+
+function getAmplifyVideoId(value: string | null | undefined): string | undefined {
+  const match = value?.match(AMPLIFY_VIDEO_ID_PATTERN);
+  return match?.[1];
+}
+
+function compareResolutionLabel(value: string): number {
+  const [width, height] = value.split('x').map((part) => Number(part));
+  return (Number.isFinite(width) ? width : 0) * (Number.isFinite(height) ? height : 0);
 }
 
 function getInlineStyleValue(element: HTMLElement, property: string): string {
@@ -1153,7 +1357,14 @@ function validateArticle(article: Article) {
   const textLength = article.blocks.reduce((total, block) => total + getBlockTextLength(block), 0);
   const hasTextBlock = article.blocks.some((block) => isTextBlock(block));
   const hasMediaBlock = article.blocks.some(
-    (block) => block.type === 'image' || block.type === 'embed' || block.type === 'simple-tweet' || block.type === 'link'
+    (block) =>
+      block.type === 'image' ||
+      block.type === 'gif' ||
+      block.type === 'video' ||
+      block.type === 'embed' ||
+      block.type === 'simple-tweet' ||
+      block.type === 'link' ||
+      block.type === 'code'
   );
 
   if (textLength <= 200 && !(hasTextBlock && hasMediaBlock)) {
@@ -1182,12 +1393,15 @@ function getBlockTextLength(block: ArticleBlock): number {
   if (block.type === 'link') {
     return normalizeText(block.text).length;
   }
+  if (block.type === 'code') {
+    return normalizeText(`${block.language ?? ''} ${block.text}`).length;
+  }
 
   return 0;
 }
 
 function isTextBlock(block: ArticleBlock): boolean {
-  return block.type === 'paragraph' || block.type === 'heading' || block.type === 'quote' || block.type === 'list' || block.type === 'link';
+  return block.type === 'paragraph' || block.type === 'heading' || block.type === 'quote' || block.type === 'list' || block.type === 'link' || block.type === 'code';
 }
 
 function isXArticleUrl(value: string | URL): boolean {
