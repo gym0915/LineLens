@@ -3,8 +3,9 @@ import type { Article } from './article';
 export type CapturedXVideo = {
   videoId: string;
   poster?: string;
-  m3u8?: string;
-  resolutions?: Record<string, string>;
+  masterPlaylistUrl?: string;
+  videoPlaylists?: Record<string, string>;
+  audioPlaylists?: Record<string, string>;
 };
 
 export type ExtensionMessage =

@@ -30,14 +30,25 @@ chrome.webRequest.onBeforeRequest.addListener(
     }
 
     if (url.includes('/pl/playlist.m3u8')) {
-      videoData.m3u8 = url;
+      videoData.masterPlaylistUrl = url;
       return;
     }
 
-    const resolutionMatch = url.match(/\/(\d+x\d+)\//);
-    if (resolutionMatch) {
-      videoData.resolutions ??= {};
-      videoData.resolutions[resolutionMatch[1]] = url;
+    if (url.includes('/pl/avc1/')) {
+      const resolutionMatch = url.match(/\/(\d+x\d+)\//);
+      if (resolutionMatch) {
+        videoData.videoPlaylists ??= {};
+        videoData.videoPlaylists[resolutionMatch[1]] = url;
+      }
+      return;
+    }
+
+    if (url.includes('/pl/mp4a/')) {
+      const bitrateMatch = url.match(/\/pl\/mp4a\/([^/]+)\//);
+      if (bitrateMatch) {
+        videoData.audioPlaylists ??= {};
+        videoData.audioPlaylists[bitrateMatch[1]] = url;
+      }
     }
   },
   { urls: ['https://video.twimg.com/*'] }
@@ -312,8 +323,9 @@ function listCapturedVideos(tabId: number): CapturedXVideo[] {
   return Array.from(tabVideoMap.get(tabId)?.values() ?? []).map((video) => ({
     videoId: video.videoId,
     ...(video.poster ? { poster: video.poster } : {}),
-    ...(video.m3u8 ? { m3u8: video.m3u8 } : {}),
-    ...(video.resolutions ? { resolutions: { ...video.resolutions } } : {})
+    ...(video.masterPlaylistUrl ? { masterPlaylistUrl: video.masterPlaylistUrl } : {}),
+    ...(video.videoPlaylists ? { videoPlaylists: { ...video.videoPlaylists } } : {}),
+    ...(video.audioPlaylists ? { audioPlaylists: { ...video.audioPlaylists } } : {})
   }));
 }
 

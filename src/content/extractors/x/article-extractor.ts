@@ -669,7 +669,8 @@ function extractVideoFromElement(element: Element, id: string, capturedVideos: C
   }
 
   const capturedVideo = matchCapturedVideo(video, capturedVideos);
-  const src = chooseCapturedVideoSource(capturedVideo);
+  const hls = buildVideoHlsPayload(capturedVideo);
+  const src = chooseCapturedVideoSource(capturedVideo, hls);
   if (!src) {
     return null;
   }
@@ -687,6 +688,7 @@ function extractVideoFromElement(element: Element, id: string, capturedVideos: C
     src,
     ...(resolveVideoSourceType(src, source.type) ? { sourceType: resolveVideoSourceType(src, source.type) } : {}),
     transport: 'hls',
+    ...(hls ? { hls } : {}),
     ...((capturedVideo?.poster || video.poster) ? { poster: capturedVideo?.poster || video.poster } : {}),
     ...(aspectRatio ? { aspectRatio } : {}),
     ...(backgroundColor ? { backgroundColor } : {}),
@@ -757,16 +759,24 @@ function matchCapturedVideo(video: HTMLVideoElement, capturedVideos: CapturedXVi
   return capturedVideos.find((item) => item.poster && item.poster === video.poster);
 }
 
-function chooseCapturedVideoSource(video: CapturedXVideo | undefined): string {
+function chooseCapturedVideoSource(
+  video: CapturedXVideo | undefined,
+  hls: VideoBlock['hls'] | undefined
+): string {
+  if (hls?.masterPlaylistUrl) {
+    return hls.masterPlaylistUrl;
+  }
+
   if (!video) {
     return '';
   }
 
-  if (video.m3u8) {
-    return video.m3u8;
+  const preferredVideo = hls?.videoPlaylists?.[0]?.url;
+  if (preferredVideo) {
+    return preferredVideo;
   }
 
-  const resolutionEntries = Object.entries(video.resolutions ?? {});
+  const resolutionEntries = Object.entries(video.videoPlaylists ?? {});
   if (resolutionEntries.length === 0) {
     return '';
   }
@@ -791,6 +801,46 @@ function getAmplifyVideoId(value: string | null | undefined): string | undefined
 function compareResolutionLabel(value: string): number {
   const [width, height] = value.split('x').map((part) => Number(part));
   return (Number.isFinite(width) ? width : 0) * (Number.isFinite(height) ? height : 0);
+}
+
+function buildVideoHlsPayload(video: CapturedXVideo | undefined): VideoBlock['hls'] | undefined {
+  if (!video) {
+    return undefined;
+  }
+
+  const masterPlaylistUrl = video.masterPlaylistUrl;
+  const audioPlaylistUrl = pickAudioPlaylist(video);
+  const videoPlaylists = Object.entries(video.videoPlaylists ?? {})
+    .sort(([left], [right]) => compareResolutionLabel(right) - compareResolutionLabel(left))
+    .map(([resolution, url]) => {
+      const [width, height] = resolution.split('x').map((part) => Number(part));
+      return {
+        resolution,
+        ...(Number.isFinite(width) ? { width } : {}),
+        ...(Number.isFinite(height) ? { height } : {}),
+        url
+      };
+    });
+
+  if (!masterPlaylistUrl && !audioPlaylistUrl && videoPlaylists.length === 0) {
+    return undefined;
+  }
+
+  return {
+    masterPlaylistUrl: masterPlaylistUrl,
+    audioPlaylistUrl: audioPlaylistUrl,
+    videoPlaylists: videoPlaylists
+  };
+}
+
+function pickAudioPlaylist(video: CapturedXVideo): string | undefined {
+  const audioEntries = Object.entries(video.audioPlaylists ?? {});
+  if (audioEntries.length === 0) {
+    return undefined;
+  }
+
+  return audioEntries
+    .sort(([left], [right]) => Number(right) - Number(left))[0]?.[1];
 }
 
 function getInlineStyleValue(element: HTMLElement, property: string): string {

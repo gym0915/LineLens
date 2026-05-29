@@ -12,7 +12,8 @@
     "verify:reader-a8-a9": "npm run build && node scripts/verify-reader-a8-a9.mjs",
     "verify:x-article-b1-b9": "npm run build && node scripts/verify-x-article-b1-b9.mjs",
     "verify:x-article-b10-b15": "npm run build && node scripts/verify-x-article-b10-b15.mjs",
-    "verify:x-article-b29": "npm run verify:x-article-b10-b15"
+    "verify:x-article-b29": "npm run verify:x-article-b10-b15",
+    "verify:x-video-b31-b39": "npm run build && node scripts/verify-x-video-b31-b39.mjs"
   },
   "devDependencies": {
     "typescript": "^5.5.4"

@@ -1,4 +1,4 @@
-import { renderArticleShell } from './block-renderer.js';
+import { cleanupRenderedMedia, renderArticleShell } from './block-renderer.js';
 import { buildFocusUnits } from './focus-unit-builder.js';
 import { FocusEngine } from './focus-engine.js';
 import { HighlightLayer } from './highlight-layer.js';
@@ -6,6 +6,7 @@ import { ProgressStore } from './progress-store.js';
 import type { Article, FocusUnit } from '../shared/article-schema.js';
 
 export function mountReaderApp(root: HTMLElement, article: Article): void {
+  cleanupRenderedMedia(root);
   root.textContent = '';
 
   const articleElement = renderArticleShell(article);
@@ -133,6 +134,14 @@ export function mountReaderApp(root: HTMLElement, article: Article): void {
     image.addEventListener('load', scheduleHighlightRefresh);
     image.addEventListener('error', scheduleHighlightRefresh);
   });
+
+  window.addEventListener(
+    'pagehide',
+    () => {
+      cleanupRenderedMedia(articleElement);
+    },
+    { once: true }
+  );
 }
 
 async function copyCodeToClipboard(text: string, toast: HTMLElement): Promise<void> {

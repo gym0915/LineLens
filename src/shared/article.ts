@@ -111,6 +111,16 @@ export type VideoBlock = {
   src: string;
   sourceType?: string;
   transport?: 'hls' | 'direct';
+  hls?: {
+    masterPlaylistUrl?: string;
+    audioPlaylistUrl?: string;
+    videoPlaylists?: Array<{
+      resolution: string;
+      width?: number;
+      height?: number;
+      url: string;
+    }>;
+  };
   poster?: string;
   aspectRatio?: number;
   backgroundColor?: string;

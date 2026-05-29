@@ -318,8 +318,8 @@ assert.deepEqual(capturedVideosResponse, {
     {
       videoId: '2053916866964590592',
       poster: 'https://pbs.twimg.com/amplify_video_thumb/2053916866964590592/img/demo.jpg',
-      m3u8: 'https://video.twimg.com/amplify_video/2053916866964590592/pl/playlist.m3u8',
-      resolutions: {
+      masterPlaylistUrl: 'https://video.twimg.com/amplify_video/2053916866964590592/pl/playlist.m3u8',
+      videoPlaylists: {
         '1280x720': 'https://video.twimg.com/amplify_video/2053916866964590592/pl/avc1/1280x720/demo.m3u8',
         '480x270': 'https://video.twimg.com/amplify_video/2053916866964590592/pl/avc1/480x270/demo-low.m3u8'
       }

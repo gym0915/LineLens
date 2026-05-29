@@ -208,8 +208,9 @@ for (const source of [modularExtractorSource, liveExtractorSource]) {
   assert.match(source, /aria-label/, 'video extraction should preserve aria-label');
   assert.match(source, /video\.src/, 'GIF extraction should read the direct video src');
   assert.match(source, /GET_CAPTURED_X_VIDEOS/, 'video extraction should request captured videos from background');
-  assert.match(source, /if \(video\.m3u8\)/, 'video extraction should prefer the main playlist');
-  assert.match(source, /Object\.entries\(video\.resolutions \?\? \{\}\)/, 'video extraction should fall back to grouped resolution playlists');
+  assert.match(source, /masterPlaylistUrl/, 'video extraction should prefer the captured master playlist when available');
+  assert.match(source, /Object\.entries\(video\.videoPlaylists \?\? \{\}\)/, 'video extraction should fall back to grouped video playlists');
+  assert.match(source, /Object\.entries\(video\.audioPlaylists \?\? \{\}\)/, 'video extraction should keep grouped audio playlists available for later playback');
   assert.match(source, /application\/x-mpegURL/, 'video extraction should set HLS MIME when source is m3u8');
   assert.match(source, /function isSimpleTweetCard/, 'image-card simple tweet parsing should be gated by data-testid simpleTweet');
   assert.match(
@@ -235,6 +236,9 @@ assert.match(articleModelSource, /type: 'gif'/, 'GIF model should use a dedicate
 assert.match(articleModelSource, /VideoBlock/, 'article model should include video blocks');
 assert.match(articleModelSource, /type: 'video'/, 'video model should use a dedicated block type');
 assert.match(articleModelSource, /sourceType\?: string/, 'video model should preserve source MIME type');
+assert.match(articleModelSource, /hls\?: \{/, 'video model should preserve HLS playback metadata');
+assert.match(articleModelSource, /audioPlaylistUrl\?: string/, 'video model should preserve separated audio playlist metadata');
+assert.match(articleModelSource, /videoPlaylists\?: Array<\{/, 'video model should preserve grouped video rendition metadata');
 assert.match(articleModelSource, /preload\?: 'auto' \| 'metadata' \| 'none' \| ''/, 'video model should preserve preload');
 assert.match(articleModelSource, /playsInline\?: boolean/, 'video model should preserve playsinline');
 assert.match(articleModelSource, /tabIndex\?: number/, 'video model should preserve tabindex');
@@ -252,6 +256,9 @@ assert.match(readerRendererSource, /setAttribute\('aria-label', block\.ariaLabel
 assert.match(readerRendererSource, /video\.controls = true/, 'reader should enable native video controls');
 assert.match(readerRendererSource, /video\.autoplay = true/, 'reader should autoplay extracted videos');
 assert.match(readerRendererSource, /video\.muted = true/, 'reader should mute autoplay videos by default');
+assert.match(readerRendererSource, /window\.Hls/, 'reader should access hls.js for HLS playback');
+assert.match(readerRendererSource, /URL\.createObjectURL/, 'reader should support generated master playlist blob URLs');
+assert.match(readerRendererSource, /cleanupRenderedMedia/, 'reader should expose media cleanup hooks');
 assert.match(readerRendererSource, /reader-gif-badge/, 'reader should render the GIF badge overlay');
 assert.match(readerRendererSource, /reader-gif-pause-icon/, 'reader should render the GIF pause overlay icon');
 assert.match(readerRendererSource, /renderSimpleTweetPhotoGrid/, 'reader should render simple tweet image cards as a photo grid');
