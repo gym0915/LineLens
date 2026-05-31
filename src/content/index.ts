@@ -51,6 +51,7 @@ type ArticleBlock =
       excerpt: string;
       href?: string;
       photos?: TweetPhoto[];
+      video?: VideoBlock;
       authorName?: string;
       authorHandle?: string;
       authorAvatarUrl?: string;
@@ -440,7 +441,7 @@ async function extractXArticle(url: URL, root: ParentNode): Promise<Article> {
   }
 
   const capturedVideos = await getCapturedVideos();
-  const blocks = extractBlocks(longform, articleId, capturedVideos);
+  const blocks = await extractBlocks(longform, articleId, capturedVideos);
   const coverImage = extractCoverImage(readView, articleId);
   const article: Article = {
     id: articleId,
@@ -462,7 +463,7 @@ async function extractXArticle(url: URL, root: ParentNode): Promise<Article> {
   return article;
 }
 
-function extractBlocks(longform: Element, articleId: string, capturedVideos: CapturedXVideo[]): ArticleBlock[] {
+async function extractBlocks(longform: Element, articleId: string, capturedVideos: CapturedXVideo[]): Promise<ArticleBlock[]> {
   const blocks: ArticleBlock[] = [];
   let pendingListItems: string[] = [];
   let pendingListItemAnnotations: TextAnnotation[][] = [];
@@ -489,7 +490,7 @@ function extractBlocks(longform: Element, articleId: string, capturedVideos: Cap
     pendingListKind = 'unordered';
   }
 
-  longform.querySelectorAll(X_ARTICLE_SELECTORS.block).forEach((block) => {
+  for (const block of Array.from(longform.querySelectorAll(X_ARTICLE_SELECTORS.block))) {
     const listKind = getListKind(block);
     if (listKind) {
       const extracted = extractTextWithAnnotations(block);
@@ -503,7 +504,7 @@ function extractBlocks(longform: Element, articleId: string, capturedVideos: Cap
         pendingListItems.push(extracted.text);
         pendingListItemAnnotations.push(extracted.annotations);
       }
-      return;
+      continue;
     }
 
     const handwrittenOrderedListItem = extractHandwrittenOrderedListItem(block);
@@ -516,15 +517,15 @@ function extractBlocks(longform: Element, articleId: string, capturedVideos: Cap
       }
       pendingListItems.push(handwrittenOrderedListItem.text);
       pendingListItemAnnotations.push(handwrittenOrderedListItem.annotations);
-      return;
+      continue;
     }
 
     flushPendingList();
-    const articleBlock = extractBlock(block, articleId, blocks.length + 1, capturedVideos);
+    const articleBlock = await extractBlock(block, articleId, blocks.length + 1, capturedVideos);
     if (articleBlock) {
       blocks.push(articleBlock);
     }
-  });
+  }
 
   flushPendingList();
 
@@ -597,7 +598,7 @@ function hasNonTextContent(block: Element): boolean {
   );
 }
 
-function extractBlock(block: Element, articleId: string, index: number, capturedVideos: CapturedXVideo[]): ArticleBlock | null {
+async function extractBlock(block: Element, articleId: string, index: number, capturedVideos: CapturedXVideo[]): Promise<ArticleBlock | null> {
   if (block.matches(X_ARTICLE_SELECTORS.quoteBlock)) {
     const extracted = extractTextWithAnnotations(block, { preserveLineBreaks: true });
     return extracted.text
@@ -610,7 +611,7 @@ function extractBlock(block: Element, articleId: string, index: number, captured
       : null;
   }
 
-  const nonTextBlock = extractNonTextBlock(block, articleId, index, capturedVideos);
+  const nonTextBlock = await extractNonTextBlock(block, articleId, index, capturedVideos);
   if (nonTextBlock) {
     return nonTextBlock;
   }
@@ -641,10 +642,15 @@ function extractBlock(block: Element, articleId: string, index: number, captured
   return textBlock;
 }
 
-function extractNonTextBlock(block: Element, articleId: string, index: number, capturedVideos: CapturedXVideo[]): ArticleBlock | null {
-  const tweetRef = extractTweetRefBlock(block, blockId(articleId, index));
+async function extractNonTextBlock(block: Element, articleId: string, index: number, capturedVideos: CapturedXVideo[]): Promise<ArticleBlock | null> {
+  const tweetRef = await extractTweetRefBlock(block, blockId(articleId, index), capturedVideos);
   if (tweetRef) {
     return tweetRef;
+  }
+
+  const simpleTweet = await extractSimpleTweetBlock(block, blockId(articleId, index), capturedVideos);
+  if (simpleTweet) {
+    return simpleTweet;
   }
 
   const video = extractVideoFromElement(block, blockId(articleId, index), capturedVideos);
@@ -660,11 +666,6 @@ function extractNonTextBlock(block: Element, articleId: string, index: number, c
   const image = extractImageFromElement(block, blockId(articleId, index));
   if (image) {
     return image;
-  }
-
-  const simpleTweet = extractSimpleTweetBlock(block, blockId(articleId, index));
-  if (simpleTweet) {
-    return simpleTweet;
   }
 
   const link = extractLinkBlock(block, blockId(articleId, index));
@@ -714,13 +715,13 @@ function normalizeCodeLanguage(language: string): string {
   return normalizeText(language).replace(/^language-/, '').toLowerCase();
 }
 
-function extractTweetRefBlock(block: Element, id: string): ArticleBlock | null {
+async function extractTweetRefBlock(block: Element, id: string, capturedVideos: CapturedXVideo[]): Promise<ArticleBlock | null> {
   const tweet = block.querySelector(X_ARTICLE_SELECTORS.tweetBlock);
   if (!tweet) {
     return null;
   }
 
-  const articleCard = extractSimpleTweetBlock(block, id) ?? extractSimpleTweetBlock(tweet, id);
+  const articleCard = (await extractSimpleTweetBlock(block, id, capturedVideos)) ?? (await extractSimpleTweetBlock(tweet, id, capturedVideos));
   if (articleCard) {
     return articleCard;
   }
@@ -728,11 +729,11 @@ function extractTweetRefBlock(block: Element, id: string): ArticleBlock | null {
   return extractTweetSummaryBlock(tweet, id, block);
 }
 
-function extractTweetSummaryBlock(tweet: Element, id: string, fallbackBlock?: Element): ArticleBlock {
+async function extractTweetSummaryBlock(tweet: Element, id: string, fallbackBlock?: Element): Promise<ArticleBlock> {
   const profile = extractTweetProfile(tweet);
   const metrics = extractTweetMetrics(tweet);
   const authorLine = buildTweetAuthorLine(profile);
-  const body = extractTweetBodyText(tweet);
+  const body = await extractTweetBodyText(tweet);
   const fallbackText = normalizeText(tweet.querySelector('[data-testid="User-Name"]') ? '' : (tweet.textContent ?? fallbackBlock?.textContent ?? ''));
   const title = authorLine || (body ? 'X Tweet' : fallbackText || 'X Tweet');
   const excerpt = body || (authorLine ? '' : fallbackText);
@@ -818,7 +819,52 @@ function hasTweetMetrics(metrics: TweetMetrics): boolean {
   return Object.values(metrics).some(Boolean);
 }
 
-function extractTweetBodyText(tweet: Element): string {
+async function expandTweetTextIfNeeded(tweet: Element): Promise<void> {
+  const textContainer = tweet.querySelector<HTMLElement>('[data-testid="tweetText"]');
+  const showMoreButton = tweet.querySelector<HTMLButtonElement>('[data-testid="tweet-text-show-more-link"]');
+  if (!textContainer || !showMoreButton) {
+    return;
+  }
+
+  const label = getTweetShowMoreButtonLabel(showMoreButton);
+  if (!label) {
+    return;
+  }
+
+  const beforeText = normalizeText(textContainer.textContent ?? '');
+  const waitForExpandedText = new Promise<void>((resolve) => {
+    const observer = new MutationObserver(() => {
+      const nextText = normalizeText(textContainer.textContent ?? '');
+      if (nextText && nextText !== beforeText) {
+        observer.disconnect();
+        resolve();
+      }
+    });
+
+    observer.observe(textContainer, {
+      childList: true,
+      characterData: true,
+      subtree: true
+    });
+
+    showMoreButton.click();
+  });
+
+  await Promise.race([waitForExpandedText, wait(500)]);
+}
+
+function getTweetShowMoreButtonLabel(button: Element): string {
+  return normalizeText(button.textContent ?? button.getAttribute('aria-label') ?? '');
+}
+
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
+async function extractTweetBodyText(tweet: Element): Promise<string> {
+  await expandTweetTextIfNeeded(tweet);
   const explicitTweetText = normalizeText(tweet.querySelector('[data-testid="tweetText"]')?.textContent ?? '');
   if (explicitTweetText) {
     return explicitTweetText;
@@ -864,13 +910,18 @@ function extractLinkBlock(block: Element, id: string): ArticleBlock | null {
   };
 }
 
-function extractSimpleTweetBlock(block: Element, id: string): ArticleBlock | null {
+async function extractSimpleTweetBlock(block: Element, id: string, capturedVideos: CapturedXVideo[] = []): Promise<ArticleBlock | null> {
   if (isSimpleTweetArticleCard(block)) {
     return extractSimpleTweetArticleCard(block, id);
   }
 
   if (!isSimpleTweetCard(block)) {
     return null;
+  }
+
+  const videoCard = await extractSimpleTweetVideoCard(block, id, capturedVideos);
+  if (videoCard) {
+    return videoCard;
   }
 
   return extractSimpleTweetImageCard(block, id);
@@ -916,7 +967,7 @@ function extractSimpleTweetArticleCard(block: Element, id: string): ArticleBlock
   };
 }
 
-function extractSimpleTweetImageCard(block: Element, id: string): ArticleBlock | null {
+async function extractSimpleTweetImageCard(block: Element, id: string): Promise<ArticleBlock | null> {
   const photos = Array.from(block.querySelectorAll<HTMLElement>(X_ARTICLE_SELECTORS.tweetPhoto))
     .map(tweetPhotoElementToPhoto)
     .filter((photo): photo is NonNullable<ReturnType<typeof tweetPhotoElementToPhoto>> => Boolean(photo));
@@ -926,7 +977,7 @@ function extractSimpleTweetImageCard(block: Element, id: string): ArticleBlock |
   }
 
   const tweet = block.querySelector(X_ARTICLE_SELECTORS.tweetBlock) ?? block;
-  const body = extractTweetBodyText(tweet);
+  const body = await extractTweetBodyText(tweet);
   const profile = extractTweetProfile(tweet);
   const metrics = extractTweetMetrics(tweet);
 
@@ -939,6 +990,31 @@ function extractSimpleTweetImageCard(block: Element, id: string): ArticleBlock |
     excerpt: body,
     href: getSimpleTweetHref(block),
     photos,
+    ...profile,
+    ...(hasTweetMetrics(metrics) ? { metrics } : {})
+  };
+}
+
+async function extractSimpleTweetVideoCard(block: Element, id: string, capturedVideos: CapturedXVideo[]): Promise<ArticleBlock | null> {
+  const video = extractVideoFromElement(block, id, capturedVideos);
+  if (!video) {
+    return null;
+  }
+
+  const tweet = block.querySelector(X_ARTICLE_SELECTORS.tweetBlock) ?? block;
+  const body = await extractTweetBodyText(tweet);
+  const profile = extractTweetProfile(tweet);
+  const metrics = extractTweetMetrics(tweet);
+
+  return {
+    id,
+    type: 'simple-tweet',
+    coverUrl: '',
+    source: 'X Tweet',
+    title: buildTweetAuthorLine(profile) || 'X Tweet',
+    excerpt: body,
+    href: getSimpleTweetHref(block),
+    video,
     ...profile,
     ...(hasTweetMetrics(metrics) ? { metrics } : {})
   };

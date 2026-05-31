@@ -31,6 +31,11 @@ chrome.webRequest.onBeforeRequest.addListener(
 
     if (url.includes('/pl/playlist.m3u8')) {
       videoData.masterPlaylistUrl = url;
+      console.info(LOG_PREFIX, 'captured X video master playlist', {
+        tabId,
+        videoId,
+        url
+      });
       return;
     }
 
@@ -39,6 +44,12 @@ chrome.webRequest.onBeforeRequest.addListener(
       if (resolutionMatch) {
         videoData.videoPlaylists ??= {};
         videoData.videoPlaylists[resolutionMatch[1]] = url;
+        console.info(LOG_PREFIX, 'captured X video playlist', {
+          tabId,
+          videoId,
+          resolution: resolutionMatch[1],
+          url
+        });
       }
       return;
     }
@@ -48,6 +59,12 @@ chrome.webRequest.onBeforeRequest.addListener(
       if (bitrateMatch) {
         videoData.audioPlaylists ??= {};
         videoData.audioPlaylists[bitrateMatch[1]] = url;
+        console.info(LOG_PREFIX, 'captured X audio playlist', {
+          tabId,
+          videoId,
+          bitrate: bitrateMatch[1],
+          url
+        });
       }
     }
   },

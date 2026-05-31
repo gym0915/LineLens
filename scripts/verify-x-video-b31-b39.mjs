@@ -202,12 +202,44 @@ assert.match(extractorSource, /function buildVideoHlsPayload/, 'extractor should
 assert.match(extractorSource, /function pickAudioPlaylist/, 'extractor should select a grouped audio playlist when master is absent');
 assert.match(extractorSource, /videoPlaylists: /, 'extractor should pass grouped video renditions to reader');
 assert.match(extractorSource, /audioPlaylistUrl: /, 'extractor should pass grouped audio playlist to reader');
+assert.match(
+  extractorSource,
+  /const preferredVideo = hls\?\.videoPlaylists\?\.\[0\]\?\.url/,
+  'extractor should choose the first normalized HLS video rendition as the preferred fallback source'
+);
+assert.match(
+  extractorSource,
+  /\.sort\(\(\[left\], \[right\]\) => compareResolutionLabel\(right\) - compareResolutionLabel\(left\)\)/,
+  'extractor should sort video renditions by descending resolution so the preferred source is high resolution'
+);
 assert.match(readerHtml, /vendor\/hls\.min\.js/, 'reader should load local hls.min.js');
 assert.match(readerRendererSource, /window\.Hls/, 'reader should use the global hls.js runtime');
 assert.match(readerRendererSource, /URL\.createObjectURL/, 'reader should generate blob master playlists when necessary');
 assert.match(readerRendererSource, /new Blob\(\[masterPlaylist\]/, 'reader should materialize a generated master playlist');
 assert.match(readerRendererSource, /hls\.loadSource\(/, 'reader should attach HLS sources through hls.js');
 assert.match(readerRendererSource, /hls\.destroy\(\)/, 'reader should destroy HLS instances during cleanup');
+assert.match(readerRendererSource, /IntersectionObserver/, 'reader should use visibility observation to lazy-load and pause media');
+assert.match(readerRendererSource, /intersectionRatio <= 0\.2/, 'reader should pause video and GIF playback once at least 80% of the media is occluded');
+assert.match(readerRendererSource, /let hasActivated = false/, 'reader should defer media source attachment until the element begins rendering in view');
+assert.match(readerRendererSource, /wasPlayingBeforeOcclusion/, 'reader should remember whether media was playing before occlusion');
+assert.match(
+  readerRendererSource,
+  /visibilityPauseInProgress = true;[\s\S]*?video\.pause\(\);[\s\S]*?queueMicrotask\(\(\) => \{[\s\S]*?visibilityPauseInProgress = false;/,
+  'visibility-driven pause should keep its guard through the async pause event so it does not overwrite the pre-occlusion playing state'
+);
+assert.match(readerRendererSource, /if \(wasPlayingBeforeOcclusion\)/, 'reader should only resume media that was playing before occlusion');
+assert.match(readerRendererSource, /MutationObserver/, 'reader should observe highlight state changes as a playback recovery fallback');
+assert.match(
+  readerRendererSource,
+  /container\.closest\('\.focus-unit\.is-active'\)/,
+  'highlight recovery should also work when a parent focus unit, such as simpleTweet, owns the active state'
+);
+assert.match(
+  readerRendererSource,
+  /if \(isHighlighted\(\)\) \{[\s\S]*?forcePlay\(\);[\s\S]*?\}/,
+  'highlighting a video or GIF focus unit should force playback even if visibility resume did not recover it'
+);
+assert.match(readerRendererSource, /attachVisibilityControlledPlayback\(figure, video/, 'reader should apply the visibility lifecycle to standalone videos and GIFs');
 assert.match(readerAppSource, /disposeRenderedArticleShell|cleanupRenderedMedia|teardownRenderedArticleShell/, 'reader app should clean up rendered media lifecycles');
 
 console.log('B31-B39 video verification passed.');

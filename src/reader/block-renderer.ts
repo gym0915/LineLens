@@ -64,7 +64,7 @@ export function renderArticleShell(article: Article): HTMLElement {
 }
 
 export function cleanupRenderedMedia(root: ParentNode): void {
-  root.querySelectorAll<MediaCleanupElement>('.reader-video').forEach((element) => {
+  root.querySelectorAll<MediaCleanupElement>('.reader-video, .reader-gif').forEach((element) => {
     element.__linelensCleanup__?.();
     delete element.__linelensCleanup__;
   });
@@ -216,7 +216,6 @@ function renderGifBlock(block: GifBlock): HTMLElement {
 
   const video = document.createElement('video');
   video.className = 'reader-gif-video';
-  video.src = block.src;
   if (block.poster) {
     video.poster = block.poster;
   }
@@ -224,6 +223,7 @@ function renderGifBlock(block: GifBlock): HTMLElement {
   video.loop = true;
   video.muted = true;
   video.playsInline = true;
+  video.preload = 'none';
   video.setAttribute('aria-label', 'GIF');
   if (block.top) {
     video.style.top = block.top;
@@ -241,6 +241,15 @@ function renderGifBlock(block: GifBlock): HTMLElement {
     fallback.textContent = 'GIF 加载失败';
     figure.append(fallback);
   });
+
+  const teardownGifPlayback = attachVisibilityControlledPlayback(figure, video, () => {
+    video.src = block.src;
+    return () => {
+      video.removeAttribute('src');
+      video.load();
+    };
+  });
+  (figure as MediaCleanupElement).__linelensCleanup__ = teardownGifPlayback;
 
   const overlay = document.createElement('div');
   overlay.className = 'reader-gif-overlay';
@@ -278,10 +287,25 @@ function renderGifBlock(block: GifBlock): HTMLElement {
 }
 
 function renderVideoBlock(block: VideoBlock): HTMLElement {
+  return renderVideoPlayer(block, {
+    blockId: block.id,
+    blockType: 'video',
+    className: 'reader-block reader-media reader-video'
+  });
+}
+
+function renderVideoPlayer(
+  block: VideoBlock,
+  options: {
+    blockId: string;
+    blockType: string;
+    className: string;
+  }
+): HTMLElement {
   const figure = document.createElement('figure');
-  figure.className = 'reader-block reader-media reader-video';
-  figure.dataset.blockId = block.id;
-  figure.dataset.blockType = 'video';
+  figure.className = options.className;
+  figure.dataset.blockId = options.blockId;
+  figure.dataset.blockType = options.blockType;
   applyMediaAspectRatio(figure, block.aspectRatio);
 
   const media = document.createElement('div');
@@ -319,7 +343,7 @@ function renderVideoBlock(block: VideoBlock): HTMLElement {
   if (block.transform) {
     video.style.transform = block.transform;
   }
-  const teardownRenderedArticleShell = attachVideoPlayback(video, block);
+  const teardownRenderedArticleShell = attachVisibilityControlledPlayback(figure, video, () => attachVideoPlayback(video, block));
   (figure as MediaCleanupElement).__linelensCleanup__ = teardownRenderedArticleShell;
 
   video.addEventListener('error', () => {
@@ -334,6 +358,119 @@ function renderVideoBlock(block: VideoBlock): HTMLElement {
   media.append(video);
   figure.append(media);
   return figure;
+}
+
+function attachVisibilityControlledPlayback(
+  container: HTMLElement,
+  video: HTMLVideoElement,
+  activate: () => () => void
+): () => void {
+  let hasActivated = false;
+  let teardownPlayback: (() => void) | null = null;
+  let wasPlayingBeforeOcclusion = video.autoplay;
+  let visibilityPauseInProgress = false;
+
+  const activateOnce = () => {
+    if (hasActivated) {
+      return;
+    }
+    hasActivated = true;
+    teardownPlayback = activate();
+  };
+
+  const pauseForOcclusion = () => {
+    if (!hasActivated) {
+      return;
+    }
+    wasPlayingBeforeOcclusion = !video.paused;
+    if (!video.paused) {
+      visibilityPauseInProgress = true;
+      video.pause();
+      queueMicrotask(() => {
+        visibilityPauseInProgress = false;
+      });
+    }
+  };
+
+  const resumeIfNeeded = () => {
+    activateOnce();
+    if (wasPlayingBeforeOcclusion) {
+      void video.play().catch(() => undefined);
+    }
+  };
+
+  const forcePlay = () => {
+    activateOnce();
+    wasPlayingBeforeOcclusion = true;
+    void video.play().catch(() => undefined);
+  };
+
+  const isHighlighted = () => Boolean(container.classList.contains('is-active') || container.closest('.focus-unit.is-active'));
+
+  const handlePlay = () => {
+    if (!visibilityPauseInProgress) {
+      wasPlayingBeforeOcclusion = true;
+    }
+  };
+  const handlePause = () => {
+    if (!visibilityPauseInProgress) {
+      wasPlayingBeforeOcclusion = false;
+    }
+  };
+  video.addEventListener('play', handlePlay);
+  video.addEventListener('pause', handlePause);
+
+  if (!('IntersectionObserver' in window)) {
+    forcePlay();
+    return () => {
+      video.removeEventListener('play', handlePlay);
+      video.removeEventListener('pause', handlePause);
+      teardownPlayback?.();
+    };
+  }
+
+  const observeRoot = document.body ?? document.documentElement ?? container;
+  const highlightObserver = new MutationObserver(() => {
+    if (isHighlighted()) {
+      forcePlay();
+    }
+  });
+  highlightObserver.observe(observeRoot, {
+    attributes: true,
+    attributeFilter: ['class'],
+    subtree: true
+  });
+  if (isHighlighted()) {
+    forcePlay();
+  }
+
+  const observer = new IntersectionObserver(
+    (entries) => {
+      const entry = entries[0];
+      if (!entry) {
+        return;
+      }
+
+      if (entry.intersectionRatio <= 0.2) {
+        pauseForOcclusion();
+        return;
+      }
+
+      resumeIfNeeded();
+    },
+    {
+      threshold: [0, 0.2, 1]
+    }
+  );
+  observer.observe(container);
+
+  return () => {
+    observer.disconnect();
+    highlightObserver.disconnect();
+    video.removeEventListener('play', handlePlay);
+    video.removeEventListener('pause', handlePause);
+    teardownPlayback?.();
+  };
 }
 
 function attachVideoPlayback(video: HTMLVideoElement, block: VideoBlock): () => void {
@@ -529,13 +666,15 @@ function renderLinkBlock(blockId: string, text: string, href: string, target?: s
 }
 
 function renderSimpleTweetBlock(block: SimpleTweetBlock): HTMLElement {
-  const card = document.createElement('a');
+  const card = document.createElement(block.video ? 'div' : 'a');
   card.className = 'reader-block reader-simple-tweet';
   card.dataset.blockId = block.id;
   card.dataset.blockType = 'simple-tweet';
-  if (block.href) {
+  if (block.href && card.tagName === 'A') {
     card.setAttribute('href', block.href);
     card.setAttribute('rel', 'noreferrer');
+  } else if (block.href) {
+    card.dataset.href = block.href;
   }
 
   const tweetFrame = document.createElement('div');
@@ -558,6 +697,20 @@ function renderSimpleTweetBlock(block: SimpleTweetBlock): HTMLElement {
     text.setAttribute('data-testid', 'tweetText');
     text.textContent = block.excerpt || block.title;
     shell.append(text, renderSimpleTweetPhotoGrid(photos));
+  } else if (block.video) {
+    shell.classList.add('reader-simple-tweet-shell-video');
+    const text = document.createElement('div');
+    text.className = 'reader-simple-tweet-text';
+    text.setAttribute('data-testid', 'tweetText');
+    text.textContent = block.excerpt || block.title;
+    shell.append(
+      text,
+      renderVideoPlayer(block.video, {
+        blockId: `${block.id}-video`,
+        blockType: 'simple-tweet-video',
+        className: 'reader-simple-tweet-video reader-media reader-video'
+      })
+    );
   } else if (block.coverUrl) {
     const media = document.createElement('div');
     media.className = 'reader-simple-tweet-media';
@@ -581,7 +734,7 @@ function renderSimpleTweetBlock(block: SimpleTweetBlock): HTMLElement {
   const content = document.createElement('div');
   content.className = 'reader-simple-tweet-content';
 
-  if (!block.coverUrl && !hasPhotoCard) {
+  if (!block.coverUrl && !hasPhotoCard && !block.video) {
     const sourceBadge = document.createElement('span');
     sourceBadge.className = 'reader-simple-tweet-source reader-simple-tweet-source-inline';
     sourceBadge.setAttribute('aria-label', block.source);
@@ -589,7 +742,7 @@ function renderSimpleTweetBlock(block: SimpleTweetBlock): HTMLElement {
     content.append(sourceBadge);
   }
 
-  if (!hasPhotoCard) {
+  if (!hasPhotoCard && !block.video) {
     const titleElement = document.createElement('div');
     titleElement.className = 'reader-simple-tweet-title';
     titleElement.textContent = block.title;
@@ -884,6 +1037,11 @@ function renderCopyIcon(): SVGSVGElement {
 }
 
 function appendHighlightedCode(container: HTMLElement, text: string, language: string): void {
+  if (language === 'markdown' || language === 'md') {
+    appendHighlightedMarkdown(container, text);
+    return;
+  }
+
   const pattern = getCodeTokenPattern(language);
   let cursor = 0;
   for (const match of text.matchAll(pattern)) {
@@ -900,6 +1058,55 @@ function appendHighlightedCode(container: HTMLElement, text: string, language: s
   if (cursor < text.length) {
     container.append(document.createTextNode(text.slice(cursor)));
   }
+}
+
+function appendHighlightedMarkdown(container: HTMLElement, text: string): void {
+  const linePattern = /([^\n]*)(\n|$)/g;
+  for (const match of text.matchAll(linePattern)) {
+    const line = match[1];
+    const lineEnd = match[2];
+    if (!line && !lineEnd) continue;
+
+    appendHighlightedMarkdownLine(container, line);
+    if (lineEnd) {
+      container.append(document.createTextNode(lineEnd));
+    }
+  }
+}
+
+function appendHighlightedMarkdownLine(container: HTMLElement, line: string): void {
+  const headingMatch = line.match(/^(\s*)(#{1,6})(\s+)(.*)$/);
+  if (headingMatch) {
+    container.append(document.createTextNode(headingMatch[1]));
+    appendCodeToken(container, headingMatch[2], 'punctuation');
+    appendCodeToken(container, `${headingMatch[3]}${headingMatch[4]}`, 'heading');
+    return;
+  }
+
+  const orderedListMatch = line.match(/^(\s*)(\d+\.)(\s+.*)$/);
+  if (orderedListMatch) {
+    container.append(document.createTextNode(orderedListMatch[1]));
+    appendCodeToken(container, orderedListMatch[2], 'punctuation');
+    container.append(document.createTextNode(orderedListMatch[3]));
+    return;
+  }
+
+  const unorderedListMatch = line.match(/^(\s*)([-*+])(\s+.*)$/);
+  if (unorderedListMatch) {
+    container.append(document.createTextNode(unorderedListMatch[1]));
+    appendCodeToken(container, unorderedListMatch[2], 'punctuation');
+    container.append(document.createTextNode(unorderedListMatch[3]));
+    return;
+  }
+
+  container.append(document.createTextNode(line));
+}
+
+function appendCodeToken(container: HTMLElement, text: string, tokenType: string): void {
+  const span = document.createElement('span');
+  span.className = `reader-code-token reader-code-token-${tokenType}`;
+  span.textContent = text;
+  container.append(span);
 }
 
 function getCodeTokenPattern(language: string): RegExp {

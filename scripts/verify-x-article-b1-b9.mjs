@@ -185,6 +185,11 @@ for (const source of [modularExtractorSource, liveExtractorSource]) {
   assert.match(source, /tweetBlock/, 'extractor should use the tweet data-testid selector');
   assert.match(source, /function extractTweetSummaryBlock/, 'tweet references should build a summary without collapsing author, date, body, and metrics');
   assert.match(source, /function extractTweetBodyText/, 'tweet references should extract the tweet body without appending engagement metrics');
+  assert.match(source, /tweet-text-show-more-link/, 'tweet body extraction should detect X show-more controls before reading text');
+  assert.match(source, /getTweetShowMoreButtonLabel/, 'tweet show-more detection should read the localized button text');
+  assert.match(source, /await expandTweetTextIfNeeded/, 'tweet extraction should await DOM expansion before reading tweetText');
+  assert.match(source, /MutationObserver/, 'tweet show-more expansion should observe the asynchronous DOM update');
+  assert.match(source, /Promise\.race/, 'tweet show-more expansion should not hang if X fails to update the DOM');
   assert.doesNotMatch(source, /title: text \|\| 'X Tweet'/, 'tweet references should not collapse full tweet textContent into a single title');
   assert.match(source, /function getSimpleTweetHref/, 'simple tweets should use a dedicated href extractor');
   assert.match(source, /function extractSimpleTweetImageCard/, 'simple tweets should parse image-card tweets without article covers');
@@ -213,13 +218,18 @@ for (const source of [modularExtractorSource, liveExtractorSource]) {
   assert.match(source, /Object\.entries\(video\.audioPlaylists \?\? \{\}\)/, 'video extraction should keep grouped audio playlists available for later playback');
   assert.match(source, /application\/x-mpegURL/, 'video extraction should set HLS MIME when source is m3u8');
   assert.match(source, /function isSimpleTweetCard/, 'image-card simple tweet parsing should be gated by data-testid simpleTweet');
-  assert.match(
-    source,
-    /const image = extractImageFromElement\(block, blockId\(articleId, index\)\);[\s\S]*?const simpleTweet = extractSimpleTweetBlock/,
-    'plain section tweetPhoto image blocks should be extracted before simpleTweet fallback'
-  );
   assert.match(source, /querySelectorAll<HTMLElement>\(X_ARTICLE_SELECTORS\.tweetPhoto\)/, 'image-card simple tweets should enumerate tweetPhoto containers');
   assert.match(source, /function getTweetPhotoBackgroundUrl/, 'image-card simple tweets should keep the lazy background-image fallback');
+  assert.match(
+    source,
+    /const simpleTweet = await extractSimpleTweetBlock\(block, blockId\(articleId, index\), capturedVideos\);[\s\S]*?const video = extractVideoFromElement/,
+    'simpleTweet cards should be resolved before standalone video blocks so embedded tweet videos stay inside the tweet card'
+  );
+  assert.match(
+    source,
+    /function extractSimpleTweetVideoCard/,
+    'simple tweets should parse embedded video-card tweets without duplicating standalone video extraction logic'
+  );
   assert.match(source, /function extractTweetProfile/, 'simple tweets should extract dynamic author profile fields');
   assert.match(source, /function extractTweetMetrics/, 'simple tweets should extract dynamic action metrics');
   assert.match(source, /status\/(?!.*analytics)/, 'simple tweet href extraction should prefer tweet status links over profile or analytics links');

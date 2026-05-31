@@ -144,6 +144,7 @@ export type SimpleTweetBlock = {
   excerpt: string;
   href?: string;
   photos?: TweetPhoto[];
+  video?: VideoBlock;
   authorName?: string;
   authorHandle?: string;
   authorAvatarUrl?: string;

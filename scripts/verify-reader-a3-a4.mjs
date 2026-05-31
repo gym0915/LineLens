@@ -208,6 +208,13 @@ assert(
   'code copy button should preserve the X markdown-code-block copy svg path'
 );
 assert(findByClass(codeElement, 'reader-code-token-keyword')?.textContent === 'pub', 'code block should render highlighted keyword tokens');
+const markdownCodeRendered = renderArticleShell({
+  ...mediaArticle,
+  blocks: [{ id: 'markdown-code', type: 'code', language: 'markdown', text: '# Principles\n\n## How we work\n1. Flow before pixels.\n- Ship it.' }]
+});
+const markdownCodeElement = markdownCodeRendered.querySelector('[data-block-id="markdown-code"]');
+assert(findByClass(markdownCodeElement, 'reader-code-token-punctuation')?.textContent === '#', 'markdown code block should highlight heading markers');
+assert(findByClass(markdownCodeElement, 'reader-code-token-heading')?.textContent === ' Principles', 'markdown code block should highlight heading text');
 const readerAppSource = readFileSync(resolve(root, 'src/reader/reader-app.ts'), 'utf8');
 assert(/target instanceof Element/.test(readerAppSource), 'copy event delegation should also work when clicking svg child nodes');
 assert(/button\[data-copy-code\]/.test(readerAppSource), 'copy event delegation should target the copy button from svg descendants');
