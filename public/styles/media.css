@@ -1,0 +1,106 @@
+.reader-media {
+  margin: var(--reader-media-gap) 0;
+}
+
+.reader-media img {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+  border-radius: var(--reader-radius-media);
+  filter: saturate(0.5);
+  transition: filter 300ms ease;
+}
+
+.reader-media[data-aspect-ratio] img {
+  aspect-ratio: var(--reader-media-aspect-ratio);
+}
+
+.reader-gif-media,
+.reader-video-media {
+  position: relative;
+  width: 100%;
+  aspect-ratio: var(--reader-media-aspect-ratio, 16 / 9);
+  overflow: hidden;
+  border-radius: var(--reader-radius-media);
+  background: #000;
+}
+
+.reader-gif-video,
+.reader-video-player {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: saturate(0.5);
+  transition: filter 300ms ease;
+}
+
+.reader-gif-overlay {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  pointer-events: auto;
+}
+
+.reader-gif-pause,
+.reader-gif-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  height: 24px;
+  min-height: 24px;
+  line-height: 24px;
+  border-radius: 0;
+  color: #fff;
+}
+
+.reader-gif-pause {
+  width: 28px;
+  border: 0;
+  padding: 0;
+  background: rgba(15, 20, 25, 0.82);
+  cursor: pointer;
+  border-radius: 4px 0 0 4px;
+}
+
+.reader-gif-badge {
+  padding: 0 9px;
+  background: rgba(150, 150, 150, 0.78);
+  font-family: "DM Sans", system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0;
+  border-radius: 0 4px 4px 0;
+}
+
+.reader-gif-pause-icon {
+  width: 15px;
+  height: 15px;
+  fill: currentColor;
+}
+
+.reader-gif-play-icon {
+  width: 15px;
+  height: 15px;
+  fill: currentColor;
+}
+
+.reader-media.is-load-error {
+  min-height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(44, 37, 33, 0.12);
+  color: var(--reader-text-chrome);
+  font-family: "DM Sans", system-ui, sans-serif;
+  font-size: 14px;
+}

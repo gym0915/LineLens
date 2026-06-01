@@ -1,0 +1,92 @@
+@media (max-width: 720px) {
+  .reader-simple-tweet-frame {
+    grid-template-columns: 40px minmax(0, 1fr) 22px;
+    padding: 12px;
+    border-radius: 12px;
+  }
+
+  .reader-simple-tweet-avatar {
+    width: 40px;
+    height: 40px;
+  }
+
+  .reader-simple-tweet-author-primary {
+    font-size: 17px;
+  }
+
+  .reader-simple-tweet-verified-icon {
+    width: 18px;
+    height: 18px;
+  }
+
+  .reader-simple-tweet-author-secondary {
+    font-size: 15px;
+  }
+
+  .reader-simple-tweet-grok-icon {
+    width: 22px;
+    height: 22px;
+  }
+
+  .reader-simple-tweet-shell {
+    border-radius: 16px;
+  }
+
+  .reader-simple-tweet-shell-photo {
+    gap: 16px;
+    border-radius: 0;
+  }
+
+  .reader-simple-tweet-shell-video {
+    gap: 16px;
+    border-radius: 0;
+  }
+
+  .reader-simple-tweet-text-container {
+    font-size: 18px;
+  }
+
+  .reader-simple-tweet-show-more {
+    font-size: 16px;
+  }
+
+  .reader-simple-tweet-photo-grid {
+    border-radius: 0;
+  }
+
+  .reader-simple-tweet-media {
+    aspect-ratio: 5 / 2;
+  }
+
+  .reader-simple-tweet-content {
+    padding: 14px 16px 16px;
+  }
+
+  .reader-simple-tweet-title {
+    font-size: 19px;
+  }
+
+  .reader-simple-tweet-excerpt {
+    font-size: 16px;
+  }
+
+  .reader-simple-tweet-actions {
+    gap: 10px;
+    padding-top: 14px;
+    font-size: 15px;
+  }
+
+  .reader-simple-tweet-action-icon {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .focus-unit,
+  .reader-media img,
+  .highlight-focus,
+  .reader-hint {
+    transition: none;
+  }
+}

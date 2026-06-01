@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { renderArticleShell } from '../dist/reader/block-renderer.js';
 import { buildFocusUnits } from '../dist/reader/focus-unit-builder.js';
@@ -62,6 +62,7 @@ class ElementLike extends NodeLike {
     this.className = '';
     this.classList = new ClassList(this);
     this.eventListeners = new Map();
+    this.style = {};
     this.loading = '';
     this.alt = '';
     this.src = '';
@@ -178,6 +179,41 @@ assert(
     'The Science of Attention: Why Your Brain Needs Boredom',
   'simple tweet title should render'
 );
+const multilineSimpleTweetArticle = {
+  ...mediaArticle,
+  blocks: [
+    {
+      id: 'tweet-multiline',
+      type: 'simple-tweet',
+      coverUrl: '',
+      source: 'X Article',
+      title: 'First line',
+      excerpt: 'First line\nSecond line\nThird line\nFourth line\nFifth line\nSixth line\nSeventh line',
+      href: 'https://x.com/example/status/2',
+      photos: [{ src: 'https://example.com/photo.jpg', alt: 'Tweet photo' }]
+    }
+  ]
+};
+const multilineSimpleTweetRendered = renderArticleShell(multilineSimpleTweetArticle);
+const multilineSimpleTweet = multilineSimpleTweetRendered.querySelector('[data-block-id="tweet-multiline"]');
+const multilineSimpleTweetTextContainer = findByClass(multilineSimpleTweet, 'reader-simple-tweet-text-container');
+const multilineSimpleTweetText = findByClass(multilineSimpleTweet, 'reader-simple-tweet-text');
+const multilineSimpleTweetShowMore = findByClass(multilineSimpleTweet, 'reader-simple-tweet-show-more');
+const readerCss = readReaderCss();
+assert(multilineSimpleTweetTextContainer?.className.includes('is-collapsed'), 'simple tweet text should start collapsed');
+assert(
+  multilineSimpleTweetText?.textContent === multilineSimpleTweetArticle.blocks[0].excerpt,
+  'simple tweet text should preserve newline characters'
+);
+assert(multilineSimpleTweetShowMore?.textContent === 'Show more', 'simple tweet text should render a show more control');
+assert(readerCss.includes('white-space: pre-wrap;'), 'simple tweet text CSS should preserve visible line breaks');
+assert(readerCss.includes('-webkit-line-clamp: 6;'), 'simple tweet text CSS should clamp to six lines');
+multilineSimpleTweetShowMore.eventListeners.get('click')({
+  preventDefault() {},
+  stopPropagation() {}
+});
+assert(!multilineSimpleTweetTextContainer.className.includes('is-collapsed'), 'clicking show more should expand simple tweet text');
+assert(!findByClass(multilineSimpleTweet, 'reader-simple-tweet-show-more'), 'expanded simple tweet text should not render show less');
 assert(rendered.querySelector('[data-block-id="list1"]')?.tagName === 'UL', 'unordered list should render as ul');
 const orderedListRendered = renderArticleShell({
   ...mediaArticle,
@@ -414,7 +450,7 @@ assert(
   'inline quote link rendering should preserve quote line breaks'
 );
 
-const css = readFileSync(join(root, 'public', 'reader.css'), 'utf8');
+const css = readReaderCss();
 for (const token of [
   '--reader-column-width',
   '--reader-canvas',
@@ -443,6 +479,18 @@ console.log('Reader A3/A4 verification passed.');
 
 function readFixture(id) {
   return JSON.parse(readFileSync(join(fixtureDir, `${id}.json`), 'utf8'));
+}
+
+function readReaderCss() {
+  const publicDir = join(root, 'public');
+  const stylesDir = join(publicDir, 'styles');
+  return [
+    readFileSync(join(publicDir, 'reader.css'), 'utf8'),
+    ...readdirSync(stylesDir)
+      .filter((fileName) => fileName.endsWith('.css'))
+      .sort()
+      .map((fileName) => readFileSync(join(stylesDir, fileName), 'utf8'))
+  ].join('\n');
 }
 
 function querySelector(rootElement, selector) {

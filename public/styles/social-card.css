@@ -1,0 +1,326 @@
+.reader-simple-tweet {
+  margin: 28px 0;
+  display: block;
+  border-radius: 14px;
+  color: rgb(83, 100, 113);
+  font-family: "DM Sans", system-ui, sans-serif;
+  text-decoration: none;
+}
+
+.reader-simple-tweet-frame {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) 24px;
+  column-gap: 10px;
+  row-gap: 12px;
+  align-items: start;
+  padding: 16px 18px 14px;
+  border: 1px solid rgb(207, 217, 222);
+  border-radius: 14px;
+  background: rgb(255, 255, 255);
+  box-shadow: 0 2px 10px rgba(15, 20, 25, 0.1);
+}
+
+.reader-simple-tweet-header {
+  display: contents;
+}
+
+.reader-simple-tweet-avatar {
+  grid-column: 1;
+  grid-row: 1;
+  display: block;
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  object-fit: cover;
+}
+
+.reader-simple-tweet-author {
+  grid-column: 2;
+  grid-row: 1;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding-top: 2px;
+  min-width: 0;
+}
+
+.reader-simple-tweet-author-primary,
+.reader-simple-tweet-author-secondary,
+.reader-simple-tweet-actions,
+.reader-simple-tweet-action {
+  display: flex;
+  align-items: center;
+}
+
+.reader-simple-tweet-author-primary {
+  gap: 6px;
+  min-width: 0;
+  color: rgb(15, 20, 25);
+  font-size: 16.5px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.reader-simple-tweet-display-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reader-simple-tweet-verified-icon {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  fill: rgb(29, 155, 240);
+}
+
+.reader-simple-tweet-author-secondary {
+  gap: 6px;
+  min-width: 0;
+  color: rgb(83, 100, 113);
+  font-size: 16.5px;
+  line-height: 1.15;
+}
+
+.reader-simple-tweet-author-secondary span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reader-simple-tweet-grok-icon {
+  grid-column: 3;
+  grid-row: 1;
+  justify-self: end;
+  margin-top: 2px;
+  width: 22px;
+  height: 22px;
+  fill: rgb(83, 100, 113);
+}
+
+.reader-simple-tweet-shell {
+  grid-column: 2 / 4;
+  grid-row: 2;
+  overflow: hidden;
+  border: 1px solid rgb(207, 217, 222);
+  border-radius: 20px;
+  background: rgb(255, 255, 255);
+}
+
+.reader-simple-tweet-shell-photo {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+}
+
+.reader-simple-tweet-shell-video {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+}
+
+.reader-simple-tweet-video {
+  margin: 0;
+}
+
+.reader-simple-tweet-text-container {
+  color: rgb(15, 20, 25);
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 1.28;
+}
+
+.reader-simple-tweet-text {
+  white-space: pre-wrap;
+}
+
+.reader-simple-tweet-text-container.is-collapsed .reader-simple-tweet-text {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 6;
+}
+
+.reader-simple-tweet-show-more {
+  display: inline-block;
+  margin-top: 6px;
+  color: rgb(29, 155, 240);
+  font: inherit;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.25;
+  cursor: pointer;
+}
+
+.reader-simple-tweet-show-more:focus-visible {
+  border-radius: 4px;
+  outline: 2px solid rgba(29, 155, 240, 0.45);
+  outline-offset: 2px;
+}
+
+.reader-simple-tweet-photo-grid {
+  display: grid;
+  overflow: hidden;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+  background: rgb(255, 255, 255);
+  aspect-ratio: 16 / 9;
+}
+
+.reader-simple-tweet-photo-count-1 {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.reader-simple-tweet-photo-count-2,
+.reader-simple-tweet-photo-count-4 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.reader-simple-tweet-photo-count-3 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+}
+
+.reader-simple-tweet-photo-count-3 .reader-simple-tweet-photo:first-child {
+  grid-row: 1 / 3;
+}
+
+.reader-simple-tweet-photo {
+  position: relative;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  min-width: 0;
+  min-height: 0;
+  background: rgb(255, 255, 255);
+}
+
+.reader-simple-tweet-photo + .reader-simple-tweet-photo {
+  border-left: 0;
+}
+
+.reader-simple-tweet-photo-count-4 .reader-simple-tweet-photo:nth-child(n + 3) {
+  border-top: 0;
+}
+
+.reader-simple-tweet-photo-background {
+  position: absolute;
+  inset: 0;
+  background-position: center;
+  background-size: cover;
+  opacity: 0.04;
+  filter: blur(18px);
+  transform: scale(1.08);
+}
+
+.reader-simple-tweet-photo img {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.reader-simple-tweet-media {
+  position: relative;
+  aspect-ratio: 5 / 2;
+  overflow: hidden;
+}
+
+.reader-simple-tweet-cover {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: saturate(0.72);
+  transition: filter 300ms ease;
+}
+
+.reader-simple-tweet-source {
+  position: absolute;
+  bottom: 10px;
+  left: 12px;
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 3px;
+  padding: 4px 8px 5px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.55);
+  color: rgba(255, 255, 255, 0.94);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.reader-simple-tweet-source-icon {
+  display: block;
+  width: 13px;
+  height: 13px;
+  fill: currentColor;
+  transform: translateY(1px);
+}
+
+.reader-simple-tweet-source-text {
+  display: block;
+  line-height: 1;
+}
+
+.reader-simple-tweet-source-inline {
+  position: static;
+  display: inline-flex;
+  margin-bottom: 10px;
+  background: rgba(44, 37, 33, 0.08);
+  color: rgba(44, 37, 33, 0.55);
+}
+
+.reader-simple-tweet-content {
+  padding: 16px 18px 18px;
+}
+
+.reader-simple-tweet-title {
+  margin-bottom: 8px;
+  color: rgb(15, 20, 25);
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.reader-simple-tweet-excerpt {
+  color: rgb(15, 20, 25);
+  font-size: 16.5px;
+  line-height: 1.55;
+}
+
+.reader-simple-tweet-actions {
+  grid-column: 2 / 4;
+  grid-row: 3;
+  justify-content: space-between;
+  gap: 14px;
+  padding-top: 4px;
+  color: rgb(83, 100, 113);
+  font-size: 16.5px;
+  line-height: 1;
+}
+
+.reader-simple-tweet-action {
+  gap: 10px;
+  min-width: 0;
+}
+
+.reader-simple-tweet-action-icon {
+  width: 22px;
+  height: 22px;
+  fill: currentColor;
+}

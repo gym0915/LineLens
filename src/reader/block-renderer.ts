@@ -369,6 +369,7 @@ function attachVisibilityControlledPlayback(
   let teardownPlayback: (() => void) | null = null;
   let wasPlayingBeforeOcclusion = video.autoplay;
   let visibilityPauseInProgress = false;
+  let isMostlyVisible = false;
 
   const activateOnce = () => {
     if (hasActivated) {
@@ -406,6 +407,11 @@ function attachVisibilityControlledPlayback(
   };
 
   const isHighlighted = () => Boolean(container.classList.contains('is-active') || container.closest('.focus-unit.is-active'));
+  const playIfHighlightedAndVisible = () => {
+    if (isMostlyVisible && isHighlighted()) {
+      forcePlay();
+    }
+  };
 
   const handlePlay = () => {
     if (!visibilityPauseInProgress) {
@@ -431,18 +437,14 @@ function attachVisibilityControlledPlayback(
 
   const observeRoot = document.body ?? document.documentElement ?? container;
   const highlightObserver = new MutationObserver(() => {
-    if (isHighlighted()) {
-      forcePlay();
-    }
+    playIfHighlightedAndVisible();
   });
   highlightObserver.observe(observeRoot, {
     attributes: true,
     attributeFilter: ['class'],
     subtree: true
   });
-  if (isHighlighted()) {
-    forcePlay();
-  }
+  playIfHighlightedAndVisible();
 
   const observer = new IntersectionObserver(
     (entries) => {
@@ -451,12 +453,14 @@ function attachVisibilityControlledPlayback(
         return;
       }
 
-      if (entry.intersectionRatio <= 0.2) {
+      isMostlyVisible = entry.intersectionRatio > 0.2;
+      if (!isMostlyVisible) {
         pauseForOcclusion();
         return;
       }
 
       resumeIfNeeded();
+      playIfHighlightedAndVisible();
     },
     {
       threshold: [0, 0.2, 1]
@@ -692,19 +696,11 @@ function renderSimpleTweetBlock(block: SimpleTweetBlock): HTMLElement {
 
   if (hasPhotoCard) {
     shell.classList.add('reader-simple-tweet-shell-photo');
-    const text = document.createElement('div');
-    text.className = 'reader-simple-tweet-text';
-    text.setAttribute('data-testid', 'tweetText');
-    text.textContent = block.excerpt || block.title;
-    shell.append(text, renderSimpleTweetPhotoGrid(photos));
+    shell.append(renderExpandableSimpleTweetText(block.excerpt || block.title), renderSimpleTweetPhotoGrid(photos));
   } else if (block.video) {
     shell.classList.add('reader-simple-tweet-shell-video');
-    const text = document.createElement('div');
-    text.className = 'reader-simple-tweet-text';
-    text.setAttribute('data-testid', 'tweetText');
-    text.textContent = block.excerpt || block.title;
     shell.append(
-      text,
+      renderExpandableSimpleTweetText(block.excerpt || block.title),
       renderVideoPlayer(block.video, {
         blockId: `${block.id}-video`,
         blockType: 'simple-tweet-video',
@@ -757,6 +753,50 @@ function renderSimpleTweetBlock(block: SimpleTweetBlock): HTMLElement {
   tweetFrame.append(header, shell, renderSimpleTweetActions(block.metrics));
   card.append(tweetFrame);
   return card;
+}
+
+function renderExpandableSimpleTweetText(tweetText: string): HTMLDivElement {
+  const container = document.createElement('div');
+  container.setAttribute('class', 'reader-simple-tweet-text-container is-collapsed');
+
+  const text = document.createElement('div');
+  text.className = 'reader-simple-tweet-text';
+  text.setAttribute('data-testid', 'tweetText');
+  text.textContent = tweetText;
+
+  const showMore = document.createElement('span');
+  showMore.className = 'reader-simple-tweet-show-more';
+  showMore.setAttribute('role', 'button');
+  showMore.setAttribute('tabindex', '0');
+  showMore.textContent = 'Show more';
+
+  const expand = (event: Event): void => {
+    event.preventDefault();
+    event.stopPropagation();
+    container.classList.remove('is-collapsed');
+    showMore.remove();
+  };
+
+  showMore.addEventListener('click', expand);
+  showMore.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      expand(event);
+    }
+  });
+
+  container.append(text, showMore);
+
+  if (typeof requestAnimationFrame === 'function') {
+    requestAnimationFrame(() => {
+      if (!container.isConnected || !container.classList.contains('is-collapsed')) return;
+      if (text.scrollHeight <= text.clientHeight + 1) {
+        container.classList.remove('is-collapsed');
+        showMore.remove();
+      }
+    });
+  }
+
+  return container;
 }
 
 function renderSimpleTweetPhotoGrid(photos: TweetPhoto[]): HTMLDivElement {

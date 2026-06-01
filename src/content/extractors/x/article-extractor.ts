@@ -490,7 +490,7 @@ function wait(ms: number): Promise<void> {
 
 async function extractTweetBodyText(tweet: Element): Promise<string> {
   await expandTweetTextIfNeeded(tweet);
-  const explicitTweetText = normalizeText(tweet.querySelector('[data-testid="tweetText"]')?.textContent ?? '');
+  const explicitTweetText = normalizePreWrapText(tweet.querySelector('[data-testid="tweetText"]')?.textContent ?? '');
   if (explicitTweetText) {
     return explicitTweetText;
   }
@@ -498,7 +498,7 @@ async function extractTweetBodyText(tweet: Element): Promise<string> {
   const authorRoot = tweet.querySelector('[data-testid="User-Name"]');
   const candidates = Array.from(tweet.querySelectorAll<HTMLElement>('div[dir="auto"]'))
     .filter((element) => !authorRoot?.contains(element))
-    .map((element) => normalizeText(element.textContent ?? ''))
+    .map((element) => normalizePreWrapText(element.textContent ?? ''))
     .filter((text) => text && !isTweetMetricText(text) && !isTweetDateText(text));
 
   return candidates[0] ?? '';

@@ -1,0 +1,39 @@
+.reader-shell {
+  box-sizing: border-box;
+  width: min(var(--reader-column-width), calc(100vw - (var(--reader-page-padding-x) * 2)));
+  margin: 0 auto;
+  padding: var(--reader-page-padding-top) 0 var(--reader-page-padding-bottom);
+  font-family: "Lora", Georgia, serif;
+}
+
+.article-header {
+  display: contents;
+}
+
+.reader-kicker {
+  position: fixed;
+  top: 20px;
+  left: 28px;
+  z-index: 20;
+  margin: 0;
+  color: var(--reader-text-chrome);
+  font-family: "DM Sans", system-ui, sans-serif;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.article-title {
+  margin: 0 0 40px;
+  color: var(--reader-text-title);
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: clamp(2rem, 5vw, 2.75rem);
+  font-weight: 600;
+  line-height: 1.18;
+}
+
+.article-body {
+  font-size: 16.5px;
+  line-height: var(--reader-body-line-height);
+}

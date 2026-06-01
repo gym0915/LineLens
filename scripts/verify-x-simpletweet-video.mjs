@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const rootDir = resolve(import.meta.dirname, '..');
@@ -8,7 +8,7 @@ const workspaceRoot = resolve(rootDir, '..');
 const articleModelSource = readFileSync(resolve(rootDir, 'src/shared/article.ts'), 'utf8');
 const extractorSource = readFileSync(resolve(rootDir, 'src/content/extractors/x/article-extractor.ts'), 'utf8');
 const readerRendererSource = readFileSync(resolve(rootDir, 'src/reader/block-renderer.ts'), 'utf8');
-const readerCss = readFileSync(resolve(rootDir, 'public/reader.css'), 'utf8');
+const readerCss = readReaderCss();
 const packageJson = JSON.parse(readFileSync(resolve(rootDir, 'package.json'), 'utf8'));
 const simpleTweetVideoFixture = readFileSync(
   resolve(workspaceRoot, 'assets/x-article-simpletweet-video-tweet-text.html'),
@@ -83,3 +83,15 @@ assert.equal(
 );
 
 console.log('B40-B45 simpleTweet video verification passed.');
+
+function readReaderCss() {
+  const publicDir = resolve(rootDir, 'public');
+  const stylesDir = resolve(publicDir, 'styles');
+  return [
+    readFileSync(resolve(publicDir, 'reader.css'), 'utf8'),
+    ...readdirSync(stylesDir)
+      .filter((fileName) => fileName.endsWith('.css'))
+      .sort()
+      .map((fileName) => readFileSync(resolve(stylesDir, fileName), 'utf8'))
+  ].join('\n');
+}

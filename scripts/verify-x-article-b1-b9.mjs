@@ -188,6 +188,7 @@ for (const source of [modularExtractorSource, liveExtractorSource]) {
   assert.match(source, /tweet-text-show-more-link/, 'tweet body extraction should detect X show-more controls before reading text');
   assert.match(source, /getTweetShowMoreButtonLabel/, 'tweet show-more detection should read the localized button text');
   assert.match(source, /await expandTweetTextIfNeeded/, 'tweet extraction should await DOM expansion before reading tweetText');
+  assert.match(source, /const explicitTweetText = normalizePreWrapText\(tweet\.querySelector\('\[data-testid="tweetText"\]'\)\?\.textContent \?\? ''\)/, 'simpleTweet text extraction should preserve source line breaks');
   assert.match(source, /MutationObserver/, 'tweet show-more expansion should observe the asynchronous DOM update');
   assert.match(source, /Promise\.race/, 'tweet show-more expansion should not hang if X fails to update the DOM');
   assert.doesNotMatch(source, /title: text \|\| 'X Tweet'/, 'tweet references should not collapse full tweet textContent into a single title');

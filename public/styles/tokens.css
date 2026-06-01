@@ -1,0 +1,36 @@
+:root {
+  --reader-canvas: #eae5dc;
+  --reader-ink: #2c2521;
+  --reader-text-title: rgba(44, 37, 33, 0.82);
+  --reader-text-active: #2c2521;
+  --reader-text-muted: rgba(44, 37, 33, 0.22);
+  --reader-text-hover: rgba(44, 37, 33, 0.45);
+  --reader-text-chrome: rgba(44, 37, 33, 0.35);
+  --reader-highlight-surface: #ffffff;
+  --reader-card-shadow: 0 2px 14px rgba(44, 37, 33, 0.12);
+  --reader-highlight-shadow: var(--reader-card-shadow);
+  --reader-highlight-outline: rgba(44, 37, 33, 0.16);
+  --reader-quote-border-muted: rgba(44, 37, 33, 0.18);
+  --reader-quote-border-active: rgba(44, 37, 33, 0.55);
+  --reader-media-active-border: rgba(44, 37, 33, 0.14);
+  --reader-media-active-padding: 6px;
+  --reader-media-active-width: 100%;
+  --reader-column-width: 680px;
+  --reader-page-padding-x: 32px;
+  --reader-page-padding-top: 80px;
+  --reader-page-padding-bottom: 50vh;
+  --reader-body-line-height: 1.9;
+  --reader-paragraph-gap: 28px;
+  --reader-media-gap: 32px;
+  --reader-radius-card: 3px;
+  --reader-radius-media: 1px;
+  --reader-code-header: #ddd8cf;
+  --reader-code-surface: #f4f4f1;
+  --reader-code-ink: rgba(44, 37, 33, 0.82);
+  --reader-code-muted: rgba(44, 37, 33, 0.45);
+  --reader-toast-surface: rgba(44, 37, 33, 0.9);
+  --reader-toast-ink: #f7f2ea;
+  color: var(--reader-ink);
+  background: var(--reader-canvas);
+  font-family: "Lora", Georgia, serif;
+}

@@ -1,0 +1,93 @@
+.reader-code {
+  margin: 28px 0;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--reader-code-surface);
+  color: var(--reader-code-ink);
+  font-family: "DM Mono", "Fira Mono", Menlo, Consolas, monospace;
+}
+
+.reader-code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 36px;
+  padding: 0 14px;
+  border-bottom: 1px solid rgba(44, 37, 33, 0.08);
+  background: var(--reader-code-header);
+}
+
+.reader-code-language {
+  color: var(--reader-ink);
+  font-size: 13px;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.reader-code-copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--reader-ink);
+  cursor: pointer;
+}
+
+.reader-code-copy-icon {
+  width: 22px;
+  height: 22px;
+  fill: currentColor;
+}
+
+.reader-code-pre {
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  padding: 18px 24px 10px;
+  overflow-x: auto;
+  background: rgba(255, 255, 255, 0.36);
+  color: var(--reader-code-ink);
+  font-family: inherit;
+  font-size: 13.5px;
+  line-height: 1.55;
+  tab-size: 2;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.reader-code-pre code {
+  font-family: inherit;
+}
+
+.reader-code-token-keyword {
+  color: #b724b7;
+}
+
+.reader-code-token-tag {
+  color: #bd6500;
+}
+
+.reader-code-token-string {
+  color: #2f73ff;
+}
+
+.reader-code-token-comment {
+  color: rgba(44, 37, 33, 0.42);
+  font-style: italic;
+}
+
+.reader-code-token-heading {
+  color: #f05247;
+}
+
+.reader-code-token-number {
+  color: #7a5a00;
+}
+
+.reader-code-token-punctuation {
+  color: rgba(44, 37, 33, 0.72);
+}

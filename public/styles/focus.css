@@ -1,0 +1,186 @@
+.focus-unit {
+  cursor: pointer;
+  transition:
+    color 250ms ease,
+    background 250ms ease,
+    border-color 250ms ease,
+    box-shadow 250ms ease,
+    filter 250ms ease,
+    opacity 250ms ease,
+    padding 250ms ease;
+}
+
+p .focus-unit {
+  display: inline;
+}
+
+.focus-unit.is-muted {
+  color: var(--reader-text-muted);
+}
+
+.focus-unit.is-muted:hover {
+  color: var(--reader-text-hover);
+}
+
+.focus-unit.is-active {
+  color: var(--reader-text-active);
+  cursor: default;
+}
+
+.focus-unit strong {
+  color: inherit;
+  font-weight: 700;
+}
+
+.reader-link.focus-unit,
+.focus-unit a {
+  text-decoration: underline;
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.16em;
+}
+
+p .focus-unit.is-active {
+  display: inline;
+  border-radius: var(--reader-radius-card);
+  background: var(--reader-highlight-surface);
+  box-shadow:
+    0 0 0 4px var(--reader-highlight-surface),
+    var(--reader-highlight-shadow);
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+.reader-media.focus-unit,
+.reader-embed.focus-unit,
+.reader-code.focus-unit,
+.reader-link.focus-unit,
+.reader-simple-tweet.focus-unit,
+.reader-block[data-block-type="heading"].focus-unit,
+.reader-block[data-block-type="quote"].focus-unit {
+  display: block;
+}
+
+.reader-list-item.focus-unit {
+  display: flex;
+}
+
+.reader-media.focus-unit.is-muted {
+  opacity: 0.45;
+}
+
+.reader-media.focus-unit.is-muted:hover {
+  opacity: 0.62;
+}
+
+.reader-media.focus-unit.is-muted:hover img {
+  filter: saturate(0.68);
+}
+
+.reader-media.focus-unit.is-muted:hover .reader-gif-video,
+.reader-media.focus-unit.is-muted:hover .reader-video-player {
+  filter: saturate(0.68);
+}
+
+.reader-media.focus-unit.is-active {
+  box-sizing: border-box;
+  width: var(--reader-media-active-width);
+  margin: var(--reader-media-gap) auto;
+  padding: var(--reader-media-active-padding);
+  background: var(--reader-highlight-surface);
+  border: 1px solid var(--reader-media-active-border);
+  border-radius: var(--reader-radius-card);
+  box-shadow: var(--reader-card-shadow);
+  opacity: 1;
+}
+
+.reader-media.focus-unit.is-active img {
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  margin: 0;
+  border-radius: var(--reader-radius-media);
+  filter: none;
+}
+
+.reader-media.focus-unit.is-active .reader-gif-media,
+.reader-media.focus-unit.is-active .reader-video-media {
+  border-radius: var(--reader-radius-media);
+}
+
+.reader-media.focus-unit.is-active .reader-gif-video,
+.reader-media.focus-unit.is-active .reader-video-player {
+  filter: none;
+}
+
+.reader-block[data-block-type="quote"].focus-unit.is-active {
+  padding: 10px 14px 10px 18px;
+  border-left-color: var(--reader-quote-border-active);
+  border-radius: 0 var(--reader-radius-card) var(--reader-radius-card) 0;
+  background: var(--reader-highlight-surface);
+  box-shadow: var(--reader-card-shadow);
+}
+
+.reader-embed.focus-unit.is-active,
+.reader-code.focus-unit.is-active,
+.reader-link.focus-unit.is-active,
+.reader-simple-tweet.focus-unit.is-active,
+.reader-list-item.focus-unit.is-active {
+  padding: 7px 10px;
+  border-radius: var(--reader-radius-card);
+  background: var(--reader-highlight-surface);
+  box-shadow: var(--reader-card-shadow);
+}
+
+.reader-code.focus-unit.is-muted {
+  opacity: 0.45;
+}
+
+.reader-code.focus-unit.is-muted:hover {
+  opacity: 0.62;
+}
+
+.reader-code.focus-unit.is-active {
+  padding: 0;
+  opacity: 1;
+}
+
+.reader-simple-tweet.focus-unit.is-muted:hover {
+  opacity: 0.62;
+}
+
+.reader-simple-tweet.focus-unit.is-muted {
+  opacity: 0.45;
+}
+
+.reader-simple-tweet.focus-unit.is-active {
+  padding: 6px;
+  border-radius: 10px;
+  opacity: 1;
+}
+
+.reader-simple-tweet.focus-unit.is-active .reader-simple-tweet-cover {
+  filter: none;
+}
+
+.reader-simple-tweet.focus-unit.is-active .reader-video-player {
+  filter: none;
+}
+
+.reader-simple-tweet.focus-unit.is-active .reader-simple-tweet-title {
+  color: var(--reader-text-active);
+}
+
+.reader-simple-tweet.focus-unit.is-active .reader-simple-tweet-excerpt {
+  color: var(--reader-text-active);
+}
+
+.reader-block[data-block-type="heading"].focus-unit.is-active {
+  padding: 9px 10px 11px;
+  border-radius: var(--reader-radius-card);
+  background: var(--reader-highlight-surface);
+  box-shadow: var(--reader-card-shadow);
+}
+
+.reader-list-item.focus-unit.is-muted:hover {
+  color: var(--reader-text-hover);
+}

@@ -219,7 +219,8 @@ assert.match(readerRendererSource, /new Blob\(\[masterPlaylist\]/, 'reader shoul
 assert.match(readerRendererSource, /hls\.loadSource\(/, 'reader should attach HLS sources through hls.js');
 assert.match(readerRendererSource, /hls\.destroy\(\)/, 'reader should destroy HLS instances during cleanup');
 assert.match(readerRendererSource, /IntersectionObserver/, 'reader should use visibility observation to lazy-load and pause media');
-assert.match(readerRendererSource, /intersectionRatio <= 0\.2/, 'reader should pause video and GIF playback once at least 80% of the media is occluded');
+assert.match(readerRendererSource, /isMostlyVisible = entry\.intersectionRatio > 0\.2/, 'reader should track whether more than 20% of the media is visible');
+assert.match(readerRendererSource, /if \(!isMostlyVisible\) \{[\s\S]*?pauseForOcclusion\(\);/, 'reader should pause video and GIF playback once at least 80% of the media is occluded');
 assert.match(readerRendererSource, /let hasActivated = false/, 'reader should defer media source attachment until the element begins rendering in view');
 assert.match(readerRendererSource, /wasPlayingBeforeOcclusion/, 'reader should remember whether media was playing before occlusion');
 assert.match(
@@ -236,8 +237,8 @@ assert.match(
 );
 assert.match(
   readerRendererSource,
-  /if \(isHighlighted\(\)\) \{[\s\S]*?forcePlay\(\);[\s\S]*?\}/,
-  'highlighting a video or GIF focus unit should force playback even if visibility resume did not recover it'
+  /if \(isMostlyVisible && isHighlighted\(\)\) \{[\s\S]*?forcePlay\(\);[\s\S]*?\}/,
+  'highlighting a video or GIF focus unit should only force playback while the media is still visible'
 );
 assert.match(readerRendererSource, /attachVisibilityControlledPlayback\(figure, video/, 'reader should apply the visibility lifecycle to standalone videos and GIFs');
 assert.match(readerAppSource, /disposeRenderedArticleShell|cleanupRenderedMedia|teardownRenderedArticleShell/, 'reader app should clean up rendered media lifecycles');
