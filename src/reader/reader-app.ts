@@ -70,6 +70,10 @@ export function mountReaderApp(root: HTMLElement, article: Article): void {
 
     const index = units.findIndex((unit) => unit.unitId === focusElement.dataset.unitId);
     if (index >= 0) {
+      if (shouldSelectSimpleTweetBeforeNavigation(target, focusElement, activeUnit)) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
       hideHint(hint);
       engine.setIndex(index);
     }
@@ -190,6 +194,11 @@ function resolveInitialIndex(unitId: string | undefined, units: FocusUnit[]): nu
 
   const index = units.findIndex((unit) => unit.unitId === unitId);
   return index >= 0 ? index : 0;
+}
+
+function shouldSelectSimpleTweetBeforeNavigation(target: Element, focusElement: HTMLElement, activeUnit: FocusUnit | null): boolean {
+  const simpleTweetLink = target.closest('a.reader-simple-tweet[href]');
+  return Boolean(simpleTweetLink && focusElement.dataset.blockType === 'simple-tweet' && activeUnit?.unitId !== focusElement.dataset.unitId);
 }
 
 function shouldIgnoreKeydown(event: KeyboardEvent): boolean {

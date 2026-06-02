@@ -148,9 +148,14 @@ export type SimpleTweetBlock = {
   authorName?: string;
   authorHandle?: string;
   authorAvatarUrl?: string;
+  authorBadgeAvatarUrl?: string;
   authorVerified?: boolean;
   publishedAt?: string;
   publishedAtText?: string;
+  replyContextText?: string;
+  replyToHandle?: string;
+  translationSourceText?: string;
+  translationActionText?: string;
   metrics?: TweetMetrics;
 };
 

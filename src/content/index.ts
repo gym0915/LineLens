@@ -55,9 +55,14 @@ type ArticleBlock =
       authorName?: string;
       authorHandle?: string;
       authorAvatarUrl?: string;
+      authorBadgeAvatarUrl?: string;
       authorVerified?: boolean;
       publishedAt?: string;
       publishedAtText?: string;
+      replyContextText?: string;
+      replyToHandle?: string;
+      translationSourceText?: string;
+      translationActionText?: string;
       metrics?: TweetMetrics;
     }
   | {
@@ -924,7 +929,13 @@ async function extractSimpleTweetBlock(block: Element, id: string, capturedVideo
     return videoCard;
   }
 
-  return extractSimpleTweetImageCard(block, id);
+  const imageCard = await extractSimpleTweetImageCard(block, id);
+  if (imageCard) {
+    return imageCard;
+  }
+
+  const textCard = await extractSimpleTweetTextCard(block, id);
+  return textCard;
 }
 
 function isSimpleTweetCard(block: Element): boolean {
@@ -1020,6 +1031,40 @@ async function extractSimpleTweetVideoCard(block: Element, id: string, capturedV
   };
 }
 
+async function extractSimpleTweetTextCard(block: Element, id: string): Promise<ArticleBlock | null> {
+  const tweet = block.querySelector(X_ARTICLE_SELECTORS.tweetBlock) ?? block;
+  const textElement = block.querySelector('[data-testid="tweetText"]');
+  if (!textElement || block.querySelector('[data-testid="article-cover-image"], [data-testid="videoPlayer"]') || block.querySelector(X_ARTICLE_SELECTORS.tweetPhoto)) {
+    return null;
+  }
+
+  const body = await extractTweetBodyText(tweet);
+  if (!body) {
+    return null;
+  }
+
+  const profile = extractTweetProfile(tweet);
+  const metrics = extractTweetMetrics(tweet);
+
+  return {
+    id,
+    type: 'simple-tweet',
+    coverUrl: '',
+    source: 'X Tweet',
+    title: buildTweetAuthorLine(profile) || 'X Tweet',
+    excerpt: body,
+    href: getSimpleTweetHref(block),
+    authorBadgeAvatarUrl: extractTweetAuthorBadgeAvatarUrl(tweet),
+    authorVerified: Boolean(tweet.querySelector('[data-testid="icon-verified"]')),
+    replyContextText: extractTweetReplyContextText(tweet),
+    replyToHandle: extractTweetReplyToHandle(tweet),
+    translationSourceText: extractTweetTranslationSourceText(tweet),
+    translationActionText: extractTweetTranslationActionText(tweet),
+    ...profile,
+    ...(hasTweetMetrics(metrics) ? { metrics } : {})
+  };
+}
+
 function tweetPhotoElementToPhoto(element: HTMLElement): { src: string; alt?: string; href?: string } | null {
   const image = element.querySelector<HTMLImageElement>('img');
   const src = image?.currentSrc || image?.src || getTweetPhotoBackgroundUrl(element);
@@ -1040,6 +1085,43 @@ function getTweetPhotoBackgroundUrl(element: Element): string {
   const style = backgroundLayer?.style.backgroundImage || backgroundLayer?.getAttribute('style') || '';
   const match = /url\((?:"|&quot;)?([^")]+)(?:"|&quot;)?\)/.exec(style);
   return match?.[1]?.replace(/&amp;/g, '&') ?? '';
+}
+
+function extractTweetAuthorBadgeAvatarUrl(tweet: Element): string | undefined {
+  const authorRoot = tweet.querySelector('[data-testid="User-Name"]');
+  const avatarRoot = tweet.querySelector('[data-testid="Tweet-User-Avatar"]');
+  const image = Array.from(authorRoot?.querySelectorAll<HTMLImageElement>('img') ?? []).find((candidate) => !avatarRoot?.contains(candidate));
+  return image?.currentSrc || image?.src || undefined;
+}
+
+function extractTweetReplyToHandle(tweet: Element): string | undefined {
+  const replyRoot = getTweetReplyContextRoot(tweet);
+  const replyLink = replyRoot?.querySelector<HTMLAnchorElement>('a[href^="/"]');
+  return replyLink ? normalizeText(replyLink.textContent ?? '') : undefined;
+}
+
+function extractTweetReplyContextText(tweet: Element): string | undefined {
+  const text = normalizeText(getTweetReplyContextRoot(tweet)?.textContent ?? '');
+  return text || undefined;
+}
+
+function getTweetReplyContextRoot(tweet: Element): HTMLElement | undefined {
+  return Array.from(tweet.querySelectorAll<HTMLElement>('div[dir="ltr"]')).find((element) => {
+    const text = normalizeText(element.textContent ?? '');
+    return text.startsWith('回复 @') || text.startsWith('Replying to @');
+  });
+}
+
+function extractTweetTranslationSourceText(tweet: Element): string | undefined {
+  const showOriginalButton = tweet.querySelector('[aria-label="显示原文"], [aria-label="Show original"]');
+  const root = showOriginalButton?.closest('[dir="ltr"]');
+  const text = normalizeText(root?.textContent ?? '').replace(/\s*(?:显示原文|Show original)\s*$/i, '').trim();
+  return text || undefined;
+}
+
+function extractTweetTranslationActionText(tweet: Element): string | undefined {
+  const showOriginalButton = tweet.querySelector('[aria-label="显示原文"], [aria-label="Show original"]');
+  return normalizeText(showOriginalButton?.textContent ?? showOriginalButton?.getAttribute('aria-label') ?? '') || undefined;
 }
 
 function getSimpleTweetHref(block: Element): string | undefined {

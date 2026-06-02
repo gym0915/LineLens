@@ -134,11 +134,15 @@ const documentListeners = new Map();
 const storage = new Map();
 let selectedText = '';
 
+globalThis.Element = ElementLike;
 globalThis.HTMLElement = ElementLike;
 globalThis.document = {
   visibilityState: 'visible',
   fonts: { ready: Promise.resolve() },
   createElement(tagName) {
+    return new ElementLike(tagName);
+  },
+  createElementNS(_namespace, tagName) {
     return new ElementLike(tagName);
   },
   createTextNode(text) {
@@ -254,6 +258,52 @@ const clickListeners = root.eventListeners.get('click') ?? [];
 clickListeners.at(-1)?.({ target: clickable });
 assert(findByClass(root, 'is-active')?.dataset.unitId === 'p1-u2', 'Clicking FocusUnit should set active unit');
 
+const tweetArticle = {
+  ...article,
+  id: 'simple-tweet-click',
+  blocks: [
+    { id: 'intro', type: 'paragraph', text: 'Intro paragraph' },
+    {
+      id: 'tweet-click',
+      type: 'simple-tweet',
+      coverUrl: '',
+      source: 'X Tweet',
+      title: 'Amjad Masad @amasad · 1月15日',
+      excerpt: '为了替微软稍作辩解：世界才刚刚意识到，编码代理本质上是通用代理。',
+      href: 'https://x.com/amasad/status/2011475533369131424',
+      authorName: 'Amjad Masad',
+      authorHandle: '@amasad',
+      publishedAtText: '1月15日',
+      replyContextText: '回复 @GavinSBaker',
+      replyToHandle: '@GavinSBaker'
+    }
+  ]
+};
+const tweetRoot = new ElementLike('main');
+mountReaderApp(tweetRoot, tweetArticle);
+const tweetClickListener = tweetRoot.eventListeners.get('click')?.at(-1);
+const tweetLink = walk(tweetRoot).find((element) => element.dataset.blockId === 'tweet-click');
+assert(tweetLink?.tagName === 'A', 'simpleTweet text cards should remain links once active');
+let preventedTweetClick = false;
+tweetClickListener?.({
+  target: tweetLink,
+  preventDefault() {
+    preventedTweetClick = true;
+  },
+  stopPropagation() {}
+});
+assert(preventedTweetClick, 'Inactive simpleTweet link click should be intercepted before navigation');
+assert(findByClass(tweetRoot, 'is-active')?.dataset.blockId === 'tweet-click', 'Inactive simpleTweet link click should first select the card');
+let preventedActiveTweetClick = false;
+tweetClickListener?.({
+  target: tweetLink,
+  preventDefault() {
+    preventedActiveTweetClick = true;
+  },
+  stopPropagation() {}
+});
+assert(!preventedActiveTweetClick, 'Active simpleTweet link click should be allowed to navigate');
+
 const savedProgress = JSON.parse(storage.get('linelens:fixture-progress:simple-chinese'));
 assert(savedProgress.unitId === 'p1-u2', 'Focus changes should save progress');
 assert(typeof savedProgress.updatedAt === 'number', 'Saved progress should include updatedAt');
@@ -310,6 +360,11 @@ function matchesSelector(element, selector) {
 
   const classMatch = selector.match(/^\.([A-Za-z0-9_-]+)$/);
   if (classMatch) return element.className.split(/\s+/).includes(classMatch[1]);
+
+  const anchorClassHrefMatch = selector.match(/^a\.([A-Za-z0-9_-]+)\[href\]$/);
+  if (anchorClassHrefMatch) {
+    return element.tagName === 'A' && element.className.split(/\s+/).includes(anchorClassHrefMatch[1]) && element.attributes.has('href');
+  }
 
   return false;
 }

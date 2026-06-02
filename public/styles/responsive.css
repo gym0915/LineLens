@@ -1,6 +1,6 @@
 @media (max-width: 720px) {
   .reader-simple-tweet-frame {
-    grid-template-columns: 40px minmax(0, 1fr) 22px;
+    grid-template-columns: 40px minmax(0, 1fr);
     padding: 12px;
     border-radius: 12px;
   }
@@ -11,7 +11,7 @@
   }
 
   .reader-simple-tweet-author-primary {
-    font-size: 17px;
+    font-size: 16px;
   }
 
   .reader-simple-tweet-verified-icon {
@@ -43,11 +43,11 @@
   }
 
   .reader-simple-tweet-text-container {
-    font-size: 18px;
+    font-size: 15.5px;
   }
 
   .reader-simple-tweet-show-more {
-    font-size: 16px;
+    font-size: 15px;
   }
 
   .reader-simple-tweet-photo-grid {
@@ -72,8 +72,8 @@
 
   .reader-simple-tweet-actions {
     gap: 10px;
-    padding-top: 14px;
-    font-size: 15px;
+    padding-top: 10px;
+    font-size: 14px;
   }
 
   .reader-simple-tweet-action-icon {

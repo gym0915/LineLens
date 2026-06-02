@@ -684,9 +684,12 @@ function renderSimpleTweetBlock(block: SimpleTweetBlock): HTMLElement {
   const tweetFrame = document.createElement('div');
   tweetFrame.className = 'reader-simple-tweet-frame';
 
+  const contentColumn = document.createElement('div');
+  contentColumn.className = 'reader-simple-tweet-content-column';
+
   const header = document.createElement('div');
   header.className = 'reader-simple-tweet-header';
-  header.append(renderSimpleTweetAvatar(block), renderSimpleTweetAuthor(block), renderGrokIcon());
+  header.append(renderSimpleTweetAuthor(block), renderGrokIcon());
 
   const shell = document.createElement('div');
   shell.className = 'reader-simple-tweet-shell';
@@ -725,12 +728,15 @@ function renderSimpleTweetBlock(block: SimpleTweetBlock): HTMLElement {
 
     media.append(sourceBadge);
     shell.append(media);
+  } else {
+    shell.classList.add('reader-simple-tweet-shell-text');
+    shell.append(renderSimpleTweetTextOnlyBlock(block));
   }
 
   const content = document.createElement('div');
   content.className = 'reader-simple-tweet-content';
 
-  if (!block.coverUrl && !hasPhotoCard && !block.video) {
+  if (!block.coverUrl && !hasPhotoCard && !block.video && !block.excerpt) {
     const sourceBadge = document.createElement('span');
     sourceBadge.className = 'reader-simple-tweet-source reader-simple-tweet-source-inline';
     sourceBadge.setAttribute('aria-label', block.source);
@@ -738,7 +744,7 @@ function renderSimpleTweetBlock(block: SimpleTweetBlock): HTMLElement {
     content.append(sourceBadge);
   }
 
-  if (!hasPhotoCard && !block.video) {
+  if (!hasPhotoCard && !block.video && block.coverUrl) {
     const titleElement = document.createElement('div');
     titleElement.className = 'reader-simple-tweet-title';
     titleElement.textContent = block.title;
@@ -750,9 +756,51 @@ function renderSimpleTweetBlock(block: SimpleTweetBlock): HTMLElement {
     content.append(titleElement, excerptElement);
     shell.append(content);
   }
-  tweetFrame.append(header, shell, renderSimpleTweetActions(block.metrics));
+  contentColumn.append(header, shell, renderSimpleTweetActions(block.metrics));
+  tweetFrame.append(renderSimpleTweetAvatar(block), contentColumn);
   card.append(tweetFrame);
   return card;
+}
+
+function renderSimpleTweetTextOnlyBlock(block: SimpleTweetBlock): HTMLDivElement {
+  const content = document.createElement('div');
+  content.className = 'reader-simple-tweet-text-only';
+
+  if (block.replyToHandle) {
+    const reply = document.createElement('div');
+    reply.className = 'reader-simple-tweet-reply-context';
+    const replyText = block.replyContextText || `Replying to ${block.replyToHandle}`;
+    const handleIndex = replyText.indexOf(block.replyToHandle);
+
+    const handle = document.createElement('span');
+    handle.className = 'reader-simple-tweet-link-text';
+    handle.textContent = block.replyToHandle;
+    if (handleIndex >= 0) {
+      reply.append(document.createTextNode(replyText.slice(0, handleIndex)), handle, document.createTextNode(replyText.slice(handleIndex + block.replyToHandle.length)));
+    } else {
+      reply.append(document.createTextNode(replyText));
+    }
+    content.append(reply);
+  }
+
+  if (block.translationSourceText) {
+    const translation = document.createElement('div');
+    translation.className = 'reader-simple-tweet-translation';
+    translation.append(renderSimpleTweetTranslationIcon());
+
+    const label = document.createElement('span');
+    label.textContent = block.translationSourceText;
+    translation.append(label);
+
+    const original = document.createElement('span');
+    original.className = 'reader-simple-tweet-link-text';
+    original.textContent = block.translationActionText ?? 'Show original';
+    translation.append(original);
+    content.append(translation);
+  }
+
+  content.append(renderExpandableSimpleTweetText(block.excerpt || block.title));
+  return content;
 }
 
 function renderExpandableSimpleTweetText(tweetText: string): HTMLDivElement {
@@ -854,6 +902,14 @@ function renderSimpleTweetAuthor(block: SimpleTweetBlock): HTMLDivElement {
   if (block.authorVerified || (block.authorVerified === undefined && !block.authorName && !block.authorHandle)) {
     primary.append(renderVerifiedIcon());
   }
+  if (block.authorBadgeAvatarUrl) {
+    const badge = document.createElement('img');
+    badge.className = 'reader-simple-tweet-author-badge';
+    badge.src = block.authorBadgeAvatarUrl;
+    badge.alt = '';
+    badge.loading = 'lazy';
+    primary.append(badge);
+  }
 
   const secondary = document.createElement('div');
   secondary.className = 'reader-simple-tweet-author-secondary';
@@ -910,6 +966,12 @@ function renderGrokIcon(): SVGSVGElement {
   group.append(path);
   svg.append(group);
   return svg;
+}
+
+function renderSimpleTweetTranslationIcon(): SVGSVGElement {
+  const icon = renderGrokIcon();
+  icon.setAttribute('class', 'reader-simple-tweet-translation-icon');
+  return icon;
 }
 
 function renderSimpleTweetActions(metrics: TweetMetrics = {}): HTMLDivElement {

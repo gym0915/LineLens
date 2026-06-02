@@ -14,7 +14,8 @@
     "verify:x-article-b10-b15": "npm run build && node scripts/verify-x-article-b10-b15.mjs",
     "verify:x-article-b29": "npm run verify:x-article-b10-b15",
     "verify:x-video-b31-b39": "npm run build && node scripts/verify-x-video-b31-b39.mjs",
-    "verify:x-simpletweet-video": "npm run build && node scripts/verify-x-simpletweet-video.mjs"
+    "verify:x-simpletweet-video": "npm run build && node scripts/verify-x-simpletweet-video.mjs",
+    "verify:x-simpletweet-text": "npm run build && node scripts/verify-x-simpletweet-text.mjs"
   },
   "devDependencies": {
     "typescript": "^5.5.4"
