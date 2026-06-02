@@ -39,7 +39,12 @@ const codeBlockSnapshot = readFileSync(
   resolve(rootDir, 'assets/x-article-codeblock.html'),
   'utf8'
 );
+const imageGridSnapshot = readFileSync(
+  resolve(rootDir, 'assets/x-article-image-grid.html'),
+  'utf8'
+);
 const completeDomLinkBlock = `<div class="longform-unstyled-narrow" data-block="true" data-editor="2vhgc" data-offset-key="5upd3-0-0"><div data-offset-key="5upd3-0-0" class="public-DraftStyleDefault-block public-DraftStyleDefault-ltr"><div class="css-175oi2r r-1loqt21 r-1471scf r-o7ynqc r-6416eg r-1ny4l3l"><a href="https://kvcache.ai/tools/kv-cache-calculator/" dir="ltr" rel="noopener noreferrer nofollow" target="_blank" role="link" class="css-146c3p1 r-bcqeeo r-1ttztb7 r-qvutc0 r-37j5jr r-1inkyih r-rjixqe r-16dba41 r-1ddef8g r-tjvw6i r-1loqt21" style="color: rgb(15, 20, 25);"><span data-offset-key="5upd3-0-0"><span data-text="true">https://kvcache.ai/tools/kv-cache-calculator/</span></span></a></div></div></div>`;
+const svgEmojiHeadingBlock = `<h2 class="longform-header-two" data-block="true" data-editor="eles4" data-offset-key="6k6fl-0-0"><div data-offset-key="6k6fl-0-0" class="public-DraftStyleDefault-block public-DraftStyleDefault-ltr"><span style="background-image: url(&quot;https://abs.twimg.com/emoji/v2/svg/1f31f.svg&quot;); background-size: 1em 1em; padding: 0.15em; background-position: center center; background-repeat: no-repeat; -webkit-text-fill-color: transparent;"><span style="clip-path: circle(0% at 50% 50%);"><span data-offset-key="6k6fl-0-0" style="font-weight: bold;"><span data-text="true">🌟</span></span></span></span><span style="background-image: url(&quot;https://abs.twimg.com/emoji/v2/svg/1f31f.svg&quot;); background-size: 1em 1em; padding: 0.15em; background-position: center center; background-repeat: no-repeat; -webkit-text-fill-color: transparent;"><span style="clip-path: circle(0% at 50% 50%);"><span data-offset-key="6k6fl-1-0" style="font-weight: bold;"><span data-text="true">🌟</span></span></span></span><span style="background-image: url(&quot;https://abs.twimg.com/emoji/v2/svg/1f31f.svg&quot;); background-size: 1em 1em; padding: 0.15em; background-position: center center; background-repeat: no-repeat; -webkit-text-fill-color: transparent;"><span style="clip-path: circle(0% at 50% 50%);"><span data-offset-key="6k6fl-2-0" style="font-weight: bold;"><span data-text="true">🌟</span></span></span></span><span style="background-image: url(&quot;https://abs.twimg.com/emoji/v2/svg/1f31f.svg&quot;); background-size: 1em 1em; padding: 0.15em; background-position: center center; background-repeat: no-repeat; -webkit-text-fill-color: transparent;"><span style="clip-path: circle(0% at 50% 50%);"><span data-offset-key="6k6fl-3-0" style="font-weight: bold;"><span data-text="true">🌟</span></span></span></span><span style="background-image: url(&quot;https://abs.twimg.com/emoji/v2/svg/1f31f.svg&quot;); background-size: 1em 1em; padding: 0.15em; background-position: center center; background-repeat: no-repeat; -webkit-text-fill-color: transparent;"><span style="clip-path: circle(0% at 50% 50%);"><span data-offset-key="6k6fl-4-0" style="font-weight: bold;"><span data-text="true">🌟</span></span></span></span></div></h2>`;
 
 assert.equal(isXArticleUrl('https://x.com/dotey/article/2058421725256171718'), true);
 assert.equal(isXArticleUrl('https://twitter.com/dotey/article/2058421725256171718'), true);
@@ -123,6 +128,22 @@ assert.deepEqual(extractSnapshotVideoGif(videoGifSnapshot), {
   videoSourceType: 'video/mp4',
   videoStyleHasFullSize: true
 });
+assert.deepEqual(extractSnapshotImageGrid(imageGridSnapshot), {
+  photoCount: 4,
+  aspectRatio: 1.7778,
+  photoSrcs: [
+    'https://pbs.twimg.com/media/HJT4PuvasAAnMDP?format=jpg&name=small',
+    'https://pbs.twimg.com/media/HJT4Puyb0AID_FJ?format=jpg&name=small',
+    'https://pbs.twimg.com/media/HJT4PuwbgAABeir?format=jpg&name=small',
+    'https://pbs.twimg.com/media/HJT4PuxbwAAsV4e?format=jpg&name=small'
+  ],
+  hrefs: [
+    '/underwoodxie96/article/2059544500486463940/media/2059543878743797760',
+    '/underwoodxie96/article/2059544500486463940/media/2059543878756454402',
+    '/underwoodxie96/article/2059544500486463940/media/2059543878748045312',
+    '/underwoodxie96/article/2059544500486463940/media/2059543878752256000'
+  ]
+});
 
 const detail2Text = extractSnapshotLongformText(detail2Snapshot);
 assert.equal(detail2Text.title, '为什么 AI 会“忘记”中间的信息');
@@ -146,6 +167,14 @@ assert.deepEqual(extractStandaloneLinkBlockFixture(completeDomLinkBlock), {
   text: 'https://kvcache.ai/tools/kv-cache-calculator/',
   href: 'https://kvcache.ai/tools/kv-cache-calculator/',
   target: '_blank'
+});
+assert.deepEqual(extractSvgEmojiHeadingFixture(svgEmojiHeadingBlock), {
+  tag: 'h2',
+  level: 2,
+  text: '🌟🌟🌟🌟🌟',
+  textCount: 5,
+  emojiImageUrlCount: 5,
+  emojiImageUrl: 'https://abs.twimg.com/emoji/v2/svg/1f31f.svg'
 });
 
 const modularExtractorSource = readFileSync(
@@ -175,7 +204,8 @@ for (const source of [modularExtractorSource, liveExtractorSource]) {
   assert.match(source, /data-testid="article-cover-image"/, 'extractor should target article cover cards');
   assert.match(source, /function extractLinkBlock/, 'extractor should preserve text links as clickable blocks');
   assert.match(source, /linkAnnotations/, 'extractor should preserve inline links as annotations');
-  assert.match(source, /clip-path: circle/, 'extractor should include emoji spans hidden by clip-path circle');
+  assert.match(source, /background-image/, 'extractor should include X emoji spans rendered with background-image SVGs');
+  assert.match(source, /emojiImageUrl/, 'extractor should preserve emoji SVG background URLs as text annotations');
   assert.match(source, /role="link"/, 'extractor should inspect role=link anchors');
   assert.match(source, /pendingListKind/, 'extractor should preserve ordered versus unordered lists');
   assert.match(source, /function extractTweetRefBlock/, 'extractor should parse data-testid tweet reference blocks');
@@ -194,6 +224,7 @@ for (const source of [modularExtractorSource, liveExtractorSource]) {
   assert.doesNotMatch(source, /title: text \|\| 'X Tweet'/, 'tweet references should not collapse full tweet textContent into a single title');
   assert.match(source, /function getSimpleTweetHref/, 'simple tweets should use a dedicated href extractor');
   assert.match(source, /function extractSimpleTweetImageCard/, 'simple tweets should parse image-card tweets without article covers');
+  assert.match(source, /function extractImageGalleryFromElement/, 'extractor should parse X article image grid blocks');
   assert.match(source, /function extractGifFromElement/, 'extractor should parse GIF media inside tweetPhoto videoPlayer');
   assert.match(source, /function extractVideoFromElement/, 'extractor should parse video media inside tweetPhoto videoPlayer');
   assert.match(source, /function getCapturedVideos/, 'extractor should ask background for captured network video groups');
@@ -246,6 +277,7 @@ assert.match(articleModelSource, /GifBlock/, 'article model should include GIF b
 assert.match(articleModelSource, /type: 'gif'/, 'GIF model should use a dedicated block type');
 assert.match(articleModelSource, /VideoBlock/, 'article model should include video blocks');
 assert.match(articleModelSource, /type: 'video'/, 'video model should use a dedicated block type');
+assert.match(articleModelSource, /type: 'image-gallery'/, 'article model should include image gallery blocks');
 assert.match(articleModelSource, /sourceType\?: string/, 'video model should preserve source MIME type');
 assert.match(articleModelSource, /hls\?: \{/, 'video model should preserve HLS playback metadata');
 assert.match(articleModelSource, /audioPlaylistUrl\?: string/, 'video model should preserve separated audio playlist metadata');
@@ -258,6 +290,7 @@ assert.match(articleModelSource, /backgroundColor\?: string/, 'GIF model should 
 assert.match(readerRendererSource, /renderSimpleTweetBlock\(block\)/, 'reader should render simple tweets from the complete block data');
 assert.match(readerRendererSource, /renderCodeBlock\(block\.id, block\.text, block\.language\)/, 'reader should render code blocks with dynamic language');
 assert.match(readerRendererSource, /renderGifBlock\(block\)/, 'reader should render GIF blocks');
+assert.match(readerRendererSource, /renderImageGalleryBlock\(block\)/, 'reader should render image gallery blocks');
 assert.match(readerRendererSource, /renderVideoBlock\(block\)/, 'reader should render video blocks');
 assert.match(readerRendererSource, /createElement\('source'\)/, 'reader should render video sources');
 assert.match(readerRendererSource, /video\.preload = block\.preload/, 'reader should preserve video preload');
@@ -415,6 +448,17 @@ function extractSnapshotVideoGif(html) {
   };
 }
 
+function extractSnapshotImageGrid(html) {
+  const paddingBottom = Number(html.match(/padding-bottom:\s*([0-9.]+)%/)?.[1] ?? 0);
+  const photos = [...html.matchAll(/<a\b[^>]*href="([^"]+)"[\s\S]*?data-testid="tweetPhoto"[\s\S]*?<img[^>]+src="([^"]+)"/g)];
+  return {
+    photoCount: countMatches(html, 'data-testid="tweetPhoto"'),
+    aspectRatio: Math.round((100 / paddingBottom) * 10000) / 10000,
+    photoSrcs: photos.map((match) => decodeHtml(match[2])),
+    hrefs: photos.map((match) => decodeHtml(match[1]))
+  };
+}
+
 function extractStandaloneLinkBlockFixture(html) {
   const anchor = html.match(/<a\b[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/);
   const blockText = normalizeText(decodeHtml(html.replace(/<[^>]+>/g, '')));
@@ -432,6 +476,25 @@ function extractStandaloneLinkBlockFixture(html) {
     text,
     href: decodeHtml(anchor[1]),
     ...(target ? { target } : {})
+  };
+}
+
+function extractSvgEmojiHeadingFixture(html) {
+  const tag = html.match(/^<([a-z0-9]+)/i)?.[1].toLowerCase();
+  const level = Number(tag?.replace(/^h/i, ''));
+  const textItems = [...html.matchAll(/<span[^>]*data-text="true"[^>]*>([\s\S]*?)<\/span>/g)]
+    .map((match) => normalizeText(decodeHtml(match[1].replace(/<[^>]+>/g, ''))))
+    .filter(Boolean);
+  const emojiImageUrls = [...html.matchAll(/background-image:\s*url\(&quot;([^&]+)&quot;\)/g)].map((match) =>
+    decodeHtml(match[1])
+  );
+  return {
+    tag,
+    level,
+    text: textItems.join(''),
+    textCount: textItems.length,
+    emojiImageUrlCount: emojiImageUrls.length,
+    emojiImageUrl: emojiImageUrls[0] ?? ''
   };
 }
 

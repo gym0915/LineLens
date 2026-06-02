@@ -1,4 +1,6 @@
 import { HighlightLayer } from '../dist/reader/highlight-layer.js';
+import { readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
 
 class ClassList {
   constructor(owner) {
@@ -133,9 +135,7 @@ layer.hide();
 assert(!overlay.classList.contains('is-visible'), 'hide should remove visible state');
 assert(layer.activeId === null, 'hide should clear active id');
 
-const css = await import('node:fs').then(({ readFileSync }) =>
-  readFileSync(new URL('../public/reader.css', import.meta.url), 'utf8')
-);
+const css = readReaderCss();
 for (const expected of [
   '.highlight-layer',
   '.highlight-focus',
@@ -185,4 +185,16 @@ function assert(condition, message) {
   if (!condition) {
     throw new Error(message);
   }
+}
+
+function readReaderCss() {
+  const publicDir = new URL('../public', import.meta.url).pathname;
+  const stylesDir = join(publicDir, 'styles');
+  const entryCss = readFileSync(join(publicDir, 'reader.css'), 'utf8');
+  const styleCss = readdirSync(stylesDir)
+    .filter((fileName) => fileName.endsWith('.css'))
+    .sort()
+    .map((fileName) => readFileSync(join(stylesDir, fileName), 'utf8'))
+    .join('\n');
+  return `${entryCss}\n${styleCss}`;
 }

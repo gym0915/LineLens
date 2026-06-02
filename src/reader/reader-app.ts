@@ -70,7 +70,7 @@ export function mountReaderApp(root: HTMLElement, article: Article): void {
 
     const index = units.findIndex((unit) => unit.unitId === focusElement.dataset.unitId);
     if (index >= 0) {
-      if (shouldSelectSimpleTweetBeforeNavigation(target, focusElement, activeUnit)) {
+      if (shouldSelectBlockLinkBeforeNavigation(target, focusElement, activeUnit)) {
         event.preventDefault();
         event.stopPropagation();
       }
@@ -196,9 +196,23 @@ function resolveInitialIndex(unitId: string | undefined, units: FocusUnit[]): nu
   return index >= 0 ? index : 0;
 }
 
-function shouldSelectSimpleTweetBeforeNavigation(target: Element, focusElement: HTMLElement, activeUnit: FocusUnit | null): boolean {
-  const simpleTweetLink = target.closest('a.reader-simple-tweet[href]');
-  return Boolean(simpleTweetLink && focusElement.dataset.blockType === 'simple-tweet' && activeUnit?.unitId !== focusElement.dataset.unitId);
+function shouldSelectBlockLinkBeforeNavigation(target: Element, focusElement: HTMLElement, activeUnit: FocusUnit | null): boolean {
+  if (activeUnit?.unitId === focusElement.dataset.unitId) {
+    return false;
+  }
+
+  const blockType = focusElement.dataset.blockType;
+  if (blockType === 'simple-tweet') {
+    return Boolean(target.closest('a.reader-simple-tweet[href]'));
+  }
+  if (blockType === 'image') {
+    return Boolean(target.closest('a.reader-media[href]'));
+  }
+  if (blockType === 'image-gallery') {
+    return Boolean(target.closest('a.reader-image-gallery-item[href]'));
+  }
+
+  return false;
 }
 
 function shouldIgnoreKeydown(event: KeyboardEvent): boolean {

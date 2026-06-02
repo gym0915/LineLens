@@ -304,6 +304,80 @@ tweetClickListener?.({
 });
 assert(!preventedActiveTweetClick, 'Active simpleTweet link click should be allowed to navigate');
 
+const imageClickArticle = {
+  ...article,
+  id: 'image-click',
+  blocks: [
+    { id: 'intro-image', type: 'paragraph', text: 'Intro paragraph' },
+    { id: 'image-click-block', type: 'image', src: 'https://example.com/image.jpg', alt: 'Linked image', href: 'https://x.com/example/photo/1' }
+  ]
+};
+const imageClickRoot = new ElementLike('main');
+mountReaderApp(imageClickRoot, imageClickArticle);
+const imageClickListener = imageClickRoot.eventListeners.get('click')?.at(-1);
+const imageLink = walk(imageClickRoot).find((element) => element.dataset.blockId === 'image-click-block');
+assert(imageLink?.tagName === 'A', 'linked image block should remain an anchor');
+let preventedImageClick = false;
+imageClickListener?.({
+  target: imageLink,
+  preventDefault() {
+    preventedImageClick = true;
+  },
+  stopPropagation() {}
+});
+assert(preventedImageClick, 'Inactive image link click should be intercepted before navigation');
+assert(findByClass(imageClickRoot, 'is-active')?.dataset.blockId === 'image-click-block', 'Inactive image link click should first select the image');
+let preventedActiveImageClick = false;
+imageClickListener?.({
+  target: imageLink,
+  preventDefault() {
+    preventedActiveImageClick = true;
+  },
+  stopPropagation() {}
+});
+assert(!preventedActiveImageClick, 'Active image link click should be allowed to navigate');
+
+const galleryClickArticle = {
+  ...article,
+  id: 'gallery-click',
+  blocks: [
+    { id: 'intro-gallery', type: 'paragraph', text: 'Intro paragraph' },
+    {
+      id: 'gallery-click-block',
+      type: 'image-gallery',
+      aspectRatio: 1.7778,
+      items: [
+        { src: 'https://example.com/1.jpg', alt: 'One', href: 'https://x.com/example/media/1' },
+        { src: 'https://example.com/2.jpg', alt: 'Two', href: 'https://x.com/example/media/2' }
+      ]
+    }
+  ]
+};
+const galleryClickRoot = new ElementLike('main');
+mountReaderApp(galleryClickRoot, galleryClickArticle);
+const galleryClickListener = galleryClickRoot.eventListeners.get('click')?.at(-1);
+const galleryItemLink = walk(galleryClickRoot).find((element) => element.className.split(/\s+/).includes('reader-image-gallery-item'));
+assert(galleryItemLink?.tagName === 'A', 'linked gallery items should remain anchors');
+let preventedGalleryClick = false;
+galleryClickListener?.({
+  target: galleryItemLink,
+  preventDefault() {
+    preventedGalleryClick = true;
+  },
+  stopPropagation() {}
+});
+assert(preventedGalleryClick, 'Inactive image-gallery link click should be intercepted before navigation');
+assert(findByClass(galleryClickRoot, 'is-active')?.dataset.blockId === 'gallery-click-block', 'Inactive image-gallery link click should first select the gallery');
+let preventedActiveGalleryClick = false;
+galleryClickListener?.({
+  target: galleryItemLink,
+  preventDefault() {
+    preventedActiveGalleryClick = true;
+  },
+  stopPropagation() {}
+});
+assert(!preventedActiveGalleryClick, 'Active image-gallery link click should be allowed to navigate');
+
 const savedProgress = JSON.parse(storage.get('linelens:fixture-progress:simple-chinese'));
 assert(savedProgress.unitId === 'p1-u2', 'Focus changes should save progress');
 assert(typeof savedProgress.updatedAt === 'number', 'Saved progress should include updatedAt');

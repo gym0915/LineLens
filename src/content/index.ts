@@ -19,6 +19,7 @@ type ArticleBlock =
       level?: 1 | 2 | 3 | 4 | 5 | 6;
     }
   | ImageBlock
+  | ImageGalleryBlock
   | {
       id: string;
       type: 'list';
@@ -79,6 +80,20 @@ type ImageBlock = {
   src: string;
   alt?: string;
   href?: string;
+  aspectRatio?: number;
+};
+
+type ImageGalleryItem = {
+  src: string;
+  alt?: string;
+  href?: string;
+  aspectRatio?: number;
+};
+
+type ImageGalleryBlock = {
+  id: string;
+  type: 'image-gallery';
+  items: ImageGalleryItem[];
   aspectRatio?: number;
 };
 
@@ -144,6 +159,7 @@ type TextAnnotation = {
   bold?: boolean;
   href?: string;
   target?: string;
+  emojiImageUrl?: string;
 };
 
 type ExtensionMessage =
@@ -631,7 +647,8 @@ async function extractBlock(block: Element, articleId: string, index: number, ca
       id: blockId(articleId, index),
       type: 'heading',
       text: extracted.text,
-      level: getHeadingLevel(block)
+      level: getHeadingLevel(block),
+      ...(extracted.annotations.length > 0 ? { annotations: extracted.annotations } : {})
     };
   }
 
@@ -666,6 +683,11 @@ async function extractNonTextBlock(block: Element, articleId: string, index: num
   const gif = extractGifFromElement(block, blockId(articleId, index));
   if (gif) {
     return gif;
+  }
+
+  const imageGallery = extractImageGalleryFromElement(block, blockId(articleId, index));
+  if (imageGallery) {
+    return imageGallery;
   }
 
   const image = extractImageFromElement(block, blockId(articleId, index));
@@ -1244,6 +1266,52 @@ function extractImageFromElement(element: Element, id: string): ImageBlock | nul
   return imageElementToBlock(image, id);
 }
 
+function extractImageGalleryFromElement(element: Element, id: string): ImageGalleryBlock | null {
+  const photos = Array.from(element.querySelectorAll<HTMLElement>(X_ARTICLE_SELECTORS.tweetPhoto))
+    .map((photo) => tweetPhotoElementToGalleryItem(photo))
+    .filter((item): item is ImageGalleryItem => Boolean(item));
+
+  if (photos.length <= 1) {
+    return null;
+  }
+
+  const aspectRatio = getImageGalleryAspectRatio(element);
+  return {
+    id,
+    type: 'image-gallery',
+    items: photos,
+    ...(aspectRatio ? { aspectRatio } : {})
+  };
+}
+
+function tweetPhotoElementToGalleryItem(element: HTMLElement): ImageGalleryItem | null {
+  const image = element.querySelector<HTMLImageElement>('img');
+  const src = image?.currentSrc || image?.src || getTweetPhotoBackgroundUrl(element);
+  if (!src) {
+    return null;
+  }
+
+  const href = element.closest('a[href]')?.getAttribute('href') ?? undefined;
+  const aspectRatio = image ? getImageAspectRatio(image) : undefined;
+  return {
+    src,
+    alt: image?.alt || undefined,
+    ...(href ? { href: new URL(href, X_CANONICAL_ORIGIN).toString() } : {}),
+    ...(aspectRatio ? { aspectRatio } : {})
+  };
+}
+
+function getImageGalleryAspectRatio(element: Element): number | undefined {
+  for (let current: Element | null = element; current; current = current.parentElement) {
+    const paddingRatio = getPaddingBottomAspectRatio(current);
+    if (paddingRatio) {
+      return paddingRatio;
+    }
+  }
+
+  return undefined;
+}
+
 function getMediaAspectRatio(media: HTMLMediaElement, container: Element): number | undefined {
   const video = media as HTMLVideoElement;
   const intrinsicRatio = toValidAspectRatio(video.videoWidth, video.videoHeight);
@@ -1430,7 +1498,7 @@ function imageElementToBlock(image: HTMLImageElement, id: string): ImageBlock | 
     type: 'image',
     src,
     alt: image.alt || undefined,
-    href,
+    ...(href ? { href: new URL(href, X_CANONICAL_ORIGIN).toString() } : {}),
     ...(aspectRatio ? { aspectRatio } : {})
   };
 }
@@ -1544,6 +1612,10 @@ function extractTextWithAnnotations(
       // X renders emoji through a background image and hides the real glyph with
       // `clip-path: circle(...)`; keep the underlying text so sentence units
       // include the emoji instead of dropping it from the reading flow.
+      const emojiImageUrl = getEmojiImageUrl(textElement);
+      if (emojiImageUrl) {
+        annotations.push({ startOffset, endOffset, emojiImageUrl });
+      }
     }
   }
 
@@ -1557,7 +1629,14 @@ function isBoldTextElement(textElement: HTMLElement): boolean {
 }
 
 function isEmojiTextElement(textElement: HTMLElement): boolean {
-  return Boolean(textElement.closest<HTMLElement>('[style*="clip-path: circle"]'));
+  return Boolean(getEmojiImageUrl(textElement));
+}
+
+function getEmojiImageUrl(textElement: HTMLElement): string | undefined {
+  const emojiLayer = textElement.closest<HTMLElement>('[style*="background-image"]');
+  const backgroundImage = emojiLayer?.style.backgroundImage ?? '';
+  const match = backgroundImage.match(/url\((['"]?)(.*?)\1\)/i);
+  return match?.[2];
 }
 
 function validateArticle(article: Article) {

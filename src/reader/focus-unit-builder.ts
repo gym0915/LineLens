@@ -92,13 +92,14 @@ function appendAnnotatedText(
   annotations: TextAnnotation[] = []
 ): void {
   const relevantAnnotations = annotations
-    .filter((annotation) => (annotation.bold || annotation.href) && annotation.endOffset > startOffset && annotation.startOffset < endOffset)
+    .filter((annotation) => (annotation.bold || annotation.href || annotation.emojiImageUrl) && annotation.endOffset > startOffset && annotation.startOffset < endOffset)
     .map((annotation) => ({
       startOffset: Math.max(annotation.startOffset, startOffset),
       endOffset: Math.min(annotation.endOffset, endOffset),
       bold: annotation.bold,
       href: annotation.href,
-      target: annotation.target
+      target: annotation.target,
+      emojiImageUrl: annotation.emojiImageUrl
     }))
     .sort((a, b) => a.startOffset - b.startOffset);
 
@@ -110,29 +111,7 @@ function appendAnnotatedText(
 
     if (annotation.endOffset > annotation.startOffset) {
       const text = sourceText.slice(annotation.startOffset, annotation.endOffset);
-      let annotatedNode: HTMLElement;
-      if (annotation.href) {
-        const link = document.createElement('a');
-        link.setAttribute('href', annotation.href);
-        if (annotation.target) {
-          link.setAttribute('target', annotation.target);
-        }
-        link.setAttribute('rel', 'noreferrer');
-        link.textContent = text;
-        annotatedNode = link;
-      } else {
-        const strong = document.createElement('strong');
-        strong.textContent = text;
-        annotatedNode = strong;
-      }
-
-      if (annotation.bold && annotation.href) {
-        const strong = document.createElement('strong');
-        strong.append(annotatedNode);
-        container.append(strong);
-      } else {
-        container.append(annotatedNode);
-      }
+      container.append(createAnnotatedNode(text, annotation));
     }
     cursor = annotation.endOffset;
   }
@@ -140,4 +119,55 @@ function appendAnnotatedText(
   if (cursor < endOffset) {
     container.append(document.createTextNode(sourceText.slice(cursor, endOffset)));
   }
+}
+
+function createAnnotatedNode(
+  text: string,
+  annotation: Pick<TextAnnotation, 'bold' | 'href' | 'target' | 'emojiImageUrl'>
+): HTMLElement {
+  let node: HTMLElement;
+
+  if (annotation.emojiImageUrl) {
+    const emoji = document.createElement('span');
+    emoji.textContent = text;
+    emoji.style.backgroundImage = `url("${annotation.emojiImageUrl}")`;
+    emoji.style.backgroundSize = '1em 1em';
+    emoji.style.backgroundPosition = 'center center';
+    emoji.style.backgroundRepeat = 'no-repeat';
+    emoji.style.padding = '0.15em';
+    emoji.style.webkitTextFillColor = 'transparent';
+    node = emoji;
+  } else if (annotation.href) {
+    const link = document.createElement('a');
+    link.setAttribute('href', annotation.href);
+    if (annotation.target) {
+      link.setAttribute('target', annotation.target);
+    }
+    link.setAttribute('rel', 'noreferrer');
+    link.textContent = text;
+    node = link;
+  } else {
+    const strong = document.createElement('strong');
+    strong.textContent = text;
+    node = strong;
+  }
+
+  if (annotation.href && annotation.emojiImageUrl) {
+    const link = document.createElement('a');
+    link.setAttribute('href', annotation.href);
+    if (annotation.target) {
+      link.setAttribute('target', annotation.target);
+    }
+    link.setAttribute('rel', 'noreferrer');
+    link.append(node);
+    node = link;
+  }
+
+  if (annotation.bold && (annotation.href || annotation.emojiImageUrl)) {
+    const strong = document.createElement('strong');
+    strong.append(node);
+    return strong;
+  }
+
+  return node;
 }

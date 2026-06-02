@@ -31,6 +31,7 @@ export function validateArticle(article: Article): ValidationResult {
   const hasMediaBlock = article.blocks.some(
     (block) =>
       block.type === 'image' ||
+      block.type === 'image-gallery' ||
       block.type === 'gif' ||
       block.type === 'video' ||
       block.type === 'embed' ||

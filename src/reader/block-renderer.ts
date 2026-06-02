@@ -1,4 +1,4 @@
-import type { Article, ArticleBlock, GifBlock, SimpleTweetBlock, TextAnnotation, TweetMetrics, TweetPhoto, VideoBlock } from '../shared/article-schema.js';
+import type { Article, ArticleBlock, GifBlock, ImageGalleryBlock, SimpleTweetBlock, TextAnnotation, TweetMetrics, TweetPhoto, VideoBlock } from '../shared/article-schema.js';
 
 type HlsConstructor = {
   isSupported(): boolean;
@@ -73,13 +73,15 @@ export function cleanupRenderedMedia(root: ParentNode): void {
 function renderBlock(block: ArticleBlock): HTMLElement {
   switch (block.type) {
     case 'heading':
-      return renderTextBlock(getHeadingTagName(block.level), block.id, block.type, block.text);
+      return renderTextBlock(getHeadingTagName(block.level), block.id, block.type, block.text, block.annotations);
     case 'paragraph':
       return renderTextBlock('p', block.id, block.type, block.text, block.annotations);
     case 'quote':
       return renderTextBlock('blockquote', block.id, block.type, block.text, block.annotations);
     case 'image':
-      return renderImageBlock(block.id, block.src, block.alt, block.aspectRatio);
+      return renderImageBlock(block.id, block.src, block.alt, block.aspectRatio, block.href);
+    case 'image-gallery':
+      return renderImageGalleryBlock(block);
     case 'list':
       return renderListBlock(block.id, block.items, block.kind);
     case 'link':
@@ -114,13 +116,14 @@ function renderTextBlock(
 
 function appendAnnotatedText(container: HTMLElement, sourceText: string, annotations: TextAnnotation[] = []): void {
   const relevantAnnotations = annotations
-    .filter((annotation) => (annotation.bold || annotation.href) && annotation.endOffset > annotation.startOffset)
+    .filter((annotation) => (annotation.bold || annotation.href || annotation.emojiImageUrl) && annotation.endOffset > annotation.startOffset)
     .map((annotation) => ({
       startOffset: Math.max(annotation.startOffset, 0),
       endOffset: Math.min(annotation.endOffset, sourceText.length),
       bold: annotation.bold,
       href: annotation.href,
-      target: annotation.target
+      target: annotation.target,
+      emojiImageUrl: annotation.emojiImageUrl
     }))
     .filter((annotation) => annotation.endOffset > annotation.startOffset)
     .sort((a, b) => a.startOffset - b.startOffset);
@@ -136,29 +139,7 @@ function appendAnnotatedText(container: HTMLElement, sourceText: string, annotat
     }
 
     const text = sourceText.slice(annotation.startOffset, annotation.endOffset);
-    let annotatedNode: HTMLElement;
-    if (annotation.href) {
-      const link = document.createElement('a');
-      link.setAttribute('href', annotation.href);
-      if (annotation.target) {
-        link.setAttribute('target', annotation.target);
-      }
-      link.setAttribute('rel', 'noreferrer');
-      link.textContent = text;
-      annotatedNode = link;
-    } else {
-      const strong = document.createElement('strong');
-      strong.textContent = text;
-      annotatedNode = strong;
-    }
-
-    if (annotation.bold && annotation.href) {
-      const strong = document.createElement('strong');
-      strong.append(annotatedNode);
-      container.append(strong);
-    } else {
-      container.append(annotatedNode);
-    }
+    container.append(createAnnotatedNode(text, annotation));
     cursor = annotation.endOffset;
   }
 
@@ -167,18 +148,95 @@ function appendAnnotatedText(container: HTMLElement, sourceText: string, annotat
   }
 }
 
+function createAnnotatedNode(
+  text: string,
+  annotation: Pick<TextAnnotation, 'bold' | 'href' | 'target' | 'emojiImageUrl'>
+): HTMLElement {
+  let node: HTMLElement;
+
+  if (annotation.emojiImageUrl) {
+    node = createXEmojiNode(text, annotation.emojiImageUrl, Boolean(annotation.bold));
+  } else if (annotation.href) {
+    const link = document.createElement('a');
+    link.setAttribute('href', annotation.href);
+    if (annotation.target) {
+      link.setAttribute('target', annotation.target);
+    }
+    link.setAttribute('rel', 'noreferrer');
+    link.textContent = text;
+    node = link;
+  } else {
+    const strong = document.createElement('strong');
+    strong.textContent = text;
+    node = strong;
+  }
+
+  if (annotation.href && annotation.emojiImageUrl) {
+    const link = document.createElement('a');
+    link.setAttribute('href', annotation.href);
+    if (annotation.target) {
+      link.setAttribute('target', annotation.target);
+    }
+    link.setAttribute('rel', 'noreferrer');
+    link.append(node);
+    node = link;
+  }
+
+  if (annotation.bold && annotation.href) {
+    const strong = document.createElement('strong');
+    strong.append(node);
+    return strong;
+  }
+
+  return node;
+}
+
+function createXEmojiNode(text: string, emojiImageUrl: string, bold: boolean): HTMLElement {
+  const emoji = document.createElement('span');
+  emoji.className = 'reader-x-emoji';
+  emoji.style.display = 'inline-block';
+  emoji.style.width = '1em';
+  emoji.style.height = '1em';
+  emoji.style.backgroundImage = `url("${emojiImageUrl}")`;
+  emoji.style.backgroundSize = '1em 1em';
+  emoji.style.backgroundPosition = 'center center';
+  emoji.style.backgroundRepeat = 'no-repeat';
+  emoji.style.verticalAlign = '-0.12em';
+  emoji.style.padding = '0.15em';
+  emoji.style.webkitTextFillColor = 'transparent';
+
+  const hidden = document.createElement('span');
+  hidden.className = 'reader-x-emoji-hidden';
+  hidden.style.clipPath = 'circle(0% at 50% 50%)';
+
+  if (bold) {
+    const strong = document.createElement('strong');
+    strong.textContent = text;
+    hidden.append(strong);
+  } else {
+    hidden.textContent = text;
+  }
+
+  emoji.append(hidden);
+  return emoji;
+}
+
 function getHeadingTagName(level: 1 | 2 | 3 | 4 | 5 | 6 = 2): 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' {
   return `h${level}`;
 }
 
-function renderImageBlock(blockId: string, src: string, alt = '', aspectRatio?: number): HTMLElement {
-  const figure = document.createElement('figure');
+function renderImageBlock(blockId: string, src: string, alt = '', aspectRatio?: number, href?: string): HTMLElement {
+  const figure = href ? document.createElement('a') : document.createElement('figure');
   figure.className = 'reader-block reader-media';
   figure.dataset.blockId = blockId;
   figure.dataset.blockType = 'image';
+  if (href) {
+    figure.setAttribute('href', href);
+  }
   applyMediaAspectRatio(figure, aspectRatio);
 
   const image = document.createElement('img');
+  image.className = 'reader-media-image';
   image.src = src;
   image.alt = alt;
   image.loading = 'lazy';
@@ -198,6 +256,42 @@ function renderCoverImageBlock(blockId: string, src: string, alt = '', aspectRat
   const figure = renderImageBlock(blockId, src, alt, aspectRatio);
   figure.className = 'reader-cover reader-media';
   figure.dataset.blockType = 'cover';
+  return figure;
+}
+
+function renderImageGalleryBlock(block: ImageGalleryBlock): HTMLElement {
+  const figure = document.createElement('figure');
+  figure.className = 'reader-block reader-media reader-image-gallery';
+  figure.dataset.blockId = block.id;
+  figure.dataset.blockType = 'image-gallery';
+  applyMediaAspectRatio(figure, block.aspectRatio);
+
+  const grid = document.createElement('div');
+  grid.className = 'reader-image-gallery-grid';
+
+  for (const item of block.items) {
+    const itemElement = item.href ? document.createElement('a') : document.createElement('div');
+    itemElement.className = 'reader-image-gallery-item';
+    if (item.href) {
+      itemElement.setAttribute('href', item.href);
+    }
+    applyMediaAspectRatio(itemElement, item.aspectRatio);
+
+    const image = document.createElement('img');
+    image.className = 'reader-image-gallery-image';
+    image.src = item.src;
+    image.alt = item.alt ?? '';
+    image.loading = 'lazy';
+    image.addEventListener('error', () => {
+      itemElement.classList.add('is-load-error');
+      image.remove();
+    });
+
+    itemElement.append(image);
+    grid.append(itemElement);
+  }
+
+  figure.append(grid);
   return figure;
 }
 

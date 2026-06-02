@@ -228,6 +228,40 @@ const linkElement = linkRendered.querySelector('[data-block-id="link1"]');
 assert(linkElement?.tagName === 'A', 'link block should render as anchor');
 assert(linkElement.attributes.href === 'https://x.com/example/status/1', 'link block should preserve href');
 assert(linkElement.attributes.target === '_blank', 'link block should preserve target');
+const imageLinkRendered = renderArticleShell({
+  ...mediaArticle,
+  blocks: [{ id: 'image-link', type: 'image', src: 'https://example.com/image.jpg', alt: 'Linked image', href: 'https://x.com/example/photo/1' }]
+});
+const imageLinkElement = imageLinkRendered.querySelector('[data-block-id="image-link"]');
+assert(imageLinkElement?.tagName === 'A', 'image block with href should render as anchor');
+assert(imageLinkElement.attributes.href === 'https://x.com/example/photo/1', 'image block should preserve href');
+assert(findByClass(imageLinkElement, 'reader-media-image')?.tagName === 'IMG', 'linked image block should render an image');
+const galleryRendered = renderArticleShell({
+  ...mediaArticle,
+  blocks: [
+    {
+      id: 'gallery1',
+      type: 'image-gallery',
+      aspectRatio: 1.7778,
+      items: [
+        { src: 'https://example.com/1.jpg', alt: 'One', href: 'https://x.com/example/media/1' },
+        { src: 'https://example.com/2.jpg', alt: 'Two', href: 'https://x.com/example/media/2' },
+        { src: 'https://example.com/3.jpg', alt: 'Three', href: 'https://x.com/example/media/3' },
+        { src: 'https://example.com/4.jpg', alt: 'Four', href: 'https://x.com/example/media/4' }
+      ]
+    }
+  ]
+});
+const galleryElement = galleryRendered.querySelector('[data-block-id="gallery1"]');
+assert(galleryElement?.tagName === 'FIGURE', 'image-gallery should render as figure');
+assert(galleryElement.dataset.blockType === 'image-gallery', 'image-gallery should expose its block type');
+assert(galleryElement.dataset.aspectRatio === '1.7778', 'image-gallery should expose source aspect ratio');
+assert(findByClass(galleryElement, 'reader-image-gallery-grid')?.tagName === 'DIV', 'image-gallery should render a grid container');
+const galleryItems = galleryElement.querySelectorAll('.reader-image-gallery-item');
+assert(galleryItems.length === 4, 'image-gallery should render every item');
+assert(galleryItems[0].tagName === 'A', 'image-gallery items with href should render as anchors');
+assert(galleryItems[0].attributes.href === 'https://x.com/example/media/1', 'image-gallery item should preserve href');
+assert(findByClass(galleryItems[0], 'reader-image-gallery-image')?.tagName === 'IMG', 'image-gallery item should render an image');
 const codeRendered = renderArticleShell({
   ...mediaArticle,
   blocks: [{ id: 'code1', type: 'code', language: 'rust', text: 'pub struct AgentLoop {\\n  config: AppConfig, // 运行配置\\n}' }]
@@ -262,6 +296,33 @@ const explicitHeadingRendered = renderArticleShell({
 assert(
   explicitHeadingRendered.querySelector('[data-block-id="explicit-h1"]')?.tagName === 'H1',
   'explicit h1 source heading should render as h1'
+);
+const svgEmojiHeadingRendered = renderArticleShell({
+  ...mediaArticle,
+  blocks: [
+    {
+      id: 'svg-emoji-h2',
+      type: 'heading',
+      level: 2,
+      text: '🌟🌟🌟🌟🌟',
+      annotations: Array.from({ length: 5 }, (_value, index) => ({
+        startOffset: index * 2,
+        endOffset: index * 2 + 2,
+        bold: true,
+        emojiImageUrl: 'https://abs.twimg.com/emoji/v2/svg/1f31f.svg'
+      }))
+    }
+  ]
+});
+const svgEmojiHeading = svgEmojiHeadingRendered.querySelector('[data-block-id="svg-emoji-h2"]');
+assert(svgEmojiHeading?.tagName === 'H2', 'explicit h2 source heading should render as h2');
+assert(
+  walk(svgEmojiHeading).filter((element) => element.style.backgroundImage?.includes('/emoji/v2/svg/1f31f.svg')).length === 5,
+  'X SVG emoji annotations should render as background-image emoji spans'
+);
+assert(
+  walk(svgEmojiHeading).filter((element) => element.className.split(/\s+/).includes('reader-x-emoji-hidden')).length === 5,
+  'X SVG emoji annotations should preserve the hidden inner glyph wrapper'
 );
 const shortParagraphRendered = renderArticleShell({
   ...mediaArticle,

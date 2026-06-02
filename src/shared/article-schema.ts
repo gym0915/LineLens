@@ -7,6 +7,8 @@ export type {
   GifBlock,
   HeadingBlock,
   ImageBlock,
+  ImageGalleryBlock,
+  ImageGalleryItem,
   LinkBlock,
   ListBlock,
   ParagraphBlock,

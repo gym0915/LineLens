@@ -17,6 +17,7 @@ export type ArticleBlock =
   | ParagraphBlock
   | QuoteBlock
   | ImageBlock
+  | ImageGalleryBlock
   | ListBlock
   | LinkBlock
   | CodeBlock
@@ -30,6 +31,7 @@ export type HeadingBlock = {
   type: 'heading';
   text: string;
   level?: 1 | 2 | 3 | 4 | 5 | 6;
+  annotations?: TextAnnotation[];
 };
 
 export type ParagraphBlock = {
@@ -52,6 +54,20 @@ export type ImageBlock = {
   src: string;
   alt?: string;
   href?: string;
+  aspectRatio?: number;
+};
+
+export type ImageGalleryItem = {
+  src: string;
+  alt?: string;
+  href?: string;
+  aspectRatio?: number;
+};
+
+export type ImageGalleryBlock = {
+  id: string;
+  type: 'image-gallery';
+  items: ImageGalleryItem[];
   aspectRatio?: number;
 };
 
@@ -173,4 +189,5 @@ export type TextAnnotation = {
   bold?: boolean;
   href?: string;
   target?: string;
+  emojiImageUrl?: string;
 };
