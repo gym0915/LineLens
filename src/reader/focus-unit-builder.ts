@@ -1,5 +1,6 @@
-import type { Article, FocusUnit, TextAnnotation } from '../shared/article-schema.js';
+import type { Article, FocusUnit } from '../shared/article-schema.js';
 import { splitIntoReadingUnits } from './semantic-splitter.js';
+import { createReaderTextMetadata, createReaderTextSpan } from './reader-text-renderer.js';
 
 export type FocusUnitBuildResult = {
   units: FocusUnit[];
@@ -22,11 +23,19 @@ export function buildFocusUnits(article: Article, root: HTMLElement): FocusUnitB
 
       readingUnits.forEach((readingUnit, index) => {
         const unitId = `${block.id}-u${index + 1}`;
-        const span = document.createElement('span');
-        span.className = 'focus-unit';
+        const span = createReaderTextSpan(block.text, block.annotations, {
+          role: 'body',
+          className: 'focus-unit',
+          rangeStart: readingUnit.startOffset,
+          rangeEnd: readingUnit.endOffset
+        });
         span.dataset.unitId = unitId;
-        appendAnnotatedText(span, block.text, readingUnit.startOffset, readingUnit.endOffset, block.annotations);
         blockElement.append(span, document.createTextNode(' '));
+        const textMetadata = createReaderTextMetadata(block.text, block.annotations, {
+          role: 'body',
+          rangeStart: readingUnit.startOffset,
+          rangeEnd: readingUnit.endOffset
+        });
 
         const unit: FocusUnit = {
           id: unitId,
@@ -35,7 +44,8 @@ export function buildFocusUnits(article: Article, root: HTMLElement): FocusUnitB
           unitId,
           text: readingUnit.text,
           startOffset: readingUnit.startOffset,
-          endOffset: readingUnit.endOffset
+          endOffset: readingUnit.endOffset,
+          textRole: 'body'
         };
         units.push(unit);
         elements.set(unitId, span);
@@ -57,7 +67,8 @@ export function buildFocusUnits(article: Article, root: HTMLElement): FocusUnitB
           unitId,
           text,
           startOffset: 0,
-          endOffset: text.length
+          endOffset: text.length,
+          textRole: 'list-item'
         };
         units.push(unit);
         elements.set(unitId, itemElement);
@@ -82,92 +93,4 @@ export function buildFocusUnits(article: Article, root: HTMLElement): FocusUnitB
   }
 
   return { units, elements };
-}
-
-function appendAnnotatedText(
-  container: HTMLElement,
-  sourceText: string,
-  startOffset: number,
-  endOffset: number,
-  annotations: TextAnnotation[] = []
-): void {
-  const relevantAnnotations = annotations
-    .filter((annotation) => (annotation.bold || annotation.href || annotation.emojiImageUrl) && annotation.endOffset > startOffset && annotation.startOffset < endOffset)
-    .map((annotation) => ({
-      startOffset: Math.max(annotation.startOffset, startOffset),
-      endOffset: Math.min(annotation.endOffset, endOffset),
-      bold: annotation.bold,
-      href: annotation.href,
-      target: annotation.target,
-      emojiImageUrl: annotation.emojiImageUrl
-    }))
-    .sort((a, b) => a.startOffset - b.startOffset);
-
-  let cursor = startOffset;
-  for (const annotation of relevantAnnotations) {
-    if (annotation.startOffset > cursor) {
-      container.append(document.createTextNode(sourceText.slice(cursor, annotation.startOffset)));
-    }
-
-    if (annotation.endOffset > annotation.startOffset) {
-      const text = sourceText.slice(annotation.startOffset, annotation.endOffset);
-      container.append(createAnnotatedNode(text, annotation));
-    }
-    cursor = annotation.endOffset;
-  }
-
-  if (cursor < endOffset) {
-    container.append(document.createTextNode(sourceText.slice(cursor, endOffset)));
-  }
-}
-
-function createAnnotatedNode(
-  text: string,
-  annotation: Pick<TextAnnotation, 'bold' | 'href' | 'target' | 'emojiImageUrl'>
-): HTMLElement {
-  let node: HTMLElement;
-
-  if (annotation.emojiImageUrl) {
-    const emoji = document.createElement('span');
-    emoji.textContent = text;
-    emoji.style.backgroundImage = `url("${annotation.emojiImageUrl}")`;
-    emoji.style.backgroundSize = '1em 1em';
-    emoji.style.backgroundPosition = 'center center';
-    emoji.style.backgroundRepeat = 'no-repeat';
-    emoji.style.padding = '0.15em';
-    emoji.style.webkitTextFillColor = 'transparent';
-    node = emoji;
-  } else if (annotation.href) {
-    const link = document.createElement('a');
-    link.setAttribute('href', annotation.href);
-    if (annotation.target) {
-      link.setAttribute('target', annotation.target);
-    }
-    link.setAttribute('rel', 'noreferrer');
-    link.textContent = text;
-    node = link;
-  } else {
-    const strong = document.createElement('strong');
-    strong.textContent = text;
-    node = strong;
-  }
-
-  if (annotation.href && annotation.emojiImageUrl) {
-    const link = document.createElement('a');
-    link.setAttribute('href', annotation.href);
-    if (annotation.target) {
-      link.setAttribute('target', annotation.target);
-    }
-    link.setAttribute('rel', 'noreferrer');
-    link.append(node);
-    node = link;
-  }
-
-  if (annotation.bold && (annotation.href || annotation.emojiImageUrl)) {
-    const strong = document.createElement('strong');
-    strong.append(node);
-    return strong;
-  }
-
-  return node;
 }

@@ -1,4 +1,5 @@
 import type { Article, ArticleBlock, GifBlock, ImageGalleryBlock, SimpleTweetBlock, TextAnnotation, TweetMetrics, TweetPhoto, VideoBlock } from '../shared/article-schema.js';
+import { appendReaderText, applyReaderTextMetadata, createReaderTextSpan } from './reader-text-renderer.js';
 
 type HlsConstructor = {
   isSupported(): boolean;
@@ -83,7 +84,7 @@ function renderBlock(block: ArticleBlock): HTMLElement {
     case 'image-gallery':
       return renderImageGalleryBlock(block);
     case 'list':
-      return renderListBlock(block.id, block.items, block.kind);
+      return renderListBlock(block.id, block.items, block.kind, block.itemAnnotations);
     case 'link':
       return renderLinkBlock(block.id, block.text, block.href, block.target);
     case 'code':
@@ -110,115 +111,13 @@ function renderTextBlock(
   element.className = 'reader-block';
   element.dataset.blockId = blockId;
   element.dataset.blockType = blockType;
-  appendAnnotatedText(element, text, annotations);
+  applyReaderTextMetadata(
+    element,
+    appendReaderText(element, text, annotations, {
+      role: blockType === 'paragraph' ? 'body' : blockType === 'quote' ? 'quote' : 'heading'
+    })
+  );
   return element;
-}
-
-function appendAnnotatedText(container: HTMLElement, sourceText: string, annotations: TextAnnotation[] = []): void {
-  const relevantAnnotations = annotations
-    .filter((annotation) => (annotation.bold || annotation.href || annotation.emojiImageUrl) && annotation.endOffset > annotation.startOffset)
-    .map((annotation) => ({
-      startOffset: Math.max(annotation.startOffset, 0),
-      endOffset: Math.min(annotation.endOffset, sourceText.length),
-      bold: annotation.bold,
-      href: annotation.href,
-      target: annotation.target,
-      emojiImageUrl: annotation.emojiImageUrl
-    }))
-    .filter((annotation) => annotation.endOffset > annotation.startOffset)
-    .sort((a, b) => a.startOffset - b.startOffset);
-
-  let cursor = 0;
-  for (const annotation of relevantAnnotations) {
-    if (annotation.startOffset < cursor) {
-      continue;
-    }
-
-    if (annotation.startOffset > cursor) {
-      container.append(document.createTextNode(sourceText.slice(cursor, annotation.startOffset)));
-    }
-
-    const text = sourceText.slice(annotation.startOffset, annotation.endOffset);
-    container.append(createAnnotatedNode(text, annotation));
-    cursor = annotation.endOffset;
-  }
-
-  if (cursor < sourceText.length) {
-    container.append(document.createTextNode(sourceText.slice(cursor)));
-  }
-}
-
-function createAnnotatedNode(
-  text: string,
-  annotation: Pick<TextAnnotation, 'bold' | 'href' | 'target' | 'emojiImageUrl'>
-): HTMLElement {
-  let node: HTMLElement;
-
-  if (annotation.emojiImageUrl) {
-    node = createXEmojiNode(text, annotation.emojiImageUrl, Boolean(annotation.bold));
-  } else if (annotation.href) {
-    const link = document.createElement('a');
-    link.setAttribute('href', annotation.href);
-    if (annotation.target) {
-      link.setAttribute('target', annotation.target);
-    }
-    link.setAttribute('rel', 'noreferrer');
-    link.textContent = text;
-    node = link;
-  } else {
-    const strong = document.createElement('strong');
-    strong.textContent = text;
-    node = strong;
-  }
-
-  if (annotation.href && annotation.emojiImageUrl) {
-    const link = document.createElement('a');
-    link.setAttribute('href', annotation.href);
-    if (annotation.target) {
-      link.setAttribute('target', annotation.target);
-    }
-    link.setAttribute('rel', 'noreferrer');
-    link.append(node);
-    node = link;
-  }
-
-  if (annotation.bold && annotation.href) {
-    const strong = document.createElement('strong');
-    strong.append(node);
-    return strong;
-  }
-
-  return node;
-}
-
-function createXEmojiNode(text: string, emojiImageUrl: string, bold: boolean): HTMLElement {
-  const emoji = document.createElement('span');
-  emoji.className = 'reader-x-emoji';
-  emoji.style.display = 'inline-block';
-  emoji.style.width = '1em';
-  emoji.style.height = '1em';
-  emoji.style.backgroundImage = `url("${emojiImageUrl}")`;
-  emoji.style.backgroundSize = '1em 1em';
-  emoji.style.backgroundPosition = 'center center';
-  emoji.style.backgroundRepeat = 'no-repeat';
-  emoji.style.verticalAlign = '-0.12em';
-  emoji.style.padding = '0.15em';
-  emoji.style.webkitTextFillColor = 'transparent';
-
-  const hidden = document.createElement('span');
-  hidden.className = 'reader-x-emoji-hidden';
-  hidden.style.clipPath = 'circle(0% at 50% 50%)';
-
-  if (bold) {
-    const strong = document.createElement('strong');
-    strong.textContent = text;
-    hidden.append(strong);
-  } else {
-    hidden.textContent = text;
-  }
-
-  emoji.append(hidden);
-  return emoji;
 }
 
 function getHeadingTagName(level: 1 | 2 | 3 | 4 | 5 | 6 = 2): 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' {
@@ -722,7 +621,12 @@ function renderGifPlayIcon(): SVGSVGElement {
   return svg;
 }
 
-function renderListBlock(blockId: string, items: string[], kind: 'ordered' | 'unordered' = 'unordered'): HTMLElement {
+function renderListBlock(
+  blockId: string,
+  items: string[],
+  kind: 'ordered' | 'unordered' = 'unordered',
+  itemAnnotations: TextAnnotation[][] = []
+): HTMLElement {
   const list = document.createElement(kind === 'ordered' ? 'ol' : 'ul');
   list.className = 'reader-block reader-list';
   list.dataset.blockId = blockId;
@@ -740,7 +644,11 @@ function renderListBlock(blockId: string, items: string[], kind: 'ordered' | 'un
 
     const content = document.createElement('span');
     content.className = 'reader-list-text';
-    content.textContent = text;
+    content.append(
+      createReaderTextSpan(text, itemAnnotations[index] ?? [], {
+        role: 'list-item'
+      })
+    );
 
     item.append(bullet, content);
     list.append(item);
@@ -841,11 +749,19 @@ function renderSimpleTweetBlock(block: SimpleTweetBlock): HTMLElement {
   if (!hasPhotoCard && !block.video && block.coverUrl) {
     const titleElement = document.createElement('div');
     titleElement.className = 'reader-simple-tweet-title';
-    titleElement.textContent = block.title;
+    titleElement.append(
+      createReaderTextSpan(block.title, [], {
+        role: 'social-title'
+      })
+    );
 
     const excerptElement = document.createElement('div');
     excerptElement.className = 'reader-simple-tweet-excerpt';
-    excerptElement.textContent = block.excerpt;
+    excerptElement.append(
+      createReaderTextSpan(block.excerpt, [], {
+        role: 'social-excerpt'
+      })
+    );
 
     content.append(titleElement, excerptElement);
     shell.append(content);
@@ -904,7 +820,11 @@ function renderExpandableSimpleTweetText(tweetText: string): HTMLDivElement {
   const text = document.createElement('div');
   text.className = 'reader-simple-tweet-text';
   text.setAttribute('data-testid', 'tweetText');
-  text.textContent = tweetText;
+  text.append(
+    createReaderTextSpan(tweetText, [], {
+      role: 'social-body'
+    })
+  );
 
   const showMore = document.createElement('span');
   showMore.className = 'reader-simple-tweet-show-more';

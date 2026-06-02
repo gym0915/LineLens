@@ -1,8 +1,10 @@
+import { xArticleAdapter } from '../../adapters/index.js';
+
 export const X_ARTICLE_SELECTORS = {
-  readView: '[data-testid="twitterArticleReadView"]',
-  title: '[data-testid="twitter-article-title"]',
+  readView: xArticleAdapter.rootSelector,
+  title: xArticleAdapter.titleSelector ?? '[data-testid="twitter-article-title"]',
   richTextView: '[data-testid="twitterArticleRichTextView"]',
-  longform: '[data-testid="longformRichTextComponent"]',
+  longform: xArticleAdapter.contentSelector ?? '[data-testid="longformRichTextComponent"]',
   block: '[data-block="true"]',
   quoteBlock: 'blockquote.longform-blockquote[data-block="true"]',
   tweetBlock: '[data-testid="tweet"]',

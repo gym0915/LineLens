@@ -7,6 +7,7 @@ export type FocusUnit =
       text: string;
       startOffset: number;
       endOffset: number;
+      textRole?: 'body' | 'list-item';
     }
   | {
       id: string;
