@@ -11,6 +11,8 @@ import {
 } from '../../../shared/url.js';
 import { detectXArticleDom } from './article-detector.js';
 import { X_ARTICLE_SELECTORS } from './article-selectors.js';
+import { xArticleAdapter } from '../../adapters/x-article-adapter.js';
+import { buildCleanTreePrimaryBlocks } from '../../preprocess/clean-tree-main-path.js';
 
 const AMPLIFY_VIDEO_ID_PATTERN = /amplify_video(?:_thumb)?\/(\d+)/;
 
@@ -52,7 +54,14 @@ export const xArticleExtractor: ArticleExtractor = {
     }
 
     const capturedVideos = await getCapturedVideos();
-    const blocks = await extractBlocks(longform, articleId, capturedVideos);
+    const legacyBlocks = await extractBlocks(longform, articleId, capturedVideos);
+    const blocks = buildCleanTreePrimaryBlocks({
+      sourceRoot: longform,
+      adapter: xArticleAdapter,
+      sourceUrl: context.url.toString(),
+      debugId: `x.article:${articleId}`,
+      legacyBlocks
+    }).blocks;
     const coverImage = extractCoverImage(readView, articleId);
     const article: Article = {
       id: articleId,

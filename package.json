@@ -12,6 +12,7 @@
     "verify:reader-a8-a9": "npm run build && node scripts/verify-reader-a8-a9.mjs",
     "verify:reader-m1-m2": "npm run build && node scripts/verify-reader-m1-m2.mjs",
     "verify:m3-adapters-settings": "npm run build && node scripts/verify-m3-adapters-settings.mjs",
+    "verify:phase4-pipeline-baseline": "npm run build && node scripts/verify-phase4-pipeline-baseline.mjs",
     "verify:x-article-b1-b9": "npm run build && node scripts/verify-x-article-b1-b9.mjs",
     "verify:x-article-b10-b15": "npm run build && node scripts/verify-x-article-b10-b15.mjs",
     "verify:x-article-b29": "npm run verify:x-article-b10-b15",
