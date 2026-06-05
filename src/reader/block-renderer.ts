@@ -1,4 +1,21 @@
-import type { Article, ArticleBlock, GifBlock, ImageGalleryBlock, SimpleTweetBlock, TextAnnotation, TweetMetrics, TweetPhoto, VideoBlock } from '../shared/article-schema.js';
+import type {
+  Article,
+  ArticleBlock,
+  CodeBlock,
+  CodeToken,
+  GifBlock,
+  ImageGalleryBlock,
+  SimpleTweetBlock,
+  SimpleTweetCardData,
+  SimpleTweetContentItem,
+  SimpleTweetPhotoLayout,
+  TableBlock,
+  TextAnnotation,
+  TextStyle,
+  TweetMetrics,
+  TweetPhoto,
+  VideoBlock
+} from '../shared/article-schema.js';
 import { appendReaderText, applyReaderTextMetadata, createReaderTextSpan } from './reader-text-renderer.js';
 
 type HlsConstructor = {
@@ -52,6 +69,14 @@ export function renderArticleShell(article: Article): HTMLElement {
   }
 
   header.append(title);
+  const authorMeta = renderArticleHeaderAuthorMeta(article);
+  if (authorMeta) {
+    header.append(authorMeta);
+  }
+  const metrics = renderArticleHeaderMetrics(article);
+  if (metrics) {
+    header.append(metrics);
+  }
 
   const body = document.createElement('section');
   body.className = 'article-body';
@@ -64,6 +89,109 @@ export function renderArticleShell(article: Article): HTMLElement {
   return articleElement;
 }
 
+function renderArticleHeaderAuthorMeta(article: Article): HTMLElement | null {
+  if (!article.authorName && !article.authorAvatarUrl && !article.publishedAtText) {
+    return null;
+  }
+
+  const row = document.createElement('a');
+  row.className = 'article-meta article-meta-author';
+  row.href = article.canonicalUrl;
+  row.setAttribute('aria-label', [article.authorName, article.authorHandle, article.publishedAtText].filter(Boolean).join(' '));
+
+  if (article.authorAvatarUrl) {
+    const avatar = document.createElement('img');
+    avatar.className = 'article-meta-avatar';
+    avatar.src = article.authorAvatarUrl;
+    avatar.alt = '';
+    avatar.loading = 'lazy';
+    row.append(avatar);
+  }
+
+  const text = document.createElement('span');
+  text.className = 'article-meta-author-text';
+
+  const primary = document.createElement('span');
+  primary.className = 'article-meta-author-primary';
+  if (article.authorName) {
+    const name = document.createElement('span');
+    name.className = 'article-meta-author-name';
+    name.textContent = article.authorName;
+    primary.append(name);
+  }
+  if (article.authorVerified) {
+    const verified = renderVerifiedIcon();
+    verified.classList.add('article-meta-verified-icon');
+    primary.append(verified);
+  }
+
+  const secondary = document.createElement('span');
+  secondary.className = 'article-meta-author-secondary';
+  if (article.authorHandle) {
+    const handle = document.createElement('span');
+    handle.textContent = article.authorHandle;
+    secondary.append(handle);
+  }
+  if (article.publishedAtText) {
+    if (article.authorHandle) {
+      const divider = document.createElement('span');
+      divider.textContent = '·';
+      secondary.append(divider);
+    }
+    const date = document.createElement('span');
+    date.textContent = article.publishedAtText;
+    secondary.append(date);
+  }
+
+  if (primary.childNodes.length > 0) {
+    text.append(primary);
+  }
+  if (secondary.childNodes.length > 0) {
+    text.append(secondary);
+  }
+  row.append(text, renderGrokIcon());
+  return row;
+}
+
+function renderArticleHeaderMetrics(article: Article): HTMLElement | null {
+  if (!article.metrics || !Object.values(article.metrics).some(Boolean)) {
+    return null;
+  }
+
+  const row = document.createElement('a');
+  row.className = 'article-meta article-meta-metrics';
+  row.href = article.canonicalUrl;
+  row.setAttribute('aria-label', 'Article interactions');
+
+  const primary = document.createElement('span');
+  primary.className = 'article-meta-metric-primary';
+  primary.append(
+    renderArticleHeaderMetric(renderReplyIcon(), article.metrics.replies),
+    renderArticleHeaderMetric(renderRetweetIcon(), article.metrics.reposts),
+    renderArticleHeaderMetric(renderLikeIcon(), article.metrics.likes),
+    renderArticleHeaderMetric(renderViewsIcon(), article.metrics.views)
+  );
+
+  const trailing = document.createElement('span');
+  trailing.className = 'article-meta-metric-trailing';
+  trailing.append(renderArticleHeaderMetric(renderBookmarkIcon()), renderArticleHeaderMetric(renderShareIcon()));
+  row.append(primary, trailing);
+  return row;
+}
+
+function renderArticleHeaderMetric(icon: SVGSVGElement, value?: string): HTMLElement {
+  const metric = document.createElement('span');
+  metric.className = 'article-meta-metric';
+  icon.classList.add('article-meta-metric-icon');
+  metric.append(icon);
+  if (value) {
+    const text = document.createElement('span');
+    text.textContent = value;
+    metric.append(text);
+  }
+  return metric;
+}
+
 export function cleanupRenderedMedia(root: ParentNode): void {
   root.querySelectorAll<MediaCleanupElement>('.reader-video, .reader-gif').forEach((element) => {
     element.__linelensCleanup__?.();
@@ -74,21 +202,23 @@ export function cleanupRenderedMedia(root: ParentNode): void {
 function renderBlock(block: ArticleBlock): HTMLElement {
   switch (block.type) {
     case 'heading':
-      return renderTextBlock(getHeadingTagName(block.level), block.id, block.type, block.text, block.annotations);
+      return renderTextBlock(getHeadingTagName(block.level), block.id, block.type, block.text, block.annotations, block.textStyle);
     case 'paragraph':
-      return renderTextBlock('p', block.id, block.type, block.text, block.annotations);
+      return renderTextBlock('p', block.id, block.type, block.text, block.annotations, block.textStyle);
     case 'quote':
-      return renderTextBlock('blockquote', block.id, block.type, block.text, block.annotations);
+      return renderTextBlock('blockquote', block.id, block.type, block.text, block.annotations, block.textStyle);
     case 'image':
       return renderImageBlock(block.id, block.src, block.alt, block.aspectRatio, block.href);
     case 'image-gallery':
       return renderImageGalleryBlock(block);
     case 'list':
-      return renderListBlock(block.id, block.items, block.kind, block.itemAnnotations);
+      return renderListBlock(block.id, block.items, block.kind, block.itemAnnotations, block.itemTextStyles);
     case 'link':
       return renderLinkBlock(block.id, block.text, block.href, block.target);
     case 'code':
-      return renderCodeBlock(block.id, block.text, block.language);
+      return renderCodeBlock(block);
+    case 'table':
+      return renderTableBlock(block);
     case 'gif':
       return renderGifBlock(block);
     case 'video':
@@ -105,12 +235,14 @@ function renderTextBlock(
   blockId: string,
   blockType: string,
   text: string,
-  annotations: TextAnnotation[] = []
+  annotations: TextAnnotation[] = [],
+  textStyle?: TextStyle
 ): HTMLElement {
   const element = document.createElement(tagName);
   element.className = 'reader-block';
   element.dataset.blockId = blockId;
   element.dataset.blockType = blockType;
+  applyTextStyle(element, textStyle);
   applyReaderTextMetadata(
     element,
     appendReaderText(element, text, annotations, {
@@ -122,6 +254,16 @@ function renderTextBlock(
 
 function getHeadingTagName(level: 1 | 2 | 3 | 4 | 5 | 6 = 2): 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' {
   return `h${level}`;
+}
+
+function applyTextStyle(element: HTMLElement, style?: TextStyle): void {
+  if (!style) return;
+  if (style.color) element.style.color = style.color;
+  if (style.fontSize) element.style.fontSize = style.fontSize;
+  if (style.lineHeight) element.style.lineHeight = style.lineHeight;
+  if (style.textAlign) element.style.textAlign = style.textAlign;
+  if (style.fontStyle) element.style.fontStyle = style.fontStyle;
+  if (style.fontWeight) element.style.fontWeight = style.fontWeight;
 }
 
 function renderImageBlock(blockId: string, src: string, alt = '', aspectRatio?: number, href?: string): HTMLElement {
@@ -312,6 +454,7 @@ function renderVideoPlayer(
   video.controls = true;
   video.autoplay = true;
   video.muted = true;
+  video.defaultMuted = true;
   if (block.poster) {
     video.poster = block.poster;
   }
@@ -504,7 +647,8 @@ function attachVideoPlayback(video: HTMLVideoElement, block: VideoBlock): () => 
     });
     hls.attachMedia(video);
     hls.loadSource(hlsSource.source);
-    video.muted = false;
+    video.muted = true;
+    video.defaultMuted = true;
     cleanupBlobUrl = hlsSource.revokeUrl ?? null;
     return () => {
       if (hls) {
@@ -625,7 +769,8 @@ function renderListBlock(
   blockId: string,
   items: string[],
   kind: 'ordered' | 'unordered' = 'unordered',
-  itemAnnotations: TextAnnotation[][] = []
+  itemAnnotations: TextAnnotation[][] = [],
+  itemTextStyles: TextStyle[] = []
 ): HTMLElement {
   const list = document.createElement(kind === 'ordered' ? 'ol' : 'ul');
   list.className = 'reader-block reader-list';
@@ -644,6 +789,7 @@ function renderListBlock(
 
     const content = document.createElement('span');
     content.className = 'reader-list-text';
+    applyTextStyle(content, itemTextStyles[index]);
     content.append(
       createReaderTextSpan(text, itemAnnotations[index] ?? [], {
         role: 'list-item'
@@ -672,7 +818,9 @@ function renderLinkBlock(blockId: string, text: string, href: string, target?: s
 }
 
 function renderSimpleTweetBlock(block: SimpleTweetBlock): HTMLElement {
-  const card = document.createElement(block.video ? 'div' : 'a');
+  const renderableBlock = withRenderableItems(block);
+  const hasPlayableVideo = renderableBlock.items.some((item) => item.type === 'video');
+  const card = document.createElement(hasPlayableVideo ? 'div' : 'a');
   card.className = 'reader-block reader-simple-tweet';
   card.dataset.blockId = block.id;
   card.dataset.blockType = 'simple-tweet';
@@ -682,9 +830,20 @@ function renderSimpleTweetBlock(block: SimpleTweetBlock): HTMLElement {
   } else if (block.href) {
     card.dataset.href = block.href;
   }
+  renderSimpleTweetCardFrame(renderableBlock, card, { compact: false, showActions: true });
+  return card;
+}
 
+function renderSimpleTweetCardFrame(
+  block: SimpleTweetCardData & { metrics?: TweetMetrics },
+  host: HTMLElement,
+  options: { compact: boolean; showActions: boolean }
+): void {
   const tweetFrame = document.createElement('div');
   tweetFrame.className = 'reader-simple-tweet-frame';
+  if (options.compact) {
+    tweetFrame.classList.add('reader-simple-tweet-frame-compact');
+  }
 
   const contentColumn = document.createElement('div');
   contentColumn.className = 'reader-simple-tweet-content-column';
@@ -695,84 +854,80 @@ function renderSimpleTweetBlock(block: SimpleTweetBlock): HTMLElement {
 
   const shell = document.createElement('div');
   shell.className = 'reader-simple-tweet-shell';
-
-  const photos = block.photos ?? [];
-  const hasPhotoCard = photos.length > 0;
-
-  if (hasPhotoCard) {
-    shell.classList.add('reader-simple-tweet-shell-photo');
-    shell.append(renderExpandableSimpleTweetText(block.excerpt || block.title), renderSimpleTweetPhotoGrid(photos));
-  } else if (block.video) {
-    shell.classList.add('reader-simple-tweet-shell-video');
-    shell.append(
-      renderExpandableSimpleTweetText(block.excerpt || block.title),
-      renderVideoPlayer(block.video, {
-        blockId: `${block.id}-video`,
-        blockType: 'simple-tweet-video',
-        className: 'reader-simple-tweet-video reader-media reader-video'
-      })
-    );
-  } else if (block.coverUrl) {
-    const media = document.createElement('div');
-    media.className = 'reader-simple-tweet-media';
-
-    const image = document.createElement('img');
-    image.className = 'reader-simple-tweet-cover';
-    image.src = block.coverUrl;
-    image.alt = block.coverAlt ?? '';
-    image.loading = 'lazy';
-    media.append(image);
-
-    const sourceBadge = document.createElement('span');
-    sourceBadge.className = 'reader-simple-tweet-source';
-    sourceBadge.setAttribute('aria-label', block.source);
-    sourceBadge.append(renderXLogoIcon(), renderSourceLabelText('Article'));
-
-    media.append(sourceBadge);
-    shell.append(media);
-  } else {
-    shell.classList.add('reader-simple-tweet-shell-text');
-    shell.append(renderSimpleTweetTextOnlyBlock(block));
-  }
-
   const content = document.createElement('div');
   content.className = 'reader-simple-tweet-content';
+  content.append(renderSimpleTweetContentItems(block.items, options.compact));
+  shell.append(content);
 
-  if (!block.coverUrl && !hasPhotoCard && !block.video && !block.excerpt) {
-    const sourceBadge = document.createElement('span');
-    sourceBadge.className = 'reader-simple-tweet-source reader-simple-tweet-source-inline';
-    sourceBadge.setAttribute('aria-label', block.source);
-    sourceBadge.append(renderXLogoIcon(), renderSourceLabelText('Article'));
-    content.append(sourceBadge);
+  if (options.showActions) {
+    contentColumn.append(header, shell);
+    if (block.aiGeneratedText) {
+      contentColumn.append(renderSimpleTweetAiGeneratedBadge(block.aiGeneratedText));
+    }
+    contentColumn.append(renderSimpleTweetActions(block.metrics));
+  } else if (options.compact) {
+    contentColumn.append(header);
+    shell.classList.add('reader-simple-tweet-shell-compact');
+    tweetFrame.append(renderSimpleTweetAvatar(block), contentColumn, shell);
+    host.append(tweetFrame);
+    return;
+  } else {
+    contentColumn.append(header, shell);
   }
-
-  if (!hasPhotoCard && !block.video && block.coverUrl) {
-    const titleElement = document.createElement('div');
-    titleElement.className = 'reader-simple-tweet-title';
-    titleElement.append(
-      createReaderTextSpan(block.title, [], {
-        role: 'social-title'
-      })
-    );
-
-    const excerptElement = document.createElement('div');
-    excerptElement.className = 'reader-simple-tweet-excerpt';
-    excerptElement.append(
-      createReaderTextSpan(block.excerpt, [], {
-        role: 'social-excerpt'
-      })
-    );
-
-    content.append(titleElement, excerptElement);
-    shell.append(content);
-  }
-  contentColumn.append(header, shell, renderSimpleTweetActions(block.metrics));
   tweetFrame.append(renderSimpleTweetAvatar(block), contentColumn);
-  card.append(tweetFrame);
-  return card;
+  host.append(tweetFrame);
 }
 
-function renderSimpleTweetTextOnlyBlock(block: SimpleTweetBlock): HTMLDivElement {
+function withRenderableItems<T extends SimpleTweetCardData & { metrics?: TweetMetrics }>(block: T): T {
+  if (Array.isArray(block.items)) {
+    return block;
+  }
+
+  const legacy = block as T & {
+    coverUrl?: string;
+    coverAlt?: string;
+    photos?: TweetPhoto[];
+    video?: VideoBlock;
+  };
+
+  const items: SimpleTweetContentItem[] = [];
+  if (legacy.excerpt) {
+    items.push({ type: 'text', text: legacy.excerpt });
+  }
+  if (legacy.video) {
+    items.push({ type: 'video', video: legacy.video });
+  } else if (legacy.photos?.length) {
+    items.push(
+      legacy.photos.length === 1
+        ? { type: 'photo', photo: legacy.photos[0] }
+        : {
+            type: 'photo-group',
+            photos: legacy.photos,
+            layout: {
+              kind: 'row',
+              children: legacy.photos.map((photo) => ({ kind: 'photo', photo }))
+            },
+            aspectRatio: 16 / 9
+          }
+    );
+  } else if (legacy.coverUrl) {
+    items.push({
+      type: 'article-cover',
+      coverUrl: legacy.coverUrl,
+      coverAlt: legacy.coverAlt,
+      title: legacy.title,
+      excerpt: legacy.excerpt,
+      href: legacy.href
+    });
+  }
+
+  return {
+    ...block,
+    items
+  };
+}
+
+function renderSimpleTweetTextOnlyBlock(block: SimpleTweetCardData): HTMLDivElement {
   const content = document.createElement('div');
   content.className = 'reader-simple-tweet-text-only';
 
@@ -811,6 +966,272 @@ function renderSimpleTweetTextOnlyBlock(block: SimpleTweetBlock): HTMLDivElement
 
   content.append(renderExpandableSimpleTweetText(block.excerpt || block.title));
   return content;
+}
+
+function renderSimpleTweetContentItems(items: SimpleTweetContentItem[], compact: boolean): HTMLDivElement {
+  const content = document.createElement('div');
+  content.className = 'reader-simple-tweet-text-only';
+  if (compact) {
+    content.classList.add('reader-simple-tweet-content-compact');
+    const condensed = renderCondensedSimpleTweetItems(items);
+    if (condensed) {
+      content.append(condensed);
+      return content;
+    }
+  }
+
+  for (const item of items) {
+    content.append(renderSimpleTweetContentItem(item));
+  }
+  if (items.length === 0) {
+    content.append(renderExpandableSimpleTweetText(''));
+  }
+  return content;
+}
+
+function renderCondensedSimpleTweetItems(items: SimpleTweetContentItem[]): HTMLElement | null {
+  const previewIndex = items.findIndex((item) => item.type === 'video-preview');
+  const textIndex = items.findIndex((item) => item.type === 'text');
+  if (previewIndex < 0 || textIndex < 0) {
+    return null;
+  }
+
+  const container = document.createElement('div');
+  container.className = 'reader-simple-tweet-condensed';
+  const mediaSlot = document.createElement('div');
+  mediaSlot.className = 'reader-simple-tweet-condensed-media';
+  const textSlot = document.createElement('div');
+  textSlot.className = 'reader-simple-tweet-condensed-text';
+
+  for (const [index, item] of items.entries()) {
+    if (index === previewIndex) {
+      mediaSlot.append(renderSimpleTweetContentItem(item));
+    } else if (index === textIndex) {
+      textSlot.append(renderSimpleTweetContentItem(item));
+    } else {
+      textSlot.append(renderSimpleTweetContentItem(item));
+    }
+  }
+
+  container.append(mediaSlot, textSlot);
+  return container;
+}
+
+function renderSimpleTweetContentItem(item: SimpleTweetContentItem): HTMLElement {
+  switch (item.type) {
+    case 'text':
+      return renderExpandableSimpleTweetText(item.text);
+    case 'photo':
+      return renderSimpleTweetPhotoGrid([item.photo]);
+    case 'photo-group':
+      return renderSimpleTweetPhotoLayoutTree(item.layout, item.aspectRatio);
+    case 'video': {
+      const video = renderVideoPlayer(item.video, {
+        blockId: `${item.video.id}-embedded`,
+        blockType: 'simple-tweet-video',
+        className: 'reader-simple-tweet-video reader-media reader-video'
+      });
+      if (item.video.aspectRatio && Number.isFinite(item.video.aspectRatio) && item.video.aspectRatio < 1) {
+        video.classList.add('reader-simple-tweet-video-portrait');
+      }
+      return video;
+    }
+    case 'video-preview':
+      return renderSimpleTweetVideoPreview(item);
+    case 'article-cover':
+      return renderSimpleTweetArticleCover(item);
+    case 'quoted-tweet': {
+      const nested = document.createElement('div');
+      nested.className = 'reader-simple-tweet reader-simple-tweet-quoted';
+      renderSimpleTweetCardFrame(item.tweet, nested, { compact: true, showActions: false });
+      return nested;
+    }
+  }
+}
+
+function renderSimpleTweetVideoPreview(item: Extract<SimpleTweetContentItem, { type: 'video-preview' }>): HTMLElement {
+  const media = document.createElement(item.href ? 'a' : 'div');
+  media.className = 'reader-simple-tweet-media reader-simple-tweet-video-preview';
+  if (item.layout === 'condensed') {
+    media.classList.add('reader-simple-tweet-video-preview-condensed');
+  }
+  if (item.shape === 'rounded-square') {
+    media.classList.add('reader-simple-tweet-video-preview-rounded-square');
+  }
+  if (item.href && media.tagName === 'A') {
+    media.setAttribute('href', item.href);
+    media.setAttribute('rel', 'noreferrer');
+  }
+  applyMediaAspectRatio(media, item.aspectRatio);
+
+  const image = document.createElement('img');
+  image.className = 'reader-simple-tweet-cover';
+  image.src = item.src;
+  image.alt = item.alt ?? '';
+  image.loading = 'lazy';
+  media.append(image);
+
+  if (item.durationText) {
+    const duration = document.createElement('span');
+    duration.className = 'reader-simple-tweet-video-duration';
+    duration.textContent = item.durationText;
+    media.append(duration);
+  }
+  return media;
+}
+
+function renderSimpleTweetArticleCover(item: Extract<SimpleTweetContentItem, { type: 'article-cover' }>): HTMLElement {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'reader-simple-tweet-media';
+
+  const image = document.createElement('img');
+  image.className = 'reader-simple-tweet-cover';
+  image.src = item.coverUrl;
+  image.alt = item.coverAlt ?? '';
+  image.loading = 'lazy';
+  wrapper.append(image);
+
+  const sourceBadge = document.createElement('span');
+  sourceBadge.className = 'reader-simple-tweet-source';
+  sourceBadge.setAttribute('aria-label', 'X Article');
+  sourceBadge.append(renderXLogoIcon(), renderSourceLabelText('Article'));
+  wrapper.append(sourceBadge);
+
+  if (item.title || item.excerpt) {
+    const text = document.createElement('div');
+    text.className = 'reader-simple-tweet-content';
+    if (item.title) {
+      const title = document.createElement('div');
+      title.className = 'reader-simple-tweet-title';
+      title.append(createReaderTextSpan(item.title, [], { role: 'social-title' }));
+      text.append(title);
+    }
+    if (item.excerpt) {
+      const excerpt = document.createElement('div');
+      excerpt.className = 'reader-simple-tweet-excerpt';
+      excerpt.append(createReaderTextSpan(item.excerpt, [], { role: 'social-excerpt' }));
+      text.append(excerpt);
+    }
+    const authorMeta = renderSimpleTweetArticleCoverAuthorMeta(item);
+    if (authorMeta) {
+      text.append(authorMeta);
+    }
+    const metrics = renderSimpleTweetArticleCoverMetrics(item);
+    if (metrics) {
+      text.append(metrics);
+    }
+    wrapper.append(text);
+  }
+
+  return wrapper;
+}
+
+function renderSimpleTweetArticleCoverAuthorMeta(
+  item: Extract<SimpleTweetContentItem, { type: 'article-cover' }>
+): HTMLElement | null {
+  if (!item.authorName && !item.authorHandle && !item.publishedAtText) {
+    return null;
+  }
+
+  const row = document.createElement('div');
+  row.className = 'reader-simple-tweet-article-meta reader-simple-tweet-article-meta-author';
+  if (item.href) {
+    row.dataset.href = item.href;
+  }
+
+  if (item.authorAvatarUrl) {
+    const avatar = document.createElement('img');
+    avatar.className = 'reader-simple-tweet-article-avatar';
+    avatar.src = item.authorAvatarUrl;
+    avatar.alt = '';
+    avatar.loading = 'lazy';
+    row.append(avatar);
+  }
+
+  const text = document.createElement('div');
+  text.className = 'reader-simple-tweet-article-author-text';
+
+  const primary = document.createElement('div');
+  primary.className = 'reader-simple-tweet-article-author-primary';
+  if (item.authorName) {
+    const name = document.createElement('span');
+    name.textContent = item.authorName;
+    primary.append(name);
+  }
+  if (item.authorVerified) {
+    const verified = renderVerifiedIcon();
+    verified.classList.add('reader-simple-tweet-article-verified-icon');
+    primary.append(verified);
+  }
+
+  const secondary = document.createElement('div');
+  secondary.className = 'reader-simple-tweet-article-author-secondary';
+  if (item.authorHandle) {
+    const handle = document.createElement('span');
+    handle.textContent = item.authorHandle;
+    secondary.append(handle);
+  }
+  if (item.publishedAtText) {
+    if (item.authorHandle) {
+      const divider = document.createElement('span');
+      divider.textContent = '·';
+      secondary.append(divider);
+    }
+    const date = document.createElement('span');
+    date.textContent = item.publishedAtText;
+    secondary.append(date);
+  }
+
+  if (primary.childNodes.length > 0) {
+    text.append(primary);
+  }
+  if (secondary.childNodes.length > 0) {
+    text.append(secondary);
+  }
+
+  row.append(text);
+  return row;
+}
+
+function renderSimpleTweetArticleCoverMetrics(
+  item: Extract<SimpleTweetContentItem, { type: 'article-cover' }>
+): HTMLElement | null {
+  if (!item.metrics || !Object.values(item.metrics).some(Boolean)) {
+    return null;
+  }
+
+  const row = document.createElement('div');
+  row.className = 'reader-simple-tweet-article-meta reader-simple-tweet-article-meta-metrics';
+  if (item.href) {
+    row.dataset.href = item.href;
+  }
+
+  row.append(
+    renderSimpleTweetArticleMetric(renderReplyIcon(), item.metrics.replies),
+    renderSimpleTweetArticleMetric(renderRetweetIcon(), item.metrics.reposts),
+    renderSimpleTweetArticleMetric(renderLikeIcon(), item.metrics.likes),
+    renderSimpleTweetArticleMetric(renderViewsIcon(), item.metrics.views)
+  );
+
+  const trailing = document.createElement('div');
+  trailing.className = 'reader-simple-tweet-article-metric-trailing';
+  trailing.append(renderSimpleTweetArticleMetric(renderBookmarkIcon()), renderSimpleTweetArticleMetric(renderShareIcon()));
+  row.append(trailing);
+
+  return row;
+}
+
+function renderSimpleTweetArticleMetric(icon: SVGSVGElement, value?: string): HTMLElement {
+  const item = document.createElement('span');
+  item.className = 'reader-simple-tweet-article-metric';
+  icon.classList.add('reader-simple-tweet-article-metric-icon');
+  item.append(icon);
+  if (value) {
+    const text = document.createElement('span');
+    text.textContent = value;
+    item.append(text);
+  }
+  return item;
 }
 
 function renderExpandableSimpleTweetText(tweetText: string): HTMLDivElement {
@@ -890,7 +1311,70 @@ function renderSimpleTweetPhotoGrid(photos: TweetPhoto[]): HTMLDivElement {
   return grid;
 }
 
-function renderSimpleTweetAvatar(block: SimpleTweetBlock): HTMLImageElement {
+function renderSimpleTweetPhotoLayoutTree(layout: SimpleTweetPhotoLayout, aspectRatio?: number): HTMLElement {
+  if (layout.kind === 'photo') {
+    const container = document.createElement('div');
+    container.className = 'reader-simple-tweet-photo-layout reader-simple-tweet-photo-layout-leaf';
+    applyMediaAspectRatio(container, aspectRatio);
+    container.append(renderSimpleTweetPhotoCell(layout.photo, 0));
+    return container;
+  }
+
+  const container = document.createElement('div');
+  container.className = `reader-simple-tweet-photo-layout reader-simple-tweet-photo-layout-${layout.kind}`;
+  applyMediaAspectRatio(container, aspectRatio);
+
+  layout.children.forEach((child, index) => {
+    if (child.kind === 'photo') {
+      const cell = renderSimpleTweetPhotoCell(child.photo, index);
+      applySimpleTweetPhotoLayoutSize(cell, child, layout.kind);
+      container.append(cell);
+      return;
+    }
+
+    const branch = document.createElement('div');
+    branch.className = 'reader-simple-tweet-photo-branch';
+    applySimpleTweetPhotoLayoutSize(branch, child, layout.kind);
+    branch.append(renderSimpleTweetPhotoLayoutTree(child));
+    container.append(branch);
+  });
+
+  return container;
+}
+
+function renderSimpleTweetPhotoCell(photo: TweetPhoto, index: number): HTMLDivElement {
+  const item = document.createElement('div');
+  item.className = 'reader-simple-tweet-photo';
+  item.setAttribute('data-testid', 'tweetPhoto');
+  if (photo.href) {
+    item.dataset.href = photo.href;
+  }
+
+  const background = document.createElement('span');
+  background.className = 'reader-simple-tweet-photo-background';
+  background.style.backgroundImage = `url("${photo.src}")`;
+  background.setAttribute('aria-hidden', 'true');
+
+  const image = document.createElement('img');
+  image.src = photo.src;
+  image.alt = photo.alt ?? `Tweet image ${index + 1}`;
+  image.loading = 'lazy';
+
+  item.append(background, image);
+  return item;
+}
+
+function applySimpleTweetPhotoLayoutSize(element: HTMLElement, layout: SimpleTweetPhotoLayout, parentKind: 'row' | 'column'): void {
+  const ratio = parentKind === 'row' ? layout.widthRatio : layout.heightRatio;
+  if (!ratio || ratio <= 0) {
+    return;
+  }
+
+  const percentage = Math.round(ratio * 10000) / 100;
+  element.style.flex = `0 0 ${percentage}%`;
+}
+
+function renderSimpleTweetAvatar(block: SimpleTweetCardData): HTMLImageElement {
   const avatar = document.createElement('img');
   avatar.className = 'reader-simple-tweet-avatar';
   avatar.src = block.authorAvatarUrl ?? 'https://pbs.twimg.com/profile_images/1921559263094218753/p2-n_n4w_x96.jpg';
@@ -900,7 +1384,7 @@ function renderSimpleTweetAvatar(block: SimpleTweetBlock): HTMLImageElement {
   return avatar;
 }
 
-function renderSimpleTweetAuthor(block: SimpleTweetBlock): HTMLDivElement {
+function renderSimpleTweetAuthor(block: SimpleTweetCardData): HTMLDivElement {
   const author = document.createElement('div');
   author.className = 'reader-simple-tweet-author';
 
@@ -997,16 +1481,53 @@ function renderSimpleTweetActions(metrics: TweetMetrics = {}): HTMLDivElement {
     `${metrics.replies ?? '9'} replies, ${metrics.reposts ?? '12'} reposts, ${metrics.likes ?? '112'} likes, ${metrics.views ?? '21K'} views`
   );
 
-  actions.append(
+  const primaryActions = document.createElement('div');
+  primaryActions.className = 'reader-simple-tweet-actions-primary';
+  primaryActions.append(
     renderSimpleTweetAction(renderReplyIcon(), metrics.replies ?? '9', 'reply'),
     renderSimpleTweetAction(renderRetweetIcon(), metrics.reposts ?? '12', 'retweet'),
     renderSimpleTweetAction(renderLikeIcon(), metrics.likes ?? '112', 'like'),
-    renderSimpleTweetAction(renderViewsIcon(), metrics.views ?? '21K', 'views'),
-    renderSimpleTweetAction(renderBookmarkIcon(), '', 'bookmark'),
-    renderSimpleTweetAction(renderShareIcon(), '', 'share')
+    renderSimpleTweetAction(renderViewsIcon(), metrics.views ?? '21K', 'views')
   );
 
+  const secondaryActions = document.createElement('div');
+  secondaryActions.className = 'reader-simple-tweet-actions-secondary';
+  secondaryActions.append(renderSimpleTweetAction(renderBookmarkIcon(), '', 'bookmark'), renderSimpleTweetAction(renderShareIcon(), '', 'share'));
+
+  actions.append(primaryActions, secondaryActions);
+
   return actions;
+}
+
+function renderSimpleTweetAiGeneratedBadge(text: string): HTMLDivElement {
+  const badge = document.createElement('div');
+  badge.className = 'reader-simple-tweet-ai-generated';
+
+  const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  icon.setAttribute('viewBox', '0 0 24 24');
+  icon.setAttribute('aria-hidden', 'true');
+  icon.setAttribute('class', 'reader-simple-tweet-ai-generated-icon');
+
+  const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  const path1 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  path1.setAttribute(
+    'd',
+    'M12.998 1.94c.18 3.015 1.04 5.156 2.473 6.59 1.433 1.433 3.574 2.292 6.589 2.472v1.996c-3.015.18-5.156 1.04-6.59 2.473-1.433 1.433-2.292 3.574-2.472 6.589h-1.996c-.18-3.015-1.04-5.156-2.473-6.59-1.433-1.433-3.574-2.292-6.589-2.472v-1.996c3.015-.18 5.156-1.04 6.59-2.473 1.433-1.433 2.292-3.574 2.472-6.589h1.996z'
+  );
+  const path2 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  path2.setAttribute(
+    'd',
+    'M4.997.95c.123 1.23.361 1.889.763 2.29.401.402 1.06.64 2.29.763v.994c-1.23.123-1.889.361-2.29.763-.402.401-.64 1.06-.763 2.29h-.994c-.123-1.23-.361-1.89-.763-2.29-.401-.402-1.06-.64-2.29-.763v-.994c1.23-.123 1.889-.361 2.29-.763.402-.401.64-1.06.763-2.29h.994z'
+  );
+  group.append(path1, path2);
+  icon.append(group);
+
+  const label = document.createElement('span');
+  label.className = 'reader-simple-tweet-ai-generated-text';
+  label.textContent = text;
+
+  badge.append(icon, label);
+  return badge;
 }
 
 function renderSimpleTweetAction(icon: SVGSVGElement, value: string, name: string): HTMLSpanElement {
@@ -1104,36 +1625,113 @@ function renderEmbedBlock(blockId: string, label: string, text?: string): HTMLEl
   return element;
 }
 
-function renderCodeBlock(blockId: string, text: string, language = ''): HTMLElement {
+function renderTableBlock(block: TableBlock): HTMLElement {
+  const wrapper = document.createElement('figure');
+  wrapper.className = 'reader-block reader-table';
+  wrapper.dataset.blockId = block.id;
+  wrapper.dataset.blockType = 'table';
+  if (block.tableStyle?.backgroundColor) wrapper.style.background = block.tableStyle.backgroundColor;
+  if (block.tableStyle?.borderColor) wrapper.style.borderColor = block.tableStyle.borderColor;
+
+  const table = document.createElement('table');
+  table.className = 'reader-table-grid';
+  if (block.columnCount) {
+    table.style.setProperty('--reader-table-columns', String(block.columnCount));
+  }
+
+  const tbody = document.createElement('tbody');
+  for (const row of block.rows) {
+    const tr = document.createElement('tr');
+    for (const cell of row.cells) {
+      const cellElement = document.createElement(cell.header ? 'th' : 'td');
+      cellElement.className = 'reader-table-cell';
+      if (cell.colSpan) cellElement.colSpan = cell.colSpan;
+      if (cell.rowSpan) cellElement.rowSpan = cell.rowSpan;
+      if (cell.backgroundColor) cellElement.style.background = cell.backgroundColor;
+      if (cell.borderColor) cellElement.style.borderColor = cell.borderColor;
+      applyTextStyle(cellElement, cell.textStyle);
+      cellElement.textContent = cell.text;
+      tr.append(cellElement);
+    }
+    tbody.append(tr);
+  }
+
+  table.append(tbody);
+  wrapper.append(table);
+  return wrapper;
+}
+
+function renderCodeBlock(block: CodeBlock): HTMLElement {
   const figure = document.createElement('figure');
   figure.className = 'reader-block reader-code';
-  figure.dataset.blockId = blockId;
+  figure.dataset.blockId = block.id;
   figure.dataset.blockType = 'code';
 
   const header = document.createElement('figcaption');
   header.className = 'reader-code-header';
+  if (block.codeStyle?.headerBackgroundColor) header.style.background = block.codeStyle.headerBackgroundColor;
+  if (block.codeStyle?.headerColor) header.style.color = block.codeStyle.headerColor;
 
   const label = document.createElement('span');
   label.className = 'reader-code-language';
-  label.textContent = language || detectCodeLanguage(text) || 'text';
+  label.textContent = block.language || detectCodeLanguage(block.text) || 'text';
+  if (block.codeStyle?.headerColor) label.style.color = block.codeStyle.headerColor;
 
   const button = document.createElement('button');
   button.className = 'reader-code-copy';
   button.type = 'button';
   button.setAttribute('aria-label', 'Copy to clipboard');
-  button.dataset.copyCode = text;
+  button.dataset.copyCode = block.text;
+  if (block.codeStyle?.copyColor) button.style.color = block.codeStyle.copyColor;
   button.append(renderCopyIcon());
 
   header.append(label, button);
 
   const pre = document.createElement('pre');
   pre.className = 'reader-code-pre';
+  applyCodeStyle(pre, block.codeStyle);
   const code = document.createElement('code');
   code.className = `language-${label.textContent}`;
-  appendHighlightedCode(code, text, label.textContent);
+  if (block.codeStyle?.codeBackgroundColor) code.style.background = block.codeStyle.codeBackgroundColor;
+  if (block.codeStyle?.codeColor) code.style.color = block.codeStyle.codeColor;
+  if (block.codeStyle?.fontFamily) code.style.fontFamily = block.codeStyle.fontFamily;
+  if (block.codeStyle?.fontSize) code.style.fontSize = block.codeStyle.fontSize;
+  if (block.codeStyle?.lineHeight) code.style.lineHeight = block.codeStyle.lineHeight;
+  if (block.codeStyle?.tabSize) code.style.tabSize = block.codeStyle.tabSize;
+  if (block.tokens && block.tokens.length > 0) {
+    appendExtractedCodeTokens(code, block.tokens);
+  } else {
+    appendHighlightedCode(code, block.text, label.textContent);
+  }
   pre.append(code);
   figure.append(header, pre);
   return figure;
+}
+
+function applyCodeStyle(pre: HTMLElement, style?: CodeBlock['codeStyle']): void {
+  if (!style) return;
+  if (style.preBackgroundColor) pre.style.background = style.preBackgroundColor;
+  if (style.preColor) pre.style.color = style.preColor;
+  if (style.fontFamily) pre.style.fontFamily = style.fontFamily;
+  if (style.fontSize) pre.style.fontSize = style.fontSize;
+  if (style.lineHeight) pre.style.lineHeight = style.lineHeight;
+  if (style.tabSize) pre.style.tabSize = style.tabSize;
+}
+
+function appendExtractedCodeTokens(container: HTMLElement, tokens: CodeToken[]): void {
+  for (const token of tokens) {
+    if (!token.color && !token.fontStyle && !token.fontWeight) {
+      container.append(document.createTextNode(token.text));
+      continue;
+    }
+
+    const span = document.createElement('span');
+    span.textContent = token.text;
+    if (token.color) span.style.color = token.color;
+    if (token.fontStyle) span.style.fontStyle = token.fontStyle;
+    if (token.fontWeight) span.style.fontWeight = token.fontWeight;
+    container.append(span);
+  }
 }
 
 function renderCopyIcon(): SVGSVGElement {

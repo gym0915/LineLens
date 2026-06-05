@@ -1,5 +1,5 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import { FocusEngine } from '../dist/reader/focus-engine.js';
 import { ProgressStore } from '../dist/reader/progress-store.js';
 import { mountReaderApp } from '../dist/reader/reader-app.js';
@@ -97,6 +97,14 @@ class ElementLike extends NodeLike {
     this.attributes.set(name, value);
   }
 
+  getAttribute(name) {
+    return this.attributes.get(name) ?? null;
+  }
+
+  get parentElement() {
+    return this.parent instanceof ElementLike ? this.parent : null;
+  }
+
   remove() {
     if (!this.parent) return;
     this.parent.children = this.parent.children.filter((child) => child !== this);
@@ -127,12 +135,24 @@ class ElementLike extends NodeLike {
   scrollIntoView(options) {
     this.scrollCalls.push(options);
   }
+
+  play() {
+    this.paused = false;
+    return Promise.resolve();
+  }
+
+  pause() {
+    this.paused = true;
+  }
+
+  load() {}
 }
 
 const windowListeners = new Map();
 const documentListeners = new Map();
 const storage = new Map();
 let selectedText = '';
+const openCalls = [];
 
 globalThis.Element = ElementLike;
 globalThis.HTMLElement = ElementLike;
@@ -167,6 +187,15 @@ globalThis.window = {
   },
   getSelection() {
     return { toString: () => selectedText };
+  },
+  open(href, target) {
+    openCalls.push({ href, target });
+    return {};
+  },
+  location: {
+    assign(href) {
+      openCalls.push({ href, target: 'assign' });
+    }
   }
 };
 globalThis.localStorage = {
@@ -204,7 +233,7 @@ storage.set('linelens:fixture-progress:broken', '{');
 assert(progressStore.get('broken') === null, 'ProgressStore should tolerate invalid JSON');
 
 const article = JSON.parse(
-  readFileSync(join(new URL('..', import.meta.url).pathname, 'fixtures/articles/simple-chinese.json'), 'utf8')
+  readFileSync(join(resolveFixtureDir(new URL('..', import.meta.url).pathname), 'simple-chinese.json'), 'utf8')
 );
 const root = new ElementLike('main');
 mountReaderApp(root, article);
@@ -303,6 +332,76 @@ tweetClickListener?.({
   stopPropagation() {}
 });
 assert(!preventedActiveTweetClick, 'Active simpleTweet link click should be allowed to navigate');
+
+const tweetVideoArticle = {
+  ...article,
+  id: 'simple-tweet-video-click',
+  blocks: [
+    { id: 'intro-video', type: 'paragraph', text: 'Intro paragraph' },
+    {
+      id: 'tweet-video-click',
+      type: 'simple-tweet',
+      source: 'X Tweet',
+      title: 'Portrait clip',
+      excerpt: 'Portrait clip',
+      href: 'https://x.com/example/status/999',
+      authorName: 'Jackywine',
+      authorHandle: '@Jackywine',
+      publishedAtText: '2月11日',
+      items: [
+        { type: 'text', text: 'Portrait clip' },
+        {
+          type: 'video',
+          video: {
+            id: 'tweet-video',
+            type: 'video',
+            src: 'https://example.com/video.mp4',
+            aspectRatio: 0.564,
+            poster: 'https://example.com/poster.jpg'
+          }
+        }
+      ]
+    }
+  ]
+};
+const tweetVideoRoot = new ElementLike('main');
+mountReaderApp(tweetVideoRoot, tweetVideoArticle);
+const tweetVideoClickListener = tweetVideoRoot.eventListeners.get('click')?.at(-1);
+const tweetVideoCard = walk(tweetVideoRoot).find((element) => element.dataset.blockId === 'tweet-video-click');
+const tweetVideoPlayer = walk(tweetVideoRoot).find((element) => element.className.split(/\s+/).includes('reader-video-player'));
+assert(tweetVideoCard?.tagName === 'DIV', 'simpleTweet with video should render as div-backed card with data-href navigation');
+assert(tweetVideoCard?.dataset.href === 'https://x.com/example/status/999', 'simpleTweet with video should preserve href on data-href');
+let preventedInactiveTweetVideoClick = false;
+tweetVideoClickListener?.({
+  target: tweetVideoCard,
+  preventDefault() {
+    preventedInactiveTweetVideoClick = true;
+  },
+  stopPropagation() {}
+});
+assert(preventedInactiveTweetVideoClick, 'Inactive simpleTweet video card click should be intercepted before navigation');
+assert(findByClass(tweetVideoRoot, 'is-active')?.dataset.blockId === 'tweet-video-click', 'Inactive simpleTweet video card click should first select the card');
+const openCountBeforeVideoClick = openCalls.length;
+let preventedVideoControlClick = false;
+tweetVideoClickListener?.({
+  target: tweetVideoPlayer,
+  preventDefault() {
+    preventedVideoControlClick = true;
+  },
+  stopPropagation() {}
+});
+assert(!preventedVideoControlClick, 'Clicking the embedded video should keep video controls interactive');
+assert(openCalls.length === openCountBeforeVideoClick, 'Clicking the embedded video should not navigate away');
+let preventedActiveTweetVideoCardClick = false;
+tweetVideoClickListener?.({
+  target: tweetVideoCard,
+  preventDefault() {
+    preventedActiveTweetVideoCardClick = true;
+  },
+  stopPropagation() {}
+});
+assert(preventedActiveTweetVideoCardClick, 'Active simpleTweet video card click should intercept default browser behavior before manual navigation');
+assert(openCalls.at(-1)?.href === 'https://x.com/example/status/999', 'Active simpleTweet video card click should navigate using the preserved href');
 
 const imageClickArticle = {
   ...article,
@@ -460,4 +559,17 @@ function walk(rootElement) {
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
+}
+
+function resolveFixtureDir(rootDir) {
+  const candidates = [
+    join(rootDir, 'fixtures', 'articles'),
+    resolve(rootDir, '..', '..', 'fixtures', 'articles')
+  ];
+  const fixtureDir = candidates.find((candidate) => existsSync(candidate));
+  if (!fixtureDir) {
+    throw new Error(`Unable to locate reader fixtures from ${rootDir}`);
+  }
+
+  return fixtureDir;
 }

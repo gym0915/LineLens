@@ -3,7 +3,13 @@ type Article = {
   source: 'x-article';
   sourceUrl: string;
   canonicalUrl: string;
+  authorName?: string;
   authorHandle?: string;
+  authorAvatarUrl?: string;
+  authorVerified?: boolean;
+  publishedAt?: string;
+  publishedAtText?: string;
+  metrics?: TweetMetrics;
   title: string;
   coverImage?: ImageBlock;
   extractedAt: number;
@@ -17,6 +23,7 @@ type ArticleBlock =
       text: string;
       annotations?: TextAnnotation[];
       level?: 1 | 2 | 3 | 4 | 5 | 6;
+      textStyle?: TextStyle;
     }
   | ImageBlock
   | ImageGalleryBlock
@@ -26,6 +33,7 @@ type ArticleBlock =
       kind?: 'ordered' | 'unordered';
       items: string[];
       itemAnnotations?: TextAnnotation[][];
+      itemTextStyles?: TextStyle[];
     }
   | {
       id: string;
@@ -39,33 +47,17 @@ type ArticleBlock =
       type: 'code';
       language?: string;
       text: string;
+      codeStyle?: CodeBlockStyle;
+      tokens?: CodeToken[];
     }
+  | TableBlock
   | GifBlock
   | VideoBlock
-  | {
+  | (SimpleTweetCardData & {
       id: string;
       type: 'simple-tweet';
-      coverUrl: string;
-      coverAlt?: string;
-      source: string;
-      title: string;
-      excerpt: string;
-      href?: string;
-      photos?: TweetPhoto[];
-      video?: VideoBlock;
-      authorName?: string;
-      authorHandle?: string;
-      authorAvatarUrl?: string;
-      authorBadgeAvatarUrl?: string;
-      authorVerified?: boolean;
-      publishedAt?: string;
-      publishedAtText?: string;
-      replyContextText?: string;
-      replyToHandle?: string;
-      translationSourceText?: string;
-      translationActionText?: string;
       metrics?: TweetMetrics;
-    }
+    })
   | {
       id: string;
       type: 'embed';
@@ -139,6 +131,103 @@ type VideoBlock = {
   paused?: boolean;
 };
 
+type SimpleTweetTextItem = {
+  type: 'text';
+  text: string;
+};
+
+type SimpleTweetVideoItem = {
+  type: 'video';
+  video: VideoBlock;
+};
+
+type SimpleTweetVideoPreviewItem = {
+  type: 'video-preview';
+  src: string;
+  alt?: string;
+  href?: string;
+  durationText?: string;
+  aspectRatio?: number;
+  layout?: 'condensed';
+  shape?: 'rounded-square';
+};
+
+type SimpleTweetPhotoItem = {
+  type: 'photo';
+  photo: TweetPhoto;
+};
+
+type SimpleTweetPhotoLayout =
+  | {
+      kind: 'photo';
+      photo: TweetPhoto;
+      widthRatio?: number;
+      heightRatio?: number;
+    }
+  | {
+      kind: 'row' | 'column';
+      children: SimpleTweetPhotoLayout[];
+      widthRatio?: number;
+      heightRatio?: number;
+    };
+
+type SimpleTweetPhotoGroupItem = {
+  type: 'photo-group';
+  photos: TweetPhoto[];
+  layout: SimpleTweetPhotoLayout;
+  aspectRatio?: number;
+};
+
+type SimpleTweetArticleCoverItem = {
+  type: 'article-cover';
+  coverUrl: string;
+  coverAlt?: string;
+  title?: string;
+  excerpt?: string;
+  href?: string;
+  authorName?: string;
+  authorHandle?: string;
+  authorAvatarUrl?: string;
+  authorVerified?: boolean;
+  publishedAt?: string;
+  publishedAtText?: string;
+  metrics?: TweetMetrics;
+};
+
+type SimpleTweetCardData = {
+  source: string;
+  title: string;
+  excerpt: string;
+  href?: string;
+  items: SimpleTweetContentItem[];
+  aiGeneratedText?: string;
+  authorName?: string;
+  authorHandle?: string;
+  authorAvatarUrl?: string;
+  authorBadgeAvatarUrl?: string;
+  authorVerified?: boolean;
+  publishedAt?: string;
+  publishedAtText?: string;
+  replyContextText?: string;
+  replyToHandle?: string;
+  translationSourceText?: string;
+  translationActionText?: string;
+};
+
+type SimpleTweetQuotedTweetItem = {
+  type: 'quoted-tweet';
+  tweet: SimpleTweetCardData;
+};
+
+type SimpleTweetContentItem =
+  | SimpleTweetTextItem
+  | SimpleTweetVideoItem
+  | SimpleTweetVideoPreviewItem
+  | SimpleTweetPhotoItem
+  | SimpleTweetPhotoGroupItem
+  | SimpleTweetArticleCoverItem
+  | SimpleTweetQuotedTweetItem;
+
 type TweetPhoto = {
   src: string;
   alt?: string;
@@ -153,6 +242,63 @@ type TweetMetrics = {
   bookmarks?: string;
 };
 
+type TextStyle = {
+  color?: string;
+  fontSize?: string;
+  lineHeight?: string;
+  textAlign?: string;
+  fontStyle?: string;
+  fontWeight?: string;
+};
+
+type CodeBlockStyle = {
+  headerBackgroundColor?: string;
+  headerColor?: string;
+  copyColor?: string;
+  preBackgroundColor?: string;
+  preColor?: string;
+  codeBackgroundColor?: string;
+  codeColor?: string;
+  fontFamily?: string;
+  fontSize?: string;
+  lineHeight?: string;
+  tabSize?: string;
+};
+
+type CodeToken = {
+  text: string;
+  color?: string;
+  fontStyle?: string;
+  fontWeight?: string;
+};
+
+type TableBlock = {
+  id: string;
+  type: 'table';
+  rows: TableRow[];
+  columnCount?: number;
+  tableStyle?: TableStyle;
+};
+
+type TableRow = {
+  cells: TableCell[];
+};
+
+type TableCell = {
+  text: string;
+  header?: boolean;
+  colSpan?: number;
+  rowSpan?: number;
+  textStyle?: TextStyle;
+  backgroundColor?: string;
+  borderColor?: string;
+};
+
+type TableStyle = {
+  backgroundColor?: string;
+  borderColor?: string;
+};
+
 type TextAnnotation = {
   startOffset: number;
   endOffset: number;
@@ -160,6 +306,11 @@ type TextAnnotation = {
   href?: string;
   target?: string;
   emojiImageUrl?: string;
+  color?: string;
+  fontSize?: string;
+  lineHeight?: string;
+  textAlign?: string;
+  fontStyle?: string;
 };
 
 type ExtensionMessage =
@@ -464,12 +615,14 @@ async function extractXArticle(url: URL, root: ParentNode): Promise<Article> {
   const capturedVideos = await getCapturedVideos();
   const blocks = await extractBlocks(longform, articleId, capturedVideos);
   const coverImage = extractCoverImage(readView, articleId);
+  const articleMeta = extractArticleHeaderMetadata(readView, longform);
   const article: Article = {
     id: articleId,
     source: 'x-article',
     sourceUrl: url.toString(),
     canonicalUrl: `${X_CANONICAL_ORIGIN}/${getXArticleAuthorHandleFromUrl(url) ?? 'i'}/article/${articleId}`,
     authorHandle: getXArticleAuthorHandleFromUrl(url),
+    ...articleMeta,
     title,
     coverImage,
     extractedAt: Date.now(),
@@ -484,10 +637,77 @@ async function extractXArticle(url: URL, root: ParentNode): Promise<Article> {
   return article;
 }
 
+function extractArticleHeaderMetadata(readView: Element, longform: Element): Partial<Article> {
+  const titleElement = readView.querySelector(X_ARTICLE_SELECTORS.title);
+  const authorRoot = findHeaderElementAfterTitle(readView, longform, '[itemprop="author"]', titleElement);
+  const metricsGroup = findHeaderElementAfterTitle(readView, longform, '[role="group"][aria-label]', titleElement);
+  const additionalName = normalizeText(authorRoot?.querySelector('meta[itemprop="additionalName"]')?.getAttribute('content') ?? '');
+  const authorHandle = additionalName ? `@${additionalName.replace(/^@/, '')}` : undefined;
+  const authorName = normalizeText(authorRoot?.querySelector('meta[itemprop="name"]')?.getAttribute('content') ?? '');
+  const authorAvatar =
+    authorRoot?.querySelector<HTMLImageElement>('img')?.currentSrc ||
+    authorRoot?.querySelector<HTMLImageElement>('img')?.src ||
+    authorRoot?.querySelector('meta[itemprop="image"]')?.getAttribute('content') ||
+    '';
+  const time = authorRoot?.parentElement?.querySelector<HTMLTimeElement>('time') ?? readView.querySelector<HTMLTimeElement>('time');
+  const metrics = extractArticleHeaderMetricsFromGroup(metricsGroup);
+
+  return {
+    ...(authorName ? { authorName } : {}),
+    ...(authorHandle ? { authorHandle } : {}),
+    ...(authorAvatar ? { authorAvatarUrl: authorAvatar } : {}),
+    ...(authorRoot?.querySelector('[data-testid="icon-verified"], [aria-label="认证账号"], [aria-label="Verified account"]')
+      ? { authorVerified: true }
+      : {}),
+    ...(time?.dateTime ? { publishedAt: time.dateTime } : {}),
+    ...(time?.textContent ? { publishedAtText: normalizeText(time.textContent) } : {}),
+    ...(hasTweetMetrics(metrics) ? { metrics } : {})
+  };
+}
+
+function findHeaderElementAfterTitle(readView: Element, longform: Element, selector: string, titleElement: Element | null): Element | null {
+  const candidates = Array.from(readView.querySelectorAll(selector)).filter((candidate) => !longform.contains(candidate));
+  if (!titleElement) {
+    return candidates[0] ?? null;
+  }
+  return candidates.find((candidate) => Boolean(titleElement.compareDocumentPosition(candidate) & Node.DOCUMENT_POSITION_FOLLOWING)) ?? null;
+}
+
+function extractArticleHeaderMetricsFromGroup(group: Element | null): TweetMetrics {
+  if (!group) {
+    return {};
+  }
+
+  return {
+    replies: extractArticleHeaderMetricValueFromGroup(group, 'reply'),
+    reposts: extractArticleHeaderMetricValueFromGroup(group, 'retweet'),
+    likes: extractArticleHeaderMetricValueFromGroup(group, 'like'),
+    views:
+      normalizeText(group.querySelector('a[href*="/analytics"]')?.textContent ?? '') ||
+      parseArticleHeaderMetricLabel(group.getAttribute('aria-label') ?? '', /(?:查看|观看|view)/i),
+    bookmarks: extractArticleHeaderMetricValueFromGroup(group, 'bookmark')
+  };
+}
+
+function extractArticleHeaderMetricValueFromGroup(group: Element, testId: string): string | undefined {
+  const action = group.querySelector(`[data-testid="${testId}"]`);
+  const value = normalizeText(action?.textContent ?? '') || parseArticleHeaderMetricLabel(action?.getAttribute('aria-label') ?? '');
+  return value || undefined;
+}
+
+function parseArticleHeaderMetricLabel(label: string, hint?: RegExp): string {
+  const text = normalizeText(label);
+  if (hint && !hint.test(text)) {
+    return '';
+  }
+  return text.match(/[\d,.]+(?:\.\d+)?(?:万|[KMB])?/i)?.[0] ?? '';
+}
+
 async function extractBlocks(longform: Element, articleId: string, capturedVideos: CapturedXVideo[]): Promise<ArticleBlock[]> {
   const blocks: ArticleBlock[] = [];
   let pendingListItems: string[] = [];
   let pendingListItemAnnotations: TextAnnotation[][] = [];
+  let pendingListItemTextStyles: TextStyle[] = [];
   let pendingListKind: 'ordered' | 'unordered' = 'unordered';
 
   function flushPendingList() {
@@ -504,17 +724,21 @@ async function extractBlocks(longform: Element, articleId: string, capturedVideo
     if (pendingListItemAnnotations.some((annotations) => annotations.length > 0)) {
       listBlock.itemAnnotations = pendingListItemAnnotations;
     }
+    if (pendingListItemTextStyles.some((style) => Object.keys(style).length > 0)) {
+      listBlock.itemTextStyles = pendingListItemTextStyles;
+    }
 
     blocks.push(listBlock);
     pendingListItems = [];
     pendingListItemAnnotations = [];
+    pendingListItemTextStyles = [];
     pendingListKind = 'unordered';
   }
 
   for (const block of Array.from(longform.querySelectorAll(X_ARTICLE_SELECTORS.block))) {
     const listKind = getListKind(block);
     if (listKind) {
-      const extracted = extractTextWithAnnotations(block);
+      const extracted = extractTextWithAnnotations(block, { preserveLineBreaks: true });
       if (extracted.text) {
         if (pendingListItems.length === 0) {
           pendingListKind = listKind;
@@ -524,6 +748,7 @@ async function extractBlocks(longform: Element, articleId: string, capturedVideo
         }
         pendingListItems.push(extracted.text);
         pendingListItemAnnotations.push(extracted.annotations);
+        pendingListItemTextStyles.push(extractElementTextStyle(block));
       }
       continue;
     }
@@ -538,6 +763,7 @@ async function extractBlocks(longform: Element, articleId: string, capturedVideo
       }
       pendingListItems.push(handwrittenOrderedListItem.text);
       pendingListItemAnnotations.push(handwrittenOrderedListItem.annotations);
+      pendingListItemTextStyles.push(extractElementTextStyle(block));
       continue;
     }
 
@@ -578,7 +804,7 @@ function extractHandwrittenOrderedListItem(block: Element): { text: string; anno
     return null;
   }
 
-  const extracted = extractTextWithAnnotations(block);
+  const extracted = extractTextWithAnnotations(block, { preserveLineBreaks: true });
   const marker = getHandwrittenOrderedListMarker(extracted.text);
   if (!marker) {
     return null;
@@ -627,6 +853,7 @@ async function extractBlock(block: Element, articleId: string, index: number, ca
           id: blockId(articleId, index),
           type: 'quote',
           text: extracted.text,
+          textStyle: extractElementTextStyle(block),
           ...(extracted.annotations.length > 0 ? { annotations: extracted.annotations } : {})
         }
       : null;
@@ -637,7 +864,7 @@ async function extractBlock(block: Element, articleId: string, index: number, ca
     return nonTextBlock;
   }
 
-  const extracted = extractTextWithAnnotations(block);
+  const extracted = extractTextWithAnnotations(block, { preserveLineBreaks: true });
   if (!extracted.text) {
     return null;
   }
@@ -648,6 +875,7 @@ async function extractBlock(block: Element, articleId: string, index: number, ca
       type: 'heading',
       text: extracted.text,
       level: getHeadingLevel(block),
+      textStyle: extractElementTextStyle(block),
       ...(extracted.annotations.length > 0 ? { annotations: extracted.annotations } : {})
     };
   }
@@ -655,7 +883,8 @@ async function extractBlock(block: Element, articleId: string, index: number, ca
   const textBlock: ArticleBlock = {
     id: blockId(articleId, index),
     type: 'paragraph',
-    text: extracted.text
+    text: extracted.text,
+    textStyle: extractElementTextStyle(block)
   };
   if (textBlock.type === 'paragraph' && extracted.annotations.length > 0) {
     textBlock.annotations = extracted.annotations;
@@ -700,6 +929,11 @@ async function extractNonTextBlock(block: Element, articleId: string, index: num
     return link;
   }
 
+  const table = extractTableBlock(block, blockId(articleId, index));
+  if (table) {
+    return table;
+  }
+
   const code = extractCodeBlock(block, blockId(articleId, index));
   if (code) {
     return code;
@@ -734,12 +968,198 @@ function extractCodeBlock(block: Element, id: string): ArticleBlock | null {
     id,
     type: 'code',
     text,
-    ...(language ? { language } : {})
+    ...(language ? { language } : {}),
+    codeStyle: extractCodeBlockStyle(codeRoot, pre, code),
+    tokens: extractCodeTokens(code)
+  };
+}
+
+function extractTableBlock(block: Element, id: string): TableBlock | null {
+  const tableRoot = findTableRoot(block);
+  if (!tableRoot) {
+    return null;
+  }
+
+  const rowElements = getTableRowElements(tableRoot);
+  const rows = rowElements
+    .map((row) => ({
+      cells: getTableCellElements(row).map((cell) => ({
+        text: normalizePreWrapText(getElementDisplayText(cell, true)),
+        ...(isTableHeaderCell(cell) ? { header: true } : {}),
+        ...getTableSpanAttributes(cell),
+        textStyle: extractElementTextStyle(cell),
+        ...extractTableCellSurface(cell)
+      }))
+    }))
+    .filter((row) => row.cells.some((cell) => cell.text));
+
+  if (rows.length === 0) {
+    return null;
+  }
+
+  return {
+    id,
+    type: 'table',
+    rows,
+    columnCount: Math.max(...rows.map((row) => row.cells.reduce((total, cell) => total + (cell.colSpan ?? 1), 0))),
+    tableStyle: extractTableSurface(tableRoot)
   };
 }
 
 function normalizeCodeLanguage(language: string): string {
   return normalizeText(language).replace(/^language-/, '').toLowerCase();
+}
+
+function extractCodeBlockStyle(codeRoot: Element, pre: Element | null, code: Element | null): CodeBlockStyle {
+  const header = codeRoot.querySelector(':scope > div:first-child');
+  const copyIcon = codeRoot.querySelector('button svg, button [style*="color"]');
+  return compactStyle({
+    headerBackgroundColor: getStyleValue(header, 'backgroundColor'),
+    headerColor: getStyleValue(header, 'color'),
+    copyColor: getStyleValue(copyIcon, 'color'),
+    preBackgroundColor: getStyleValue(pre, 'backgroundColor'),
+    preColor: getStyleValue(pre, 'color'),
+    codeBackgroundColor: getStyleValue(code, 'backgroundColor'),
+    codeColor: getStyleValue(code, 'color'),
+    fontFamily: getStyleValue(code, 'fontFamily') || getStyleValue(pre, 'fontFamily'),
+    fontSize: getStyleValue(code, 'fontSize') || getStyleValue(pre, 'fontSize'),
+    lineHeight: getStyleValue(code, 'lineHeight') || getStyleValue(pre, 'lineHeight'),
+    tabSize: getStyleValue(code, 'tabSize') || getStyleValue(pre, 'tabSize')
+  });
+}
+
+function extractCodeTokens(code: Element | null): CodeToken[] | undefined {
+  if (!code) {
+    return undefined;
+  }
+
+  const tokens: CodeToken[] = [];
+  collectCodeTokens(code, tokens, extractCodeTokenStyle(code));
+  return tokens.length > 0 ? tokens : undefined;
+}
+
+function collectCodeTokens(node: Node, tokens: CodeToken[], inheritedStyle: Omit<CodeToken, 'text'> = {}): void {
+  if (node.nodeType === Node.TEXT_NODE) {
+    const text = node.textContent ?? '';
+    if (text) {
+      tokens.push({ text, ...inheritedStyle });
+    }
+    return;
+  }
+
+  if (!(node instanceof Element)) {
+    return;
+  }
+
+  const style = { ...inheritedStyle, ...extractCodeTokenStyle(node) };
+  for (const child of Array.from(node.childNodes)) {
+    collectCodeTokens(child, tokens, style);
+  }
+}
+
+function extractCodeTokenStyle(element: Element | null): Omit<CodeToken, 'text'> {
+  return compactStyle({
+    color: getStyleValue(element, 'color'),
+    fontStyle: getStyleValue(element, 'fontStyle'),
+    fontWeight: getStyleValue(element, 'fontWeight')
+  });
+}
+
+function findTableRoot(block: Element): Element | null {
+  if (block.matches('table, [role="table"], [role="grid"]')) {
+    return block;
+  }
+  return block.querySelector('table, [role="table"], [role="grid"], [data-testid="markdown-table"]');
+}
+
+function getTableRowElements(tableRoot: Element): Element[] {
+  const rows = Array.from(tableRoot.querySelectorAll(':scope tr, :scope [role="row"]'));
+  if (rows.length > 0) {
+    return rows;
+  }
+
+  const directRows = Array.from(tableRoot.children).filter((child) => getTableCellElements(child).length > 0);
+  return directRows.length > 0 ? directRows : [tableRoot];
+}
+
+function getTableCellElements(row: Element): Element[] {
+  const cells = Array.from(
+    row.querySelectorAll(':scope > th, :scope > td, :scope > [role="columnheader"], :scope > [role="rowheader"], :scope > [role="cell"], :scope > [role="gridcell"]')
+  );
+  if (cells.length > 0) {
+    return cells;
+  }
+  return Array.from(row.children).filter((child) => normalizeText(child.textContent ?? '') !== '');
+}
+
+function isTableHeaderCell(cell: Element): boolean {
+  const role = cell.getAttribute('role');
+  return cell.tagName.toUpperCase() === 'TH' || role === 'columnheader' || role === 'rowheader';
+}
+
+function getTableSpanAttributes(cell: Element): Pick<TableBlock['rows'][number]['cells'][number], 'colSpan' | 'rowSpan'> {
+  const colSpan = Number(cell.getAttribute('colspan') ?? cell.getAttribute('aria-colspan') ?? '');
+  const rowSpan = Number(cell.getAttribute('rowspan') ?? cell.getAttribute('aria-rowspan') ?? '');
+  return {
+    ...(Number.isFinite(colSpan) && colSpan > 1 ? { colSpan } : {}),
+    ...(Number.isFinite(rowSpan) && rowSpan > 1 ? { rowSpan } : {})
+  };
+}
+
+function extractTableSurface(element: Element): TableBlock['tableStyle'] {
+  return compactStyle({
+    backgroundColor: getStyleValue(element, 'backgroundColor'),
+    borderColor: getStyleValue(element, 'borderColor')
+  });
+}
+
+function extractTableCellSurface(element: Element): Pick<TableBlock['rows'][number]['cells'][number], 'backgroundColor' | 'borderColor'> {
+  return compactStyle({
+    backgroundColor: getStyleValue(element, 'backgroundColor'),
+    borderColor: getStyleValue(element, 'borderColor')
+  });
+}
+
+function extractElementTextStyle(element: Element | null): TextStyle {
+  return compactStyle({
+    color: getStyleValue(element, 'color'),
+    fontSize: getStyleValue(element, 'fontSize'),
+    lineHeight: getStyleValue(element, 'lineHeight'),
+    textAlign: getStyleValue(element, 'textAlign'),
+    fontStyle: getStyleValue(element, 'fontStyle'),
+    fontWeight: getStyleValue(element, 'fontWeight')
+  });
+}
+
+function extractTextAnnotationStyle(element: Element | null): Pick<TextAnnotation, 'color' | 'fontSize' | 'lineHeight' | 'textAlign' | 'fontStyle'> {
+  return compactStyle({
+    color: getStyleValue(element, 'color'),
+    fontSize: getStyleValue(element, 'fontSize'),
+    lineHeight: getStyleValue(element, 'lineHeight'),
+    textAlign: getStyleValue(element, 'textAlign'),
+    fontStyle: getStyleValue(element, 'fontStyle')
+  });
+}
+
+function getStyleValue(element: Element | null | undefined, property: keyof CSSStyleDeclaration): string | undefined {
+  if (!element || !(element instanceof HTMLElement)) {
+    return undefined;
+  }
+
+  const inlineValue = element.style[property];
+  const computedValue =
+    typeof window !== 'undefined' && typeof window.getComputedStyle === 'function'
+      ? window.getComputedStyle(element)[property]
+      : '';
+  const value = String(inlineValue || computedValue || '').trim();
+  if (!value || value === 'normal' || value === 'auto' || value === 'none' || value === 'rgba(0, 0, 0, 0)') {
+    return undefined;
+  }
+  return value;
+}
+
+function compactStyle<T extends Record<string, string | number | boolean | undefined>>(style: T): T {
+  return Object.fromEntries(Object.entries(style).filter(([, value]) => value !== undefined && value !== '')) as T;
 }
 
 async function extractTweetRefBlock(block: Element, id: string, capturedVideos: CapturedXVideo[]): Promise<ArticleBlock | null> {
@@ -769,11 +1189,11 @@ async function extractTweetSummaryBlock(tweet: Element, id: string, fallbackBloc
   return {
     id,
     type: 'simple-tweet',
-    coverUrl: '',
     source: 'X Tweet',
     title,
     excerpt,
     href,
+    items: body ? [{ type: 'text', text: body }] : [],
     ...profile,
     ...(hasTweetMetrics(metrics) ? { metrics } : {})
   };
@@ -938,146 +1358,44 @@ function extractLinkBlock(block: Element, id: string): ArticleBlock | null {
 }
 
 async function extractSimpleTweetBlock(block: Element, id: string, capturedVideos: CapturedXVideo[] = []): Promise<ArticleBlock | null> {
-  if (isSimpleTweetArticleCard(block)) {
-    return extractSimpleTweetArticleCard(block, id);
-  }
-
   if (!isSimpleTweetCard(block)) {
     return null;
   }
 
-  const videoCard = await extractSimpleTweetVideoCard(block, id, capturedVideos);
-  if (videoCard) {
-    return videoCard;
-  }
-
-  const imageCard = await extractSimpleTweetImageCard(block, id);
-  if (imageCard) {
-    return imageCard;
-  }
-
-  const textCard = await extractSimpleTweetTextCard(block, id);
-  return textCard;
+  return extractSimpleTweetBlockFromRoot(block, id, capturedVideos);
 }
 
 function isSimpleTweetCard(block: Element): boolean {
   return block.matches('[data-testid="simpleTweet"]') || Boolean(block.querySelector('[data-testid="simpleTweet"]'));
 }
 
-function isSimpleTweetArticleCard(block: Element): boolean {
-  return Boolean(block.querySelector('[data-testid="article-cover-image"]'));
-}
-
-function extractSimpleTweetArticleCard(block: Element, id: string): ArticleBlock | null {
-  const coverRoot = block.querySelector('[data-testid="article-cover-image"]');
-  if (!coverRoot) {
+async function extractSimpleTweetBlockFromRoot(block: Element, id: string, capturedVideos: CapturedXVideo[] = []): Promise<ArticleBlock | null> {
+  const tweetRoot = block.matches('[data-testid="simpleTweet"]')
+    ? block
+    : block.querySelector('[data-testid="simpleTweet"]');
+  if (!tweetRoot) {
     return null;
   }
 
-  const coverImage = coverRoot.querySelector<HTMLImageElement>('img');
-  const coverUrl = coverImage?.currentSrc || coverImage?.src || '';
-  if (!coverUrl) {
+  const tweet = tweetRoot.querySelector(X_ARTICLE_SELECTORS.tweetBlock) ?? tweetRoot;
+  const profile = extractTweetProfile(tweet);
+  const items = await extractSimpleTweetItems(tweetRoot, tweet, capturedVideos, 0);
+  const excerpt = items.find((item): item is Extract<SimpleTweetContentItem, { type: 'text' }> => item.type === 'text')?.text ?? '';
+  if (items.length === 0 && excerpt === '') {
     return null;
   }
 
-  const href = getSimpleTweetHref(block);
-  const title = normalizeText(getTextAfterCover(coverRoot, 0));
-  const excerpt = normalizeText(getTextAfterCover(coverRoot, 1));
-  const profile = extractTweetProfile(block);
-  const metrics = extractTweetMetrics(block);
-
+  const metrics = extractTweetMetrics(tweet);
   return {
     id,
     type: 'simple-tweet',
-    coverUrl,
-    coverAlt: coverImage?.alt || undefined,
-    source: 'X Article',
-    title: title || 'X Article',
+    source: 'X Tweet',
+    title: buildTweetAuthorLine(profile) || 'X Tweet',
     excerpt,
-    href,
-    ...profile,
-    ...(hasTweetMetrics(metrics) ? { metrics } : {})
-  };
-}
-
-async function extractSimpleTweetImageCard(block: Element, id: string): Promise<ArticleBlock | null> {
-  const photos = Array.from(block.querySelectorAll<HTMLElement>(X_ARTICLE_SELECTORS.tweetPhoto))
-    .map(tweetPhotoElementToPhoto)
-    .filter((photo): photo is NonNullable<ReturnType<typeof tweetPhotoElementToPhoto>> => Boolean(photo));
-
-  if (photos.length === 0) {
-    return null;
-  }
-
-  const tweet = block.querySelector(X_ARTICLE_SELECTORS.tweetBlock) ?? block;
-  const body = await extractTweetBodyText(tweet);
-  const profile = extractTweetProfile(tweet);
-  const metrics = extractTweetMetrics(tweet);
-
-  return {
-    id,
-    type: 'simple-tweet',
-    coverUrl: '',
-    source: 'X Tweet',
-    title: buildTweetAuthorLine(profile) || 'X Tweet',
-    excerpt: body,
-    href: getSimpleTweetHref(block),
-    photos,
-    ...profile,
-    ...(hasTweetMetrics(metrics) ? { metrics } : {})
-  };
-}
-
-async function extractSimpleTweetVideoCard(block: Element, id: string, capturedVideos: CapturedXVideo[]): Promise<ArticleBlock | null> {
-  const video = extractVideoFromElement(block, id, capturedVideos);
-  if (!video) {
-    return null;
-  }
-
-  const tweet = block.querySelector(X_ARTICLE_SELECTORS.tweetBlock) ?? block;
-  const body = await extractTweetBodyText(tweet);
-  const profile = extractTweetProfile(tweet);
-  const metrics = extractTweetMetrics(tweet);
-
-  return {
-    id,
-    type: 'simple-tweet',
-    coverUrl: '',
-    source: 'X Tweet',
-    title: buildTweetAuthorLine(profile) || 'X Tweet',
-    excerpt: body,
-    href: getSimpleTweetHref(block),
-    video,
-    ...profile,
-    ...(hasTweetMetrics(metrics) ? { metrics } : {})
-  };
-}
-
-async function extractSimpleTweetTextCard(block: Element, id: string): Promise<ArticleBlock | null> {
-  const tweet = block.querySelector(X_ARTICLE_SELECTORS.tweetBlock) ?? block;
-  const textElement = block.querySelector('[data-testid="tweetText"]');
-  if (!textElement || block.querySelector('[data-testid="article-cover-image"], [data-testid="videoPlayer"]') || block.querySelector(X_ARTICLE_SELECTORS.tweetPhoto)) {
-    return null;
-  }
-
-  const body = await extractTweetBodyText(tweet);
-  if (!body) {
-    return null;
-  }
-
-  const profile = extractTweetProfile(tweet);
-  const metrics = extractTweetMetrics(tweet);
-
-  return {
-    id,
-    type: 'simple-tweet',
-    coverUrl: '',
-    source: 'X Tweet',
-    title: buildTweetAuthorLine(profile) || 'X Tweet',
-    excerpt: body,
-    href: getSimpleTweetHref(block),
+    href: getSimpleTweetHref(tweetRoot),
+    items,
+    aiGeneratedText: extractTweetAiGeneratedText(tweet),
     authorBadgeAvatarUrl: extractTweetAuthorBadgeAvatarUrl(tweet),
-    authorVerified: Boolean(tweet.querySelector('[data-testid="icon-verified"]')),
     replyContextText: extractTweetReplyContextText(tweet),
     replyToHandle: extractTweetReplyToHandle(tweet),
     translationSourceText: extractTweetTranslationSourceText(tweet),
@@ -1085,6 +1403,450 @@ async function extractSimpleTweetTextCard(block: Element, id: string): Promise<A
     ...profile,
     ...(hasTweetMetrics(metrics) ? { metrics } : {})
   };
+}
+
+async function extractSimpleTweetItems(
+  tweetRoot: Element,
+  tweet: Element,
+  capturedVideos: CapturedXVideo[],
+  depth: number
+): Promise<SimpleTweetContentItem[]> {
+  const quotedRoots = collectQuotedTweetRoots(tweetRoot, tweet);
+  const consumedMediaRoots = new Set<Element>();
+  const candidates = new Map<Element, SimpleTweetContentItem | null>();
+
+  const text = await extractTweetBodyText(tweet);
+  const textElement = tweet.querySelector('[data-testid="tweetText"]');
+  if (textElement && text) {
+    candidates.set(textElement, { type: 'text', text });
+  }
+
+  const articleCover = tweetRoot.querySelector('[data-testid="article-cover-image"]');
+  if (articleCover && !belongsToQuotedTweet(articleCover, quotedRoots)) {
+    candidates.set(articleCover, extractArticleCoverItem(articleCover));
+    consumedMediaRoots.add(articleCover);
+  }
+
+  for (const videoPlayer of Array.from(tweet.querySelectorAll('[data-testid="videoPlayer"]'))) {
+    if (belongsToQuotedTweet(videoPlayer, quotedRoots)) {
+      continue;
+    }
+    const mediaRoot = videoPlayer.closest(X_ARTICLE_SELECTORS.tweetPhoto) ?? videoPlayer;
+    if (hasConsumedMediaAncestor(mediaRoot, consumedMediaRoots)) {
+      continue;
+    }
+    const video = extractVideoFromElement(mediaRoot, `${depth}-video-${candidates.size}`, capturedVideos);
+    if (video) {
+      candidates.set(mediaRoot, { type: 'video', video });
+      consumedMediaRoots.add(mediaRoot);
+    }
+  }
+
+  for (const preview of Array.from(tweet.querySelectorAll('[data-testid="previewInterstitial"], [aria-label="嵌入式视频"], [aria-label="Embedded video"]'))) {
+    if (belongsToQuotedTweet(preview, quotedRoots)) {
+      continue;
+    }
+    const mediaRoot = preview.closest(X_ARTICLE_SELECTORS.tweetPhoto) ?? preview;
+    if (hasConsumedMediaAncestor(mediaRoot, consumedMediaRoots)) {
+      continue;
+    }
+    candidates.set(mediaRoot, extractVideoPreviewItem(mediaRoot));
+    consumedMediaRoots.add(mediaRoot);
+  }
+
+  const loosePhotos: Array<{ element: HTMLElement; layoutRoot: Element; photo: NonNullable<ReturnType<typeof tweetPhotoElementToPhoto>> }> = [];
+  for (const photoElement of Array.from(tweet.querySelectorAll<HTMLElement>(X_ARTICLE_SELECTORS.tweetPhoto))) {
+    if (belongsToQuotedTweet(photoElement, quotedRoots) || hasConsumedMediaAncestor(photoElement, consumedMediaRoots)) {
+      continue;
+    }
+    const photo = tweetPhotoElementToPhoto(photoElement);
+    if (photo) {
+      loosePhotos.push({
+        element: photoElement,
+        layoutRoot: getSimpleTweetPhotoLayoutRoot(photoElement, tweet),
+        photo
+      });
+    }
+  }
+  for (const group of groupAdjacentPhotos(loosePhotos)) {
+    const anchor = group[0]?.layoutRoot ?? group[0]?.element;
+    if (!anchor) {
+      continue;
+    }
+    const layout = buildSimpleTweetPhotoLayout(anchor, group);
+    const aspectRatio = getSimpleTweetPhotoGroupAspectRatio(anchor);
+    candidates.set(
+      anchor,
+      group.length === 1
+        ? { type: 'photo', photo: group[0].photo }
+        : {
+            type: 'photo-group',
+            photos: group.map((item) => item.photo),
+            layout,
+            ...(aspectRatio ? { aspectRatio } : {})
+          }
+    );
+  }
+
+  if (depth === 0) {
+    for (const quotedRoot of quotedRoots) {
+      const quotedTweet = quotedRoot.matches(X_ARTICLE_SELECTORS.tweetBlock)
+        ? quotedRoot
+        : quotedRoot.querySelector(X_ARTICLE_SELECTORS.tweetBlock) ?? quotedRoot;
+      const quotedCard = await extractQuotedTweetCard(quotedRoot, quotedTweet, capturedVideos, depth + 1);
+      if (quotedCard) {
+        candidates.set(quotedRoot, { type: 'quoted-tweet', tweet: quotedCard });
+      }
+    }
+  }
+
+  return Array.from(candidates.entries())
+    .filter((entry): entry is [Element, SimpleTweetContentItem] => Boolean(entry[1]))
+    .sort((left, right) => compareNodeOrder(left[0], right[0]))
+    .map(([, item]) => item);
+}
+
+async function extractQuotedTweetCard(
+  tweetRoot: Element,
+  tweet: Element,
+  capturedVideos: CapturedXVideo[],
+  depth: number
+): Promise<SimpleTweetCardData | null> {
+  const profile = extractTweetProfile(tweet);
+  const items = await extractSimpleTweetItems(tweetRoot, tweet, capturedVideos, depth);
+  const excerpt = items.find((item): item is Extract<SimpleTweetContentItem, { type: 'text' }> => item.type === 'text')?.text ?? '';
+  if (items.length === 0 && excerpt === '') {
+    return null;
+  }
+
+  return {
+    source: 'X Tweet',
+    title: buildTweetAuthorLine(profile) || 'X Tweet',
+    excerpt,
+    href: getSimpleTweetHref(tweetRoot),
+    items,
+    aiGeneratedText: extractTweetAiGeneratedText(tweet),
+    authorBadgeAvatarUrl: extractTweetAuthorBadgeAvatarUrl(tweet),
+    replyContextText: extractTweetReplyContextText(tweet),
+    replyToHandle: extractTweetReplyToHandle(tweet),
+    translationSourceText: extractTweetTranslationSourceText(tweet),
+    translationActionText: extractTweetTranslationActionText(tweet),
+    ...profile
+  };
+}
+
+function collectQuotedTweetRoots(tweetRoot: Element, tweet: Element): Element[] {
+  const candidates = Array.from(tweetRoot.querySelectorAll('[data-testid="simpleTweet"], [data-testid="tweet"], [role="link"]')).filter((candidate) => {
+    if (candidate === tweetRoot || candidate === tweet) {
+      return false;
+    }
+    if (!candidate.querySelector('[data-testid="User-Name"]')) {
+      return false;
+    }
+    return Boolean(
+      candidate.querySelector('[data-testid="tweetText"], [data-testid="tweetPhoto"], [data-testid="previewInterstitial"], [data-testid="videoPlayer"], [data-testid="article-cover-image"]')
+    );
+  });
+
+  return candidates.filter((candidate) => !candidates.some((other) => other !== candidate && other.contains(candidate)));
+}
+
+function belongsToQuotedTweet(element: Element, quotedRoots: Element[]): boolean {
+  return quotedRoots.some((quotedRoot) => quotedRoot !== element && quotedRoot.contains(element));
+}
+
+function hasConsumedMediaAncestor(element: Element, consumedRoots: Set<Element>): boolean {
+  for (let current: Element | null = element; current; current = current.parentElement) {
+    if (consumedRoots.has(current)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function compareNodeOrder(left: Element, right: Element): number {
+  if (left === right) {
+    return 0;
+  }
+  const position = left.compareDocumentPosition(right);
+  if (position & Node.DOCUMENT_POSITION_FOLLOWING) {
+    return -1;
+  }
+  if (position & Node.DOCUMENT_POSITION_PRECEDING) {
+    return 1;
+  }
+  return 0;
+}
+
+function groupAdjacentPhotos(
+  items: Array<{ element: HTMLElement; layoutRoot: Element; photo: NonNullable<ReturnType<typeof tweetPhotoElementToPhoto>> }>
+): Array<Array<{ element: HTMLElement; layoutRoot: Element; photo: NonNullable<ReturnType<typeof tweetPhotoElementToPhoto>> }>> {
+  const groups: Array<Array<{ element: HTMLElement; layoutRoot: Element; photo: NonNullable<ReturnType<typeof tweetPhotoElementToPhoto>> }>> = [];
+  for (const item of items) {
+    const lastGroup = groups.at(-1);
+    const last = lastGroup?.at(-1)?.element;
+    if (!lastGroup || !last || !sharePhotoGroupRoot(last, item.element)) {
+      groups.push([item]);
+      continue;
+    }
+    lastGroup.push(item);
+  }
+  return groups;
+}
+
+function buildSimpleTweetPhotoLayout(
+  layoutRoot: Element,
+  items: Array<{ element: HTMLElement; layoutRoot: Element; photo: NonNullable<ReturnType<typeof tweetPhotoElementToPhoto>> }>
+): SimpleTweetPhotoLayout {
+  const photoMap = new Map(items.map((item) => [item.element, item.photo] as const));
+  return buildSimpleTweetPhotoLayoutNode(layoutRoot, items, photoMap, 0) ?? {
+    kind: 'row',
+    children: items.map((item) => ({ kind: 'photo', photo: item.photo }))
+  };
+}
+
+function buildSimpleTweetPhotoLayoutNode(
+  root: Element,
+  items: Array<{ element: HTMLElement; layoutRoot: Element; photo: NonNullable<ReturnType<typeof tweetPhotoElementToPhoto>> }>,
+  photoMap: Map<HTMLElement, NonNullable<ReturnType<typeof tweetPhotoElementToPhoto>>>,
+  depth: number
+): SimpleTweetPhotoLayout | null {
+  const localItems = items.filter((item) => root.contains(item.element));
+  if (localItems.length === 0) {
+    return null;
+  }
+  if (localItems.length === 1) {
+    return { kind: 'photo', photo: localItems[0].photo, ...getSimpleTweetPhotoLayoutSize(root) };
+  }
+
+  const branches = Array.from(root.children).filter((child) =>
+    localItems.some((item) => child.contains(item.element)) && isSimpleTweetMediaBranch(child)
+  );
+
+  if (branches.length === 1) {
+    return buildSimpleTweetPhotoLayoutNode(branches[0], localItems, photoMap, depth);
+  }
+
+  if (branches.length >= 2) {
+    const children = branches
+      .map((branch) => buildSimpleTweetPhotoLayoutNode(branch, localItems, photoMap, depth + 1))
+      .filter((child): child is SimpleTweetPhotoLayout => child !== null);
+    if (children.length === 1) {
+      return children[0];
+    }
+    if (children.length >= 2) {
+      return { kind: getSimpleTweetMediaLayoutDirection(root, depth), children, ...getSimpleTweetPhotoLayoutSize(root) };
+    }
+  }
+
+  const directPhotos = Array.from(root.querySelectorAll<HTMLElement>(X_ARTICLE_SELECTORS.tweetPhoto))
+    .filter((photoElement) => localItems.some((item) => item.element === photoElement))
+    .map((photoElement) => photoMap.get(photoElement))
+    .filter((photo): photo is NonNullable<ReturnType<typeof tweetPhotoElementToPhoto>> => Boolean(photo));
+
+  if (directPhotos.length === 1) {
+    return { kind: 'photo', photo: directPhotos[0], ...getSimpleTweetPhotoLayoutSize(root) };
+  }
+
+  return {
+    kind: getSimpleTweetMediaLayoutDirection(root, depth),
+    children: directPhotos.map((photo) => ({ kind: 'photo', photo }))
+  };
+}
+
+function getSimpleTweetPhotoLayoutSize(root: Element): { widthRatio?: number; heightRatio?: number } {
+  const widthRatio = getRatioAttribute(root, 'data-linelens-media-layout-width');
+  const heightRatio = getRatioAttribute(root, 'data-linelens-media-layout-height');
+  return {
+    ...(widthRatio ? { widthRatio } : {}),
+    ...(heightRatio ? { heightRatio } : {})
+  };
+}
+
+function getRatioAttribute(root: Element, name: string): number | undefined {
+  const value = Number(root.getAttribute(name));
+  if (!Number.isFinite(value) || value <= 0) {
+    return undefined;
+  }
+  return value;
+}
+
+function getSimpleTweetMediaLayoutDirection(root: Element, depth: number): 'row' | 'column' {
+  const preservedDirection = root.getAttribute('data-linelens-media-layout-direction');
+  if (preservedDirection === 'row' || preservedDirection === 'column') {
+    return preservedDirection;
+  }
+
+  if (root.classList.contains('r-18u37iz')) {
+    return 'row';
+  }
+  if (root.classList.contains('r-eqz5dr')) {
+    return 'column';
+  }
+
+  return depth === 0 ? 'row' : 'column';
+}
+
+function getSimpleTweetPhotoGroupAspectRatio(layoutRoot: Element): number | undefined {
+  for (let current: Element | null = layoutRoot; current; current = current.parentElement) {
+    const preserved = Number(current.getAttribute('data-linelens-media-aspect-ratio'));
+    if (Number.isFinite(preserved) && preserved > 0) {
+      return preserved;
+    }
+
+    const ratioNode = Array.from(current.children).find((child) => /padding-bottom:\s*[0-9.]+%/i.test(child.getAttribute('style') ?? ''));
+    const ratio = ratioNode ? getPaddingBottomAspectRatio(ratioNode) : undefined;
+    if (ratio) {
+      return ratio;
+    }
+
+    if (current.matches(`${X_ARTICLE_SELECTORS.tweetBlock}, [data-testid="simpleTweet"]`)) {
+      break;
+    }
+  }
+
+  return undefined;
+}
+
+function sharePhotoGroupRoot(left: Element, right: Element): boolean {
+  const leftTweet = left.closest(X_ARTICLE_SELECTORS.tweetBlock) ?? left.closest('[data-testid="simpleTweet"]');
+  const rightTweet = right.closest(X_ARTICLE_SELECTORS.tweetBlock) ?? right.closest('[data-testid="simpleTweet"]');
+  if (!leftTweet || !rightTweet || leftTweet !== rightTweet) {
+    return false;
+  }
+
+  return getSimpleTweetPhotoLayoutRoot(left, leftTweet) === getSimpleTweetPhotoLayoutRoot(right, rightTweet);
+}
+
+function getSimpleTweetPhotoLayoutRoot(element: Element, tweetBoundary: Element): Element {
+  const photoRoot = element.closest(X_ARTICLE_SELECTORS.tweetPhoto) ?? element;
+  let layoutRoot: Element | null = null;
+
+  for (let current = photoRoot.parentElement; current && current !== tweetBoundary; current = current.parentElement) {
+    const mediaBranches = Array.from(current.children).filter((child) => isSimpleTweetMediaBranch(child));
+    if (mediaBranches.length > 1 && mediaBranches.some((child) => child.contains(photoRoot))) {
+      layoutRoot = current;
+    }
+  }
+
+  return layoutRoot ?? photoRoot.parentElement ?? photoRoot;
+}
+
+function isSimpleTweetMediaBranch(element: Element): boolean {
+  if (element.querySelector('[data-testid="tweetText"]')) {
+    return false;
+  }
+
+  return Boolean(
+    element.querySelector('[data-testid="tweetPhoto"], [data-testid="videoPlayer"], [data-testid="previewInterstitial"], [data-testid="article-cover-image"]')
+  );
+}
+
+function extractArticleCoverItem(coverRoot: Element): SimpleTweetContentItem | null {
+  const coverImage = coverRoot.querySelector<HTMLImageElement>('img');
+  const coverUrl = coverImage?.currentSrc || coverImage?.src || '';
+  if (!coverUrl) {
+    return null;
+  }
+
+  const cardRoot = getArticleCoverCardRoot(coverRoot);
+  const authorProfile = extractArticleCoverAuthorProfile(cardRoot);
+  const metrics = extractMetricsFromGroup(cardRoot.querySelector('[role="group"][aria-label]'));
+
+  return {
+    type: 'article-cover',
+    coverUrl,
+    coverAlt: coverImage?.alt || undefined,
+    title: normalizeText(getTextAfterCover(coverRoot, 0)),
+    excerpt: normalizeText(getTextAfterCover(coverRoot, 1)),
+    href: getSimpleTweetHref(coverRoot.closest('[data-testid="simpleTweet"], [data-testid="tweet"]') ?? coverRoot),
+    ...authorProfile,
+    ...(hasTweetMetrics(metrics) ? { metrics } : {})
+  };
+}
+
+function getArticleCoverCardRoot(coverRoot: Element): Element {
+  return coverRoot.closest('a[href], [role="link"]') ?? coverRoot.parentElement ?? coverRoot;
+}
+
+function extractArticleCoverAuthorProfile(cardRoot: Element): {
+  authorName?: string;
+  authorHandle?: string;
+  authorAvatarUrl?: string;
+  authorVerified?: boolean;
+  publishedAt?: string;
+  publishedAtText?: string;
+} {
+  const authorRoot = cardRoot.querySelector('[itemprop="author"]');
+  const time = cardRoot.querySelector<HTMLTimeElement>('time');
+  const avatar = authorRoot?.querySelector<HTMLImageElement>('img');
+  const authorName = normalizeText(authorRoot?.querySelector<HTMLElement>('meta[itemprop="name"]')?.getAttribute('content') ?? '');
+  const additionalName = normalizeText(authorRoot?.querySelector<HTMLElement>('meta[itemprop="additionalName"]')?.getAttribute('content') ?? '');
+  const authorHandle = additionalName ? `@${additionalName.replace(/^@/, '')}` : '';
+
+  return {
+    ...(authorName ? { authorName } : {}),
+    ...(authorHandle ? { authorHandle } : {}),
+    ...(avatar?.currentSrc || avatar?.src ? { authorAvatarUrl: avatar?.currentSrc || avatar?.src } : {}),
+    ...(authorRoot?.querySelector('[data-testid="icon-verified"], [aria-label="认证账号"], [aria-label="Verified account"]')
+      ? { authorVerified: true }
+      : {}),
+    ...(time?.dateTime ? { publishedAt: time.dateTime } : {}),
+    ...(time?.textContent ? { publishedAtText: normalizeText(time.textContent) } : {})
+  };
+}
+
+function extractMetricsFromGroup(group: Element | null): TweetMetrics {
+  if (!group) {
+    return {};
+  }
+
+  return {
+    replies: extractMetricValueFromGroup(group, 'reply'),
+    reposts: extractMetricValueFromGroup(group, 'retweet'),
+    likes: extractMetricValueFromGroup(group, 'like'),
+    views: extractMetricValueFromGroup(group, 'views'),
+    bookmarks: extractMetricValueFromGroup(group, 'bookmark')
+  };
+}
+
+function extractMetricValueFromGroup(group: Element, testId: string): string | undefined {
+  const action = group.querySelector(`[data-testid="${testId}"]`);
+  const value = Array.from(action?.querySelectorAll('span') ?? [])
+    .map((element) => normalizeText(element.textContent ?? ''))
+    .find((text) => /^(?:\d+(?:\.\d+)?[KMB]?|[\d,.]+万?)$/i.test(text));
+  return value || undefined;
+}
+
+function extractVideoPreviewItem(element: Element): SimpleTweetContentItem | null {
+  const image = element.querySelector<HTMLImageElement>('[data-testid="tweetPhoto"] img, img');
+  const src = image?.currentSrc || image?.src || getTweetPhotoBackgroundUrl(element);
+  if (!src) {
+    return null;
+  }
+
+  const durationText = Array.from(element.querySelectorAll('span'))
+    .map((span) => normalizeText(span.textContent ?? ''))
+    .find((text) => /^\d+:\d{2}$/.test(text));
+
+  return {
+    type: 'video-preview',
+    src,
+    alt: image?.alt || undefined,
+    href: element.closest('a[href]')?.getAttribute('href') ? new URL(element.closest('a[href]')?.getAttribute('href') ?? '', X_CANONICAL_ORIGIN).toString() : undefined,
+    durationText,
+    aspectRatio: getImageGalleryAspectRatio(element),
+    ...(isCondensedPreview(element) ? { layout: 'condensed' as const } : {}),
+    ...(isRoundedSquarePreview(element) ? { shape: 'rounded-square' as const } : {})
+  };
+}
+
+function isCondensedPreview(element: Element): boolean {
+  return Boolean(element.closest('[data-testid="testCondensedMedia"]'));
+}
+
+function isRoundedSquarePreview(element: Element): boolean {
+  return isCondensedPreview(element) || Math.abs((getImageGalleryAspectRatio(element) ?? 0) - 1) < 0.02;
 }
 
 function tweetPhotoElementToPhoto(element: HTMLElement): { src: string; alt?: string; href?: string } | null {
@@ -1144,6 +1906,25 @@ function extractTweetTranslationSourceText(tweet: Element): string | undefined {
 function extractTweetTranslationActionText(tweet: Element): string | undefined {
   const showOriginalButton = tweet.querySelector('[aria-label="显示原文"], [aria-label="Show original"]');
   return normalizeText(showOriginalButton?.textContent ?? showOriginalButton?.getAttribute('aria-label') ?? '') || undefined;
+}
+
+function extractTweetAiGeneratedText(tweet: Element): string | undefined {
+  const metricsGroup = tweet.querySelector('[role="group"][aria-label]');
+  const candidates = Array.from(tweet.querySelectorAll<HTMLElement>('div[dir="ltr"], div[dir="auto"]')).filter((element) => {
+    if (metricsGroup?.contains(element) || element.closest('[data-testid="User-Name"]')) {
+      return false;
+    }
+    return element.querySelector('svg') !== null;
+  });
+
+  for (const candidate of candidates) {
+    const text = normalizeText(candidate.textContent ?? '');
+    if (text === '由 AI 生成' || text === 'Made by AI' || text === 'Generated by AI') {
+      return text;
+    }
+  }
+
+  return undefined;
 }
 
 function getSimpleTweetHref(block: Element): string | undefined {
@@ -1580,32 +2361,48 @@ function extractTextWithAnnotations(
 ): { text: string; annotations: TextAnnotation[] } {
   const normalize = options.preserveLineBreaks ? normalizePreWrapText : normalizeText;
   const textElements = Array.from(element.querySelectorAll<HTMLElement>('[data-text="true"]'));
+  const fullText = normalize(getElementDisplayText(element, options.preserveLineBreaks));
   if (textElements.length === 0) {
-    return { text: normalize(element.textContent ?? ''), annotations: [] };
+    return { text: fullText, annotations: [] };
   }
 
-  let text = '';
   const annotations: TextAnnotation[] = [];
-  const linkAnnotations: TextAnnotation[] = [];
+  let text = '';
+  let searchCursor = 0;
   for (const textElement of textElements) {
-    const segment = textElement.textContent ?? '';
-    const startOffset = text.length;
-    text += segment;
-    const endOffset = text.length;
+    const segment = normalize(textElement.textContent ?? '');
+    if (!segment) {
+      continue;
+    }
 
-    if (endOffset > startOffset && isBoldTextElement(textElement)) {
-      annotations.push({ startOffset, endOffset, bold: true });
+    const startOffset = options.preserveLineBreaks ? fullText.indexOf(segment, searchCursor) : text.length;
+    if (startOffset === -1) {
+      continue;
+    }
+
+    if (!options.preserveLineBreaks) {
+      text += segment;
+    }
+    const endOffset = text.length;
+    const resolvedEndOffset = options.preserveLineBreaks ? startOffset + segment.length : endOffset;
+    searchCursor = resolvedEndOffset;
+    const annotation: TextAnnotation = {
+      startOffset,
+      endOffset: resolvedEndOffset,
+      ...extractTextAnnotationStyle(textElement)
+    };
+
+    if (resolvedEndOffset > startOffset && isBoldTextElement(textElement)) {
+      annotation.bold = true;
     }
     const anchor = textElement.closest<HTMLAnchorElement>('a[href][role="link"], a[href]');
-    if (endOffset > startOffset && anchor) {
+    if (resolvedEndOffset > startOffset && anchor) {
       const href = anchor.getAttribute('href');
       if (href) {
-        linkAnnotations.push({
-          startOffset,
-          endOffset,
-          href,
-          target: anchor.getAttribute('target') ?? undefined
-        });
+        const linkStyle = extractTextAnnotationStyle(anchor);
+        annotation.href = href;
+        annotation.target = anchor.getAttribute('target') ?? undefined;
+        Object.assign(annotation, linkStyle);
       }
     }
     if (isEmojiTextElement(textElement)) {
@@ -1614,12 +2411,35 @@ function extractTextWithAnnotations(
       // include the emoji instead of dropping it from the reading flow.
       const emojiImageUrl = getEmojiImageUrl(textElement);
       if (emojiImageUrl) {
-        annotations.push({ startOffset, endOffset, emojiImageUrl });
+        annotation.emojiImageUrl = emojiImageUrl;
       }
+    }
+    if (resolvedEndOffset > startOffset && hasTextAnnotationSignal(annotation)) {
+      annotations.push(annotation);
     }
   }
 
-  return { text: normalize(text), annotations: [...annotations, ...linkAnnotations] };
+  return { text: options.preserveLineBreaks ? fullText : normalize(text), annotations };
+}
+
+function hasTextAnnotationSignal(annotation: TextAnnotation): boolean {
+  return Boolean(
+    annotation.bold ||
+      annotation.href ||
+      annotation.emojiImageUrl ||
+      annotation.color ||
+      annotation.fontSize ||
+      annotation.lineHeight ||
+      annotation.textAlign ||
+      annotation.fontStyle
+  );
+}
+
+function getElementDisplayText(element: Element, preserveLineBreaks = false): string {
+  if (preserveLineBreaks && element instanceof HTMLElement && typeof element.innerText === 'string') {
+    return element.innerText;
+  }
+  return element.textContent ?? '';
 }
 
 function isBoldTextElement(textElement: HTMLElement): boolean {
@@ -1744,9 +2564,7 @@ function normalizeText(value: string): string {
 function normalizePreWrapText(value: string): string {
   return value
     .replace(/\r\n?/g, '\n')
-    .split('\n')
-    .map((line) => line.replace(/[^\S\n]+/g, ' ').trim())
-    .join('\n')
+    .replace(/\u00a0/g, ' ')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 }

@@ -74,6 +74,19 @@
   transition: filter 300ms ease;
 }
 
+.reader-video-player:fullscreen,
+.reader-video-player:-webkit-full-screen,
+.reader-video-media:fullscreen .reader-video-player,
+.reader-video-media:-webkit-full-screen .reader-video-player {
+  width: 100vw;
+  height: 100vh;
+  max-width: 100vw;
+  max-height: 100vh;
+  object-fit: contain;
+  object-position: center;
+  background: #000;
+}
+
 .reader-gif-overlay {
   position: absolute;
   left: 10px;

@@ -4,7 +4,8 @@ export type PlatformFixId =
   | 'expand-folded-tweet-text'
   | 'normalize-handwritten-ordered-list'
   | 'preserve-svg-emoji'
-  | 'capture-x-video-hls';
+  | 'capture-x-video-hls'
+  | 'preserve-x-media-layout';
 
 export type PlatformFix = {
   id: PlatformFixId;

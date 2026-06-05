@@ -25,12 +25,127 @@
 }
 
 .article-title {
-  margin: 0 0 40px;
+  margin: 0 0 28px;
   color: var(--reader-text-title);
   font-family: "Playfair Display", Georgia, serif;
   font-size: clamp(2rem, 5vw, 2.75rem);
   font-weight: 600;
   line-height: 1.18;
+}
+
+.article-meta {
+  color: rgb(83, 100, 113);
+  font-family: "DM Sans", system-ui, sans-serif;
+  text-decoration: none;
+}
+
+.article-meta-author {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 18px;
+  min-width: 0;
+}
+
+.article-meta-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  object-fit: cover;
+  flex: 0 0 auto;
+}
+
+.article-meta-author-text {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.article-meta-author-primary,
+.article-meta-author-secondary,
+.article-meta-metrics,
+.article-meta-metric,
+.article-meta-metric-trailing {
+  display: flex;
+  align-items: center;
+}
+
+.article-meta-author-primary {
+  gap: 6px;
+  min-width: 0;
+  color: rgb(15, 20, 25);
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.article-meta-author-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.article-meta-verified-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.article-meta-author-secondary {
+  gap: 6px;
+  min-width: 0;
+  color: rgb(83, 100, 113);
+  font-size: 16px;
+  line-height: 1.2;
+}
+
+.article-meta-author .reader-simple-tweet-grok-icon {
+  margin-left: auto;
+}
+
+.article-meta-metrics {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0 0 40px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(83, 100, 113, 0.18);
+  color: rgb(83, 100, 113);
+  font-size: 14px;
+  line-height: 1;
+}
+
+.article-meta-metric-primary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.article-meta-metric {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  color: rgb(83, 100, 113);
+  white-space: nowrap;
+}
+
+.article-meta-metric-trailing {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+.article-meta-metric-icon {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
 }
 
 .article-body {

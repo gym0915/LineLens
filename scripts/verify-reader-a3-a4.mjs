@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { renderArticleShell } from '../dist/reader/block-renderer.js';
 import { buildFocusUnits } from '../dist/reader/focus-unit-builder.js';
@@ -116,7 +116,7 @@ globalThis.document = {
 };
 
 const root = new URL('..', import.meta.url).pathname;
-const fixtureDir = join(root, 'fixtures', 'articles');
+const fixtureDir = resolveFixtureDir(root);
 const mediaArticle = readFixture('media-and-quote');
 const longArticle = readFixture('long-paragraphs');
 const mixedArticle = readFixture('mixed-content');
@@ -552,6 +552,19 @@ function readReaderCss() {
       .sort()
       .map((fileName) => readFileSync(join(stylesDir, fileName), 'utf8'))
   ].join('\n');
+}
+
+function resolveFixtureDir(rootDir) {
+  const candidates = [
+    join(rootDir, 'fixtures', 'articles'),
+    resolve(rootDir, '..', '..', 'fixtures', 'articles')
+  ];
+  const fixtureDir = candidates.find((candidate) => existsSync(candidate));
+  if (!fixtureDir) {
+    throw new Error(`Unable to locate reader fixtures from ${rootDir}`);
+  }
+
+  return fixtureDir;
 }
 
 function querySelector(rootElement, selector) {

@@ -19,7 +19,15 @@ export function buildFocusUnits(article: Article, root: HTMLElement): FocusUnitB
 
     if (block.type === 'paragraph') {
       blockElement.textContent = '';
-      const readingUnits = splitIntoReadingUnits(block.text);
+      const readingUnits = block.text.includes('\n')
+        ? [
+            {
+              text: block.text,
+              startOffset: 0,
+              endOffset: block.text.length
+            }
+          ]
+        : splitIntoReadingUnits(block.text);
 
       readingUnits.forEach((readingUnit, index) => {
         const unitId = `${block.id}-u${index + 1}`;

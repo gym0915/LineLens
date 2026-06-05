@@ -37,7 +37,8 @@ export function validateArticle(article: Article): ValidationResult {
       block.type === 'embed' ||
       block.type === 'simple-tweet' ||
       block.type === 'link' ||
-      block.type === 'code'
+      block.type === 'code' ||
+      block.type === 'table'
   );
 
   if (textLength <= MIN_TEXT_LENGTH && !(hasTextBlock && hasMediaBlock)) {
@@ -61,7 +62,21 @@ function getBlockTextLength(block: ArticleBlock): number {
   }
 
   if (block.type === 'simple-tweet') {
-    return normalizeText(`${block.source} ${block.title} ${block.excerpt}`).length;
+    const itemText = block.items
+      .map((item) => {
+        switch (item.type) {
+          case 'text':
+            return item.text;
+          case 'quoted-tweet':
+            return `${item.tweet.title} ${item.tweet.excerpt}`;
+          case 'article-cover':
+            return `${item.title ?? ''} ${item.excerpt ?? ''}`;
+          default:
+            return '';
+        }
+      })
+      .join(' ');
+    return normalizeText(`${block.source} ${block.title} ${block.excerpt} ${itemText}`).length;
   }
   if (block.type === 'link') {
     return normalizeText(block.text).length;
@@ -69,10 +84,13 @@ function getBlockTextLength(block: ArticleBlock): number {
   if (block.type === 'code') {
     return normalizeText(`${block.language ?? ''} ${block.text}`).length;
   }
+  if (block.type === 'table') {
+    return block.rows.reduce((total, row) => total + row.cells.reduce((cellTotal, cell) => cellTotal + normalizeText(cell.text).length, 0), 0);
+  }
 
   return 0;
 }
 
 function isTextBlock(block: ArticleBlock): boolean {
-  return block.type === 'paragraph' || block.type === 'heading' || block.type === 'quote' || block.type === 'list' || block.type === 'link' || block.type === 'code';
+  return block.type === 'paragraph' || block.type === 'heading' || block.type === 'quote' || block.type === 'list' || block.type === 'link' || block.type === 'code' || block.type === 'table';
 }

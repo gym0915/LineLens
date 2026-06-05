@@ -5,9 +5,7 @@ export function normalizeText(value: string): string {
 export function normalizePreWrapText(value: string): string {
   return value
     .replace(/\r\n?/g, '\n')
-    .split('\n')
-    .map((line) => line.replace(/[^\S\n]+/g, ' ').trim())
-    .join('\n')
+    .replace(/\u00a0/g, ' ')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 }

@@ -30,9 +30,20 @@ export const xArticleAdapter: PlatformAdapter = {
       id: 'capture-x-video-hls',
       enabledByDefault: true,
       description: 'Use captured X HLS metadata when embedded videos do not expose direct playable sources.'
+    },
+    {
+      id: 'preserve-x-media-layout',
+      enabledByDefault: true,
+      description: 'Preserve X media layout direction and aspect ratio before class/style sanitizing.'
     }
   ],
-  enabledFixes: ['expand-folded-tweet-text', 'normalize-handwritten-ordered-list', 'preserve-svg-emoji', 'capture-x-video-hls'],
+  enabledFixes: [
+    'expand-folded-tweet-text',
+    'normalize-handwritten-ordered-list',
+    'preserve-svg-emoji',
+    'capture-x-video-hls',
+    'preserve-x-media-layout'
+  ],
   styleWhitelist: {
     preserveProps: ['font-weight'],
     preserveColorFor: ['link'],

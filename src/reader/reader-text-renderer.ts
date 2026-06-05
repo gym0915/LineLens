@@ -13,6 +13,11 @@ export type ReaderTextMetadata = {
     href?: string;
     target?: string;
     emojiImageUrl?: string;
+    color?: string;
+    fontSize?: string;
+    lineHeight?: string;
+    textAlign?: string;
+    fontStyle?: string;
   }>;
 };
 
@@ -47,14 +52,24 @@ export function createReaderTextMetadata(
     rangeEnd,
     role: options.role,
     annotations: annotations
-      .filter((annotation) => (annotation.bold || annotation.href || annotation.emojiImageUrl) && annotation.endOffset > rangeStart && annotation.startOffset < rangeEnd)
+      .filter(
+        (annotation) =>
+          (annotation.bold || annotation.href || annotation.emojiImageUrl || annotation.color || annotation.fontSize || annotation.lineHeight || annotation.textAlign || annotation.fontStyle) &&
+          annotation.endOffset > rangeStart &&
+          annotation.startOffset < rangeEnd
+      )
       .map((annotation) => ({
         startOffset: Math.max(annotation.startOffset, rangeStart),
         endOffset: Math.min(annotation.endOffset, rangeEnd),
         bold: annotation.bold,
         href: annotation.href,
         target: annotation.target,
-        emojiImageUrl: annotation.emojiImageUrl
+        emojiImageUrl: annotation.emojiImageUrl,
+        color: annotation.color,
+        fontSize: annotation.fontSize,
+        lineHeight: annotation.lineHeight,
+        textAlign: annotation.textAlign,
+        fontStyle: annotation.fontStyle
       }))
       .filter((annotation) => annotation.endOffset > annotation.startOffset)
       .sort((a, b) => a.startOffset - b.startOffset)
@@ -106,9 +121,11 @@ export function createReaderTextNodes(metadata: ReaderTextMetadata): Array<Node>
 
 function createAnnotatedNode(
   text: string,
-  annotation: Pick<TextAnnotation, 'bold' | 'href' | 'target' | 'emojiImageUrl'>
+  annotation: Pick<TextAnnotation, 'bold' | 'href' | 'target' | 'emojiImageUrl' | 'color' | 'fontSize' | 'lineHeight' | 'textAlign' | 'fontStyle'>
 ): HTMLElement {
   let node: HTMLElement;
+
+  const hasTextStyle = Boolean(annotation.color || annotation.fontSize || annotation.lineHeight || annotation.textAlign || annotation.fontStyle);
 
   if (annotation.emojiImageUrl) {
     node = createXEmojiNode(text, annotation.emojiImageUrl, Boolean(annotation.bold));
@@ -121,11 +138,21 @@ function createAnnotatedNode(
     link.setAttribute('rel', 'noreferrer');
     link.textContent = text;
     node = link;
-  } else {
+  } else if (annotation.bold) {
     const strong = document.createElement('strong');
     strong.textContent = text;
     node = strong;
+  } else if (hasTextStyle) {
+    const span = document.createElement('span');
+    span.textContent = text;
+    node = span;
+  } else {
+    const span = document.createElement('span');
+    span.textContent = text;
+    node = span;
   }
+
+  applyInlineTextStyle(node, annotation);
 
   if (annotation.href && annotation.emojiImageUrl) {
     const link = document.createElement('a');
@@ -147,17 +174,21 @@ function createAnnotatedNode(
   return node;
 }
 
+function applyInlineTextStyle(element: HTMLElement, style: Pick<TextAnnotation, 'color' | 'fontSize' | 'lineHeight' | 'textAlign' | 'fontStyle'>): void {
+  if (style.color) element.style.color = style.color;
+  if (style.fontSize) element.style.fontSize = style.fontSize;
+  if (style.lineHeight) element.style.lineHeight = style.lineHeight;
+  if (style.textAlign) element.style.textAlign = style.textAlign;
+  if (style.fontStyle) element.style.fontStyle = style.fontStyle;
+}
+
 function createXEmojiNode(text: string, emojiImageUrl: string, bold: boolean): HTMLElement {
   const emoji = document.createElement('span');
   emoji.className = 'reader-x-emoji';
-  emoji.style.display = 'inline-block';
-  emoji.style.width = '1em';
-  emoji.style.height = '1em';
   emoji.style.backgroundImage = `url("${emojiImageUrl}")`;
   emoji.style.backgroundSize = '1em 1em';
   emoji.style.backgroundPosition = 'center center';
   emoji.style.backgroundRepeat = 'no-repeat';
-  emoji.style.verticalAlign = '-0.12em';
   emoji.style.padding = '0.15em';
   emoji.style.webkitTextFillColor = 'transparent';
 

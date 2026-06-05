@@ -70,12 +70,18 @@ export function mountReaderApp(root: HTMLElement, article: Article): void {
 
     const index = units.findIndex((unit) => unit.unitId === focusElement.dataset.unitId);
     if (index >= 0) {
+      const shouldNavigateBlock = shouldNavigateBlockHref(target, focusElement, activeUnit);
       if (shouldSelectBlockLinkBeforeNavigation(target, focusElement, activeUnit)) {
         event.preventDefault();
         event.stopPropagation();
       }
       hideHint(hint);
       engine.setIndex(index);
+      if (shouldNavigateBlock) {
+        event.preventDefault();
+        event.stopPropagation();
+        openBlockHref(focusElement.dataset.href ?? '');
+      }
     }
   });
 
@@ -203,7 +209,10 @@ function shouldSelectBlockLinkBeforeNavigation(target: Element, focusElement: HT
 
   const blockType = focusElement.dataset.blockType;
   if (blockType === 'simple-tweet') {
-    return Boolean(target.closest('a.reader-simple-tweet[href]'));
+    if (isSimpleTweetVideoInteractionTarget(target)) {
+      return false;
+    }
+    return Boolean(target.closest('a.reader-simple-tweet[href]') || focusElement.dataset.href);
   }
   if (blockType === 'image') {
     return Boolean(target.closest('a.reader-media[href]'));
@@ -213,6 +222,58 @@ function shouldSelectBlockLinkBeforeNavigation(target: Element, focusElement: HT
   }
 
   return false;
+}
+
+function shouldNavigateBlockHref(target: Element, focusElement: HTMLElement, activeUnit: FocusUnit | null): boolean {
+  if (activeUnit?.unitId !== focusElement.dataset.unitId) {
+    return false;
+  }
+  if (focusElement.dataset.blockType !== 'simple-tweet') {
+    return false;
+  }
+  if (!focusElement.dataset.href) {
+    return false;
+  }
+  if (isSimpleTweetVideoInteractionTarget(target)) {
+    return false;
+  }
+  return !target.closest('a[href]');
+}
+
+function isSimpleTweetVideoInteractionTarget(target: Element): boolean {
+  for (let current: Element | null = target; current; current = current.parentElement) {
+    const blockType = current.getAttribute('data-block-type');
+    if (
+      current.tagName === 'VIDEO' ||
+      current.tagName === 'BUTTON' ||
+      current.tagName === 'INPUT' ||
+      current.getAttribute('role') === 'slider' ||
+      current.classList.contains('reader-video-media') ||
+      current.classList.contains('reader-video-player') ||
+      blockType === 'simple-tweet-video' ||
+      blockType === 'video'
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function openBlockHref(href: string): void {
+  if (!href) {
+    return;
+  }
+
+  if (typeof window.open === 'function') {
+    const openedWindow = window.open(href, '_self');
+    if (openedWindow) {
+      return;
+    }
+  }
+
+  if (typeof window.location?.assign === 'function') {
+    window.location.assign(href);
+  }
 }
 
 function shouldIgnoreKeydown(event: KeyboardEvent): boolean {

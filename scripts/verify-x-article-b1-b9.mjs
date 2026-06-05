@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import { createExtractorRegistry } from '../dist/content/extractor-registry.js';
@@ -10,37 +10,38 @@ import { validateArticle } from '../dist/shared/article-validator.js';
 import { normalizeText } from '../dist/shared/text.js';
 import { getXArticleIdFromUrl, isXArticleUrl } from '../dist/shared/url.js';
 
-const rootDir = resolve(import.meta.dirname, '..', '..');
+const projectRoot = resolve(import.meta.dirname, '..');
+const workspaceRoot = findWorkspaceRoot(projectRoot);
 const detailSnapshot = readFileSync(
-  resolve(rootDir, 'assets/x-article-detail.html'),
+  resolve(workspaceRoot, 'assets/x-article-detail.html'),
   'utf8'
 );
 const detail2Snapshot = readFileSync(
-  resolve(rootDir, 'assets/x-article-detail2.html'),
+  resolve(workspaceRoot, 'assets/x-article-detail2.html'),
   'utf8'
 );
 const statusSnapshot = readFileSync(
-  resolve(rootDir, 'assets/x-article-status.html'),
+  resolve(workspaceRoot, 'assets/x-article-status.html'),
   'utf8'
 );
 const mainSnapshot = readFileSync(
-  resolve(rootDir, 'assets/x-article-main.html'),
+  resolve(workspaceRoot, 'assets/x-article-main.html'),
   'utf8'
 );
 const picTweetSnapshot = readFileSync(
-  resolve(rootDir, 'assets/x-article-pic-tweet.html'),
+  resolve(workspaceRoot, 'assets/x-article-pic-tweet.html'),
   'utf8'
 );
 const videoGifSnapshot = readFileSync(
-  resolve(rootDir, 'assets/x-article-video-gif.html'),
+  resolve(workspaceRoot, 'assets/x-article-video-gif.html'),
   'utf8'
 );
 const codeBlockSnapshot = readFileSync(
-  resolve(rootDir, 'assets/x-article-codeblock.html'),
+  resolve(workspaceRoot, 'assets/x-article-codeblock.html'),
   'utf8'
 );
 const imageGridSnapshot = readFileSync(
-  resolve(rootDir, 'assets/x-article-image-grid.html'),
+  resolve(workspaceRoot, 'assets/x-article-image-grid.html'),
   'utf8'
 );
 const completeDomLinkBlock = `<div class="longform-unstyled-narrow" data-block="true" data-editor="2vhgc" data-offset-key="5upd3-0-0"><div data-offset-key="5upd3-0-0" class="public-DraftStyleDefault-block public-DraftStyleDefault-ltr"><div class="css-175oi2r r-1loqt21 r-1471scf r-o7ynqc r-6416eg r-1ny4l3l"><a href="https://kvcache.ai/tools/kv-cache-calculator/" dir="ltr" rel="noopener noreferrer nofollow" target="_blank" role="link" class="css-146c3p1 r-bcqeeo r-1ttztb7 r-qvutc0 r-37j5jr r-1inkyih r-rjixqe r-16dba41 r-1ddef8g r-tjvw6i r-1loqt21" style="color: rgb(15, 20, 25);"><span data-offset-key="5upd3-0-0"><span data-text="true">https://kvcache.ai/tools/kv-cache-calculator/</span></span></a></div></div></div>`;
@@ -178,12 +179,12 @@ assert.deepEqual(extractSvgEmojiHeadingFixture(svgEmojiHeadingBlock), {
 });
 
 const modularExtractorSource = readFileSync(
-  resolve(rootDir, 'LineLens/src/content/extractors/x/article-extractor.ts'),
+  resolve(projectRoot, 'src/content/extractors/x/article-extractor.ts'),
   'utf8'
 );
-const liveExtractorSource = readFileSync(resolve(rootDir, 'LineLens/src/content/index.ts'), 'utf8');
-const articleModelSource = readFileSync(resolve(rootDir, 'LineLens/src/shared/article.ts'), 'utf8');
-const readerRendererSource = readFileSync(resolve(rootDir, 'LineLens/src/reader/block-renderer.ts'), 'utf8');
+const liveExtractorSource = readFileSync(resolve(projectRoot, 'src/content/index.ts'), 'utf8');
+const articleModelSource = readFileSync(resolve(projectRoot, 'src/shared/article.ts'), 'utf8');
+const readerRendererSource = readFileSync(resolve(projectRoot, 'src/reader/block-renderer.ts'), 'utf8');
 for (const source of [modularExtractorSource, liveExtractorSource]) {
   assert.match(source, /X_CANONICAL_ORIGIN/, 'extractor should use a dedicated X canonical origin constant');
   assert.match(source, /function getListKind/, 'extractor should detect Draft.js list items and preserve list kind');
@@ -511,4 +512,22 @@ function decodeHtml(value) {
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&nbsp;/g, ' ');
+}
+
+function findWorkspaceRoot(startDir) {
+  let current = startDir;
+  for (let depth = 0; depth < 8; depth += 1) {
+    if (existsSync(resolve(current, 'assets/x-article-detail.html'))) {
+      return current;
+    }
+
+    const parent = resolve(current, '..');
+    if (parent === current) {
+      break;
+    }
+
+    current = parent;
+  }
+
+  throw new Error(`Unable to locate workspace assets directory from ${startDir}`);
 }

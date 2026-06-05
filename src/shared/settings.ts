@@ -18,6 +18,24 @@ export const DEFAULT_SETTINGS: LineLensSettings = {
   platformAdapters: Object.fromEntries(BUILT_IN_PLATFORM_ADAPTERS.map((adapter) => [adapter.id, adapter]))
 };
 
+export function loadSettingsFromLocalStorage(storage?: Storage | null): LineLensSettings {
+  try {
+    const readableStorage = storage ?? globalThis.localStorage;
+    if (!readableStorage) {
+      return DEFAULT_SETTINGS;
+    }
+
+    const raw = readableStorage.getItem(LINE_LENS_SETTINGS_STORAGE_KEY);
+    if (!raw) {
+      return DEFAULT_SETTINGS;
+    }
+
+    return normalizeSettings(JSON.parse(raw));
+  } catch {
+    return DEFAULT_SETTINGS;
+  }
+}
+
 export function normalizeSettings(input: unknown): LineLensSettings {
   if (!isPlainObject(input)) {
     return DEFAULT_SETTINGS;
@@ -71,10 +89,18 @@ function mergeStyleWhitelistConfig(defaults: StyleWhitelistConfig, override: Par
   }
 
   return {
-    preserveProps: mergeUnique(defaults.preserveProps, normalizeStringArray(override.preserveProps)),
-    preserveColorFor: mergeUnique(defaults.preserveColorFor ?? [], normalizeStringArray(override.preserveColorFor)) as StyleWhitelistConfig['preserveColorFor'],
-    preserveWhiteSpaceValues: mergeUnique(defaults.preserveWhiteSpaceValues ?? [], normalizeStringArray(override.preserveWhiteSpaceValues)),
-    customColorSelectors: mergeUnique(defaults.customColorSelectors ?? [], normalizeStringArray(override.customColorSelectors))
+    preserveProps: Object.hasOwn(override, 'preserveProps') ? normalizeStringArray(override.preserveProps) : [...defaults.preserveProps],
+    preserveColorFor: (
+      Object.hasOwn(override, 'preserveColorFor')
+        ? normalizeStringArray(override.preserveColorFor)
+        : [...(defaults.preserveColorFor ?? [])]
+    ) as StyleWhitelistConfig['preserveColorFor'],
+    preserveWhiteSpaceValues: Object.hasOwn(override, 'preserveWhiteSpaceValues')
+      ? normalizeStringArray(override.preserveWhiteSpaceValues)
+      : [...(defaults.preserveWhiteSpaceValues ?? [])],
+    customColorSelectors: Object.hasOwn(override, 'customColorSelectors')
+      ? normalizeStringArray(override.customColorSelectors)
+      : [...(defaults.customColorSelectors ?? [])]
   };
 }
 
@@ -86,10 +112,6 @@ function normalizeStringArray(value: unknown): string[] {
   return Array.isArray(value)
     ? value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0).map((item) => item.trim())
     : [];
-}
-
-function mergeUnique(base: readonly string[], override: readonly string[]): string[] {
-  return [...new Set([...base, ...override])];
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {

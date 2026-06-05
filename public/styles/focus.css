@@ -53,6 +53,7 @@ p .focus-unit.is-active {
 .reader-media.focus-unit,
 .reader-embed.focus-unit,
 .reader-code.focus-unit,
+.reader-table.focus-unit,
 .reader-link.focus-unit,
 .reader-simple-tweet.focus-unit,
 .reader-block[data-block-type="heading"].focus-unit,
@@ -122,6 +123,7 @@ p .focus-unit.is-active {
 
 .reader-embed.focus-unit.is-active,
 .reader-code.focus-unit.is-active,
+.reader-table.focus-unit.is-active,
 .reader-link.focus-unit.is-active,
 .reader-simple-tweet.focus-unit.is-active,
 .reader-list-item.focus-unit.is-active {
@@ -141,6 +143,11 @@ p .focus-unit.is-active {
 
 .reader-code.focus-unit.is-active {
   padding: 0;
+  opacity: 1;
+}
+
+.reader-table.focus-unit.is-active {
+  padding: 6px;
   opacity: 1;
 }
 

@@ -2,7 +2,7 @@ export type ReaderTextRole = 'body' | 'quote' | 'heading' | 'list-item' | 'socia
 
 export type StyleWhitelistConfig = {
   preserveProps: string[];
-  preserveColorFor?: Array<'link' | 'inline-code' | 'custom-selector'>;
+  preserveColorFor?: Array<'link' | 'inline-emphasis' | 'custom-selector'>;
   preserveWhiteSpaceValues?: string[];
   customColorSelectors?: string[];
 };

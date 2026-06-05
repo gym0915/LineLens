@@ -8,14 +8,15 @@ export const CLEAN_TREE_PRIMARY_BLOCK_TYPES: Array<ArticleBlock['type']> = [
   'heading',
   'quote',
   'list',
-  'image'
+  'image',
+  'code',
+  'table',
+  'simple-tweet',
+  'image-gallery'
 ];
 
 export const HIGH_RISK_DUAL_TRACK_BLOCK_TYPES: Array<ArticleBlock['type']> = [
-  'video',
-  'simple-tweet',
-  'code',
-  'image-gallery'
+  'video'
 ];
 
 export type CleanTreePrimaryBlocksResult = {
@@ -43,7 +44,12 @@ export function buildCleanTreePrimaryBlocks(params: {
     enabledBlockTypes: CLEAN_TREE_PRIMARY_BLOCK_TYPES
   });
 
-  return mergeCleanTreePrimaryBlocks(params.legacyBlocks, cleanTreeBlocks);
+  const mergeStats = mergeCleanTreePrimaryBlocks(params.legacyBlocks, cleanTreeBlocks);
+
+  return {
+    ...mergeStats,
+    blocks: cleanTreeBlocks
+  };
 }
 
 export function mergeCleanTreePrimaryBlocks(
@@ -117,11 +123,116 @@ function areEquivalentBlocks(left: ArticleBlock, right: ArticleBlock): boolean {
       return right.type === 'list' && left.kind === right.kind && normalizeText(left.items.join('\n')) === normalizeText(right.items.join('\n'));
     case 'image':
       return right.type === 'image' && left.src === right.src;
+    case 'code':
+      return (
+        right.type === 'code' &&
+        normalizeText(left.text) === normalizeText(right.text) &&
+        normalizeCodeLanguageForComparison(left.language) === normalizeCodeLanguageForComparison(right.language)
+      );
+    case 'table':
+      return (
+        right.type === 'table' &&
+        left.rows.length === right.rows.length &&
+        left.rows.every((row, rowIndex) => {
+          const otherRow = right.rows[rowIndex];
+          return (
+            otherRow !== undefined &&
+            row.cells.length === otherRow.cells.length &&
+            row.cells.every((cell, cellIndex) => normalizeText(cell.text) === normalizeText(otherRow.cells[cellIndex]?.text ?? ''))
+          );
+        })
+      );
+    case 'simple-tweet':
+      return (
+        right.type === 'simple-tweet' &&
+        normalizeText(left.title) === normalizeText(right.title) &&
+        normalizeText(left.excerpt) === normalizeText(right.excerpt) &&
+        normalizeText(left.href ?? '') === normalizeText(right.href ?? '') &&
+        left.items.length === right.items.length &&
+        left.items.every((item, index) => {
+          const other = right.items[index];
+          if (!other || item.type !== other.type) {
+            return false;
+          }
+          switch (item.type) {
+            case 'text':
+              return other.type === 'text' && normalizeText(item.text) === normalizeText(other.text);
+            case 'photo':
+              return other.type === 'photo' && item.photo.src === other.photo.src;
+            case 'photo-group':
+              return (
+                other.type === 'photo-group' &&
+                item.photos.map((photo) => photo.src).join('|') === other.photos.map((photo) => photo.src).join('|') &&
+                serializeSimpleTweetPhotoLayout(item.layout) === serializeSimpleTweetPhotoLayout(other.layout)
+              );
+            case 'video':
+              return other.type === 'video' && item.video.src === other.video.src;
+            case 'video-preview':
+              return other.type === 'video-preview' && item.src === other.src;
+            case 'article-cover':
+              return other.type === 'article-cover' && item.coverUrl === other.coverUrl;
+            case 'quoted-tweet':
+              return (
+                other.type === 'quoted-tweet' &&
+                normalizeText(item.tweet.title) === normalizeText(other.tweet.title) &&
+                normalizeText(item.tweet.excerpt) === normalizeText(other.tweet.excerpt) &&
+                item.tweet.items.length === other.tweet.items.length
+              );
+            default:
+              return false;
+          }
+        })
+      );
+    case 'image-gallery':
+      return (
+        right.type === 'image-gallery' &&
+        left.items.length === right.items.length &&
+        left.items.every((item, index) => item.src === right.items[index]?.src)
+      );
     default:
       return false;
   }
 }
 
 function normalizeText(text: string): string {
-  return text.replace(/\s+/g, ' ').trim();
+  return text
+    .replace(/\s+/g, ' ')
+    .replace(/\s+([,.;:!?，。！？；：])/g, '$1')
+    .trim();
+}
+
+function normalizeCodeLanguageForComparison(language: string | undefined): string {
+  const normalized = normalizeText(language ?? '').toLowerCase();
+  return normalized === 'text' || normalized === 'plain' ? '' : normalized;
+}
+
+function serializeSimpleTweetPhotoLayout(
+  layout:
+    | {
+        kind: 'photo';
+        photo: { src: string };
+        widthRatio?: number;
+        heightRatio?: number;
+      }
+    | {
+        kind: 'row' | 'column';
+        children: Array<any>;
+        widthRatio?: number;
+        heightRatio?: number;
+      }
+): string {
+  const size = serializeSimpleTweetPhotoLayoutSize(layout);
+  if (layout.kind === 'photo') {
+    return `photo${size}:${layout.photo.src}`;
+  }
+
+  return `${layout.kind}${size}(${layout.children.map((child) => serializeSimpleTweetPhotoLayout(child)).join(',')})`;
+}
+
+function serializeSimpleTweetPhotoLayoutSize(layout: { widthRatio?: number; heightRatio?: number }): string {
+  const parts = [
+    layout.widthRatio ? `w=${layout.widthRatio}` : '',
+    layout.heightRatio ? `h=${layout.heightRatio}` : ''
+  ].filter(Boolean);
+  return parts.length > 0 ? `[${parts.join(',')}]` : '';
 }
