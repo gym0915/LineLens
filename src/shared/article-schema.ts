@@ -11,6 +11,7 @@ export type {
   ImageBlock,
   ImageGalleryBlock,
   ImageGalleryItem,
+  ImageGalleryLayoutNode,
   LinkBlock,
   ListBlock,
   ParagraphBlock,

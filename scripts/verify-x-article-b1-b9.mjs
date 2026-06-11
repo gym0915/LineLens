@@ -300,7 +300,7 @@ assert.match(articleModelSource, /tabIndex\?: number/, 'video model should prese
 assert.match(articleModelSource, /ariaLabel\?: string/, 'video model should preserve aria-label');
 assert.match(articleModelSource, /backgroundColor\?: string/, 'GIF model should preserve media background color');
 assert.match(readerRendererSource, /renderSimpleTweetBlock\(block\)/, 'reader should render simple tweets from the complete block data');
-assert.match(readerRendererSource, /renderCodeBlock\(block\.id, block\.text, block\.language\)/, 'reader should render code blocks with dynamic language');
+assert.match(readerRendererSource, /renderCodeBlock\(block\)/, 'reader should render code blocks with dynamic language');
 assert.match(readerRendererSource, /renderGifBlock\(block\)/, 'reader should render GIF blocks');
 assert.match(readerRendererSource, /renderImageGalleryBlock\(block\)/, 'reader should render image gallery blocks');
 assert.match(readerRendererSource, /renderVideoBlock\(block\)/, 'reader should render video blocks');

@@ -28,6 +28,7 @@
     "verify:x-simpletweet-computed-layout-runtime": "npm run build && node scripts/verify-x-simpletweet-computed-layout-runtime.mjs",
     "verify:x-simpletweet-quoted-photo-layout": "npm run build && node scripts/verify-x-simpletweet-quoted-photo-layout.mjs",
     "verify:x-simpletweet-layout-tree": "npm run build && node scripts/verify-x-simpletweet-layout-tree.mjs",
+    "verify:x-article-image-gallery": "npm run build && node scripts/verify-x-article-image-gallery.mjs",
     "verify:x-simpletweet-flow": "npm run build && node scripts/verify-x-simpletweet-flow.mjs",
     "verify:x-article-dynamic-styles": "npm run build && node scripts/verify-x-article-dynamic-styles.mjs"
   },

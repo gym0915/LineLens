@@ -5,6 +5,7 @@ import type {
   CodeToken,
   GifBlock,
   ImageGalleryBlock,
+  ImageGalleryLayoutNode,
   SimpleTweetBlock,
   SimpleTweetCardData,
   SimpleTweetContentItem,
@@ -311,30 +312,87 @@ function renderImageGalleryBlock(block: ImageGalleryBlock): HTMLElement {
   const grid = document.createElement('div');
   grid.className = 'reader-image-gallery-grid';
 
-  for (const item of block.items) {
-    const itemElement = item.href ? document.createElement('a') : document.createElement('div');
-    itemElement.className = 'reader-image-gallery-item';
-    if (item.href) {
-      itemElement.setAttribute('href', item.href);
+  if (block.layout) {
+    grid.append(renderImageGalleryLayoutNode(block.layout, block));
+  } else {
+    for (let index = 0; index < block.items.length; index += 1) {
+      grid.append(renderImageGalleryItem(block, index));
     }
-    applyMediaAspectRatio(itemElement, item.aspectRatio);
-
-    const image = document.createElement('img');
-    image.className = 'reader-image-gallery-image';
-    image.src = item.src;
-    image.alt = item.alt ?? '';
-    image.loading = 'lazy';
-    image.addEventListener('error', () => {
-      itemElement.classList.add('is-load-error');
-      image.remove();
-    });
-
-    itemElement.append(image);
-    grid.append(itemElement);
   }
 
   figure.append(grid);
   return figure;
+}
+
+function renderImageGalleryLayoutNode(node: ImageGalleryLayoutNode, block: ImageGalleryBlock): HTMLElement {
+  if (node.type === 'item') {
+    const itemElement = renderImageGalleryItem(block, node.itemIndex);
+    applyImageGalleryFlexMetrics(itemElement, node);
+    return itemElement;
+  }
+
+  const element = document.createElement('div');
+  element.className = 'reader-image-gallery-node';
+  element.dataset.layoutType = node.type;
+  applyImageGalleryFlexMetrics(element, node);
+
+  for (const child of node.children) {
+    element.append(renderImageGalleryLayoutNode(child, block));
+  }
+
+  return element;
+}
+
+function renderImageGalleryItem(block: ImageGalleryBlock, index: number): HTMLElement {
+  const item = block.items[index];
+  const itemElement = item?.href ? document.createElement('a') : document.createElement('div');
+  itemElement.className = 'reader-image-gallery-item';
+  itemElement.dataset.itemIndex = String(index);
+  if (!item) {
+    itemElement.classList.add('is-missing');
+    return itemElement;
+  }
+  if (item.href) {
+    itemElement.setAttribute('href', item.href);
+  }
+
+  const background = document.createElement('span');
+  background.className = 'reader-image-gallery-background';
+  background.style.backgroundImage = `url("${item.src}")`;
+  background.style.backgroundSize = item.backgroundSize ?? item.objectFit ?? 'cover';
+  background.style.backgroundPosition = item.backgroundPosition ?? item.objectPosition ?? 'center center';
+  background.setAttribute('aria-hidden', 'true');
+
+  const image = document.createElement('img');
+  image.className = 'reader-image-gallery-image';
+  image.src = item.src;
+  image.alt = item.alt ?? '';
+  image.loading = 'lazy';
+  image.style.objectFit = item.objectFit ?? item.backgroundSize ?? 'cover';
+  image.style.objectPosition = item.objectPosition ?? item.backgroundPosition ?? 'center center';
+  image.addEventListener('error', () => {
+    itemElement.classList.add('is-load-error');
+    background.remove();
+    image.remove();
+  });
+
+  itemElement.append(background, image);
+  return itemElement;
+}
+
+function applyImageGalleryFlexMetrics(
+  element: HTMLElement,
+  node: Pick<ImageGalleryLayoutNode, 'grow' | 'shrink' | 'basis'>
+): void {
+  if (typeof node.grow === 'number') {
+    element.style.flexGrow = String(node.grow);
+  }
+  if (typeof node.shrink === 'number') {
+    element.style.flexShrink = String(node.shrink);
+  }
+  if (node.basis) {
+    element.style.flexBasis = node.basis;
+  }
 }
 
 function renderGifBlock(block: GifBlock): HTMLElement {

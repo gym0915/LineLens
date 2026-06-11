@@ -1142,6 +1142,22 @@ function getImageGalleryAspectRatio(element: Element): number | undefined {
     }
   }
 
+  const descendantRatio = getDescendantPaddingBottomAspectRatio(element);
+  if (descendantRatio) {
+    return descendantRatio;
+  }
+
+  return undefined;
+}
+
+function getDescendantPaddingBottomAspectRatio(element: Element): number | undefined {
+  for (const child of Array.from(element.querySelectorAll<HTMLElement>('[style*="padding-bottom"]'))) {
+    const paddingBottom = getInlinePaddingBottomPercent(child);
+    if (paddingBottom) {
+      return roundAspectRatio(100 / paddingBottom);
+    }
+  }
+
   return undefined;
 }
 
