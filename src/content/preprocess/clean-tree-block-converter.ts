@@ -319,7 +319,7 @@ function extractSimpleTweetItemsSync(tweetRoot: Element, tweet: Element, depth: 
     candidates.set(
       anchor,
       group.length === 1
-        ? { type: 'photo', photo: group[0].photo }
+        ? extractPhotoItem(group[0].element, group[0].photo)
         : {
             type: 'photo-group',
             photos: group.map((item) => item.photo),
@@ -491,8 +491,9 @@ function buildSimpleTweetPhotoLayoutNode(
 }
 
 function getSimpleTweetPhotoLayoutSize(root: Element): { widthRatio?: number; heightRatio?: number } {
-  const widthRatio = getRatioAttribute(root, 'data-linelens-media-layout-width');
-  const heightRatio = getRatioAttribute(root, 'data-linelens-media-layout-height');
+  const computedSize = getSimpleTweetComputedLayoutSize(root);
+  const widthRatio = computedSize.widthRatio ?? getRatioAttribute(root, 'data-linelens-media-layout-width');
+  const heightRatio = computedSize.heightRatio ?? getRatioAttribute(root, 'data-linelens-media-layout-height');
   return {
     ...(widthRatio ? { widthRatio } : {}),
     ...(heightRatio ? { heightRatio } : {})
@@ -508,6 +509,11 @@ function getRatioAttribute(root: Element, name: string): number | undefined {
 }
 
 function getSimpleTweetMediaLayoutDirection(root: Element, depth: number): 'row' | 'column' {
+  const computedDirection = getSimpleTweetComputedLayoutDirection(root);
+  if (computedDirection) {
+    return computedDirection;
+  }
+
   const preservedDirection = root.getAttribute('data-linelens-media-layout-direction');
   if (preservedDirection === 'row' || preservedDirection === 'column') {
     return preservedDirection;
@@ -521,6 +527,46 @@ function getSimpleTweetMediaLayoutDirection(root: Element, depth: number): 'row'
   }
 
   return depth === 0 ? 'row' : 'column';
+}
+
+function readSimpleTweetComputedLayoutStyle(root: Element): { display: string; flexDirection: string } | null {
+  if (typeof window === 'undefined' || typeof window.getComputedStyle !== 'function') {
+    return null;
+  }
+  const style = window.getComputedStyle(root);
+  return {
+    display: style.display,
+    flexDirection: style.flexDirection
+  };
+}
+
+function getSimpleTweetComputedLayoutDirection(root: Element): 'row' | 'column' | undefined {
+  const style = readSimpleTweetComputedLayoutStyle(root);
+  if (!style || style.display !== 'flex' && style.display !== 'inline-flex') {
+    return undefined;
+  }
+  if (style.flexDirection === 'row' || style.flexDirection === 'row-reverse') {
+    return 'row';
+  }
+  if (style.flexDirection === 'column' || style.flexDirection === 'column-reverse') {
+    return 'column';
+  }
+  return undefined;
+}
+
+function getSimpleTweetComputedLayoutSize(root: Element): { widthRatio?: number; heightRatio?: number } {
+  if (!(root instanceof HTMLElement) || !root.parentElement) {
+    return {};
+  }
+  const rect = root.getBoundingClientRect();
+  const parentRect = root.parentElement.getBoundingClientRect();
+  if (!rect.width || !rect.height || !parentRect.width || !parentRect.height) {
+    return {};
+  }
+  return {
+    widthRatio: Math.round((rect.width / parentRect.width) * 10000) / 10000,
+    heightRatio: Math.round((rect.height / parentRect.height) * 10000) / 10000
+  };
 }
 
 function getSimpleTweetPhotoGroupAspectRatio(layoutRoot: Element): number | undefined {
@@ -684,12 +730,32 @@ function extractVideoPreviewItem(element: Element): SimpleTweetContentItem | nul
   };
 }
 
+function extractPhotoItem(
+  element: Element,
+  photo: NonNullable<ReturnType<typeof tweetPhotoElementToPhoto>>
+): SimpleTweetContentItem {
+  return {
+    type: 'photo',
+    photo,
+    ...(isCondensedMedia(element) ? { layout: 'condensed' as const } : {}),
+    ...(isRoundedSquareMedia(element) ? { shape: 'rounded-square' as const } : {})
+  };
+}
+
 function isCondensedPreview(element: Element): boolean {
-  return Boolean(element.closest('[data-testid="testCondensedMedia"]'));
+  return isCondensedMedia(element);
 }
 
 function isRoundedSquarePreview(element: Element): boolean {
-  return isCondensedPreview(element) || Math.abs((getImageGalleryAspectRatio(element) ?? 0) - 1) < 0.02;
+  return isRoundedSquareMedia(element) || Math.abs((getImageGalleryAspectRatio(element) ?? 0) - 1) < 0.02;
+}
+
+function isCondensedMedia(element: Element): boolean {
+  return Boolean(element.closest('[data-testid="testCondensedMedia"]'));
+}
+
+function isRoundedSquareMedia(element: Element): boolean {
+  return isCondensedMedia(element);
 }
 
 function extractInlineSimpleTweetVideo(element: Element): VideoBlock | null {

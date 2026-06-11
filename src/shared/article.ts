@@ -72,13 +72,34 @@ export type ImageGalleryItem = {
   alt?: string;
   href?: string;
   aspectRatio?: number;
+  backgroundSize?: 'cover' | 'contain' | 'auto';
+  backgroundPosition?: string;
+  objectFit?: 'cover' | 'contain' | 'fill' | 'none' | 'scale-down';
+  objectPosition?: string;
 };
+
+export type ImageGalleryLayoutNode =
+  | {
+      type: 'item';
+      itemIndex: number;
+      grow?: number;
+      shrink?: number;
+      basis?: string;
+    }
+  | {
+      type: 'row' | 'column';
+      children: ImageGalleryLayoutNode[];
+      grow?: number;
+      shrink?: number;
+      basis?: string;
+    };
 
 export type ImageGalleryBlock = {
   id: string;
   type: 'image-gallery';
   items: ImageGalleryItem[];
   aspectRatio?: number;
+  layout?: ImageGalleryLayoutNode;
 };
 
 export type TweetPhoto = {
@@ -235,6 +256,8 @@ export type SimpleTweetVideoPreviewItem = {
 export type SimpleTweetPhotoItem = {
   type: 'photo';
   photo: TweetPhoto;
+  layout?: 'condensed';
+  shape?: 'rounded-square';
 };
 
 export type SimpleTweetPhotoLayout =
@@ -299,6 +322,41 @@ export type SimpleTweetQuotedTweetItem = {
   tweet: SimpleTweetCardData;
 };
 
+export type SimpleTweetLayoutRole =
+  | 'root'
+  | 'header'
+  | 'body'
+  | 'media'
+  | 'text'
+  | 'photo'
+  | 'video'
+  | 'actions'
+  | 'quotedTweet';
+
+export type SimpleTweetLayoutContainer = {
+  kind: 'container';
+  role: Extract<SimpleTweetLayoutRole, 'root' | 'header' | 'body' | 'media' | 'actions' | 'quotedTweet'>;
+  display?: 'block' | 'flex' | 'inline-flex' | 'grid';
+  flexDirection?: 'row' | 'row-reverse' | 'column' | 'column-reverse';
+  gridTemplateColumns?: string;
+  gapPx?: number;
+  alignItems?: string;
+  justifyContent?: string;
+  widthRatio?: number;
+  heightRatio?: number;
+  aspectRatio?: number;
+  children: SimpleTweetLayoutNode[];
+};
+
+export type SimpleTweetLayoutLeaf = {
+  kind: 'leaf';
+  role: Extract<SimpleTweetLayoutRole, 'text' | 'photo' | 'video'>;
+  contentRef: string;
+  children?: SimpleTweetLayoutNode[];
+};
+
+export type SimpleTweetLayoutNode = SimpleTweetLayoutContainer | SimpleTweetLayoutLeaf;
+
 export type SimpleTweetContentItem =
   | SimpleTweetTextItem
   | SimpleTweetVideoItem
@@ -311,7 +369,9 @@ export type SimpleTweetContentItem =
 export type SimpleTweetBlock = SimpleTweetCardData & {
   id: string;
   type: 'simple-tweet';
+  photos?: TweetPhoto[];
   metrics?: TweetMetrics;
+  layoutTree?: SimpleTweetLayoutNode;
 };
 
 export type EmbedBlock = {

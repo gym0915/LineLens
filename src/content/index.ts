@@ -57,6 +57,7 @@ type ArticleBlock =
       id: string;
       type: 'simple-tweet';
       metrics?: TweetMetrics;
+      layoutTree?: SimpleTweetLayoutNode;
     })
   | {
       id: string;
@@ -80,13 +81,34 @@ type ImageGalleryItem = {
   alt?: string;
   href?: string;
   aspectRatio?: number;
+  backgroundSize?: 'cover' | 'contain' | 'auto';
+  backgroundPosition?: string;
+  objectFit?: 'cover' | 'contain' | 'fill' | 'none' | 'scale-down';
+  objectPosition?: string;
 };
+
+type ImageGalleryLayoutNode =
+  | {
+      type: 'item';
+      itemIndex: number;
+      grow?: number;
+      shrink?: number;
+      basis?: string;
+    }
+  | {
+      type: 'row' | 'column';
+      children: ImageGalleryLayoutNode[];
+      grow?: number;
+      shrink?: number;
+      basis?: string;
+    };
 
 type ImageGalleryBlock = {
   id: string;
   type: 'image-gallery';
   items: ImageGalleryItem[];
   aspectRatio?: number;
+  layout?: ImageGalleryLayoutNode;
 };
 
 type GifBlock = {
@@ -155,6 +177,8 @@ type SimpleTweetVideoPreviewItem = {
 type SimpleTweetPhotoItem = {
   type: 'photo';
   photo: TweetPhoto;
+  layout?: 'condensed';
+  shape?: 'rounded-square';
 };
 
 type SimpleTweetPhotoLayout =
@@ -218,6 +242,41 @@ type SimpleTweetQuotedTweetItem = {
   type: 'quoted-tweet';
   tweet: SimpleTweetCardData;
 };
+
+type SimpleTweetLayoutRole =
+  | 'root'
+  | 'header'
+  | 'body'
+  | 'media'
+  | 'text'
+  | 'photo'
+  | 'video'
+  | 'actions'
+  | 'quotedTweet';
+
+type SimpleTweetLayoutContainer = {
+  kind: 'container';
+  role: Extract<SimpleTweetLayoutRole, 'root' | 'header' | 'body' | 'media' | 'actions' | 'quotedTweet'>;
+  display?: 'block' | 'flex' | 'inline-flex' | 'grid';
+  flexDirection?: 'row' | 'row-reverse' | 'column' | 'column-reverse';
+  gridTemplateColumns?: string;
+  gapPx?: number;
+  alignItems?: string;
+  justifyContent?: string;
+  widthRatio?: number;
+  heightRatio?: number;
+  aspectRatio?: number;
+  children: SimpleTweetLayoutNode[];
+};
+
+type SimpleTweetLayoutLeaf = {
+  kind: 'leaf';
+  role: Extract<SimpleTweetLayoutRole, 'text' | 'photo' | 'video'>;
+  contentRef: string;
+  children?: SimpleTweetLayoutNode[];
+};
+
+type SimpleTweetLayoutNode = SimpleTweetLayoutContainer | SimpleTweetLayoutLeaf;
 
 type SimpleTweetContentItem =
   | SimpleTweetTextItem
@@ -1365,9 +1424,358 @@ async function extractSimpleTweetBlock(block: Element, id: string, capturedVideo
   return extractSimpleTweetBlockFromRoot(block, id, capturedVideos);
 }
 
+async function extractSimpleTweetImageCard(block: Element, id: string): Promise<ArticleBlock | null> {
+  return extractSimpleTweetBlockFromRoot(block, id, []);
+}
+
+async function extractSimpleTweetVideoCard(block: Element, id: string, capturedVideos: CapturedXVideo[] = []): Promise<ArticleBlock | null> {
+  return extractSimpleTweetBlockFromRoot(block, id, capturedVideos);
+}
+
+async function extractSimpleTweetTextCard(block: Element, id: string): Promise<ArticleBlock | null> {
+  return extractSimpleTweetBlockFromRoot(block, id, []);
+}
+
 function isSimpleTweetCard(block: Element): boolean {
   return block.matches('[data-testid="simpleTweet"]') || Boolean(block.querySelector('[data-testid="simpleTweet"]'));
 }
+
+type LayoutProps = Pick<
+  Extract<SimpleTweetLayoutNode, { kind: 'container' }>,
+  'display' | 'flexDirection' | 'gridTemplateColumns' | 'gapPx' | 'alignItems' | 'justifyContent' | 'widthRatio' | 'heightRatio' | 'aspectRatio'
+>;
+
+type BuildContext = {
+  tweetRoot: Element;
+  tweet: Element;
+  items: SimpleTweetContentItem[];
+  prefix: string;
+};
+
+function extractSimpleTweetLayoutTree(
+  tweetRoot: Element,
+  tweet: Element,
+  items: SimpleTweetContentItem[]
+): SimpleTweetLayoutNode | null {
+  if (!items.length) {
+    return null;
+  }
+
+  const bodyChildren = buildSimpleTweetLayoutChildren({ tweetRoot, tweet, items, prefix: 'item' });
+  if (!bodyChildren.length) {
+    return null;
+  }
+
+  return {
+    kind: 'container',
+    role: 'root',
+    display: 'block',
+    ...extractLayoutProps(tweetRoot),
+    children: [
+      {
+        kind: 'container',
+        role: 'body',
+        display: 'block',
+        ...extractLayoutProps(tweet),
+        children: bodyChildren
+      }
+    ]
+  };
+}
+
+function buildSimpleTweetLayoutChildren(context: BuildContext): SimpleTweetLayoutNode[] {
+  return context.items
+    .map((item, index) => buildSimpleTweetLayoutNodeForItem(item, index, context))
+    .filter((node): node is SimpleTweetLayoutNode => node !== null);
+}
+
+function buildSimpleTweetLayoutNodeForItem(
+  item: SimpleTweetContentItem,
+  index: number,
+  context: BuildContext
+): SimpleTweetLayoutNode | null {
+  const contentRef = `${context.prefix}:${index}`;
+  switch (item.type) {
+    case 'text':
+      return {
+        kind: 'leaf',
+        role: 'text',
+        contentRef
+      };
+    case 'photo':
+      return {
+        kind: 'leaf',
+        role: 'photo',
+        contentRef
+      };
+    case 'photo-group':
+      return {
+        kind: 'container',
+        role: 'media',
+        display: inferMediaDisplay(item.photos.length),
+        ...extractLayoutProps(findMediaLayoutElement(context.tweet, 'photo')),
+        children: item.photos.map((_, photoIndex) => ({
+          kind: 'leaf',
+          role: 'photo',
+          contentRef: `${contentRef}:photo:${photoIndex}`
+        }))
+      };
+    case 'video':
+    case 'video-preview':
+      return {
+        kind: 'leaf',
+        role: 'video',
+        contentRef
+      };
+    case 'article-cover':
+      return {
+        kind: 'leaf',
+        role: 'photo',
+        contentRef
+      };
+    case 'quoted-tweet': {
+      const quotedRoot = findQuotedTweetRoot(context.tweetRoot, index);
+      const quotedTweet = quotedRoot?.matches('[data-testid="tweet"]')
+        ? quotedRoot
+        : quotedRoot?.querySelector('[data-testid="tweet"]') ?? quotedRoot ?? context.tweet;
+      const children = buildSimpleTweetLayoutChildren({
+        tweetRoot: quotedRoot ?? context.tweetRoot,
+        tweet: quotedTweet,
+        items: item.tweet.items,
+        prefix: `${contentRef}:item`
+      });
+
+      return {
+        kind: 'container',
+        role: 'quotedTweet',
+        display: inferQuotedDisplay(quotedRoot, item.tweet),
+        flexDirection: inferQuotedFlexDirection(quotedRoot, item.tweet),
+        ...extractLayoutProps(quotedRoot),
+        children
+      };
+    }
+  }
+}
+
+function findMediaLayoutElement(tweet: Element, role: 'photo' | 'video'): Element | null {
+  const selector = role === 'photo'
+    ? '[data-testid="tweetPhoto"]'
+    : '[data-testid="videoPlayer"], [data-testid="previewInterstitial"]';
+  const media = tweet.querySelector(selector);
+  if (!media) {
+    return null;
+  }
+
+  let best: Element | null = media;
+  for (let current = media.parentElement; current && current !== tweet; current = current.parentElement) {
+    if (current.querySelectorAll(selector).length > 1 || hasLayoutDisplay(current)) {
+      best = current;
+    }
+  }
+  return best;
+}
+
+function findQuotedTweetRoot(tweetRoot: Element, itemIndex: number): Element | null {
+  const quotedIndex = countQuotedItemsBefore(tweetRoot, itemIndex);
+  const quotedRoots = collectQuotedTweetLayoutRoots(tweetRoot);
+  return quotedRoots[quotedIndex] ?? null;
+}
+
+function countQuotedItemsBefore(tweetRoot: Element, itemIndex: number): number {
+  const roots = collectQuotedTweetLayoutRoots(tweetRoot);
+  if (!roots.length) {
+    return 0;
+  }
+  return Math.max(0, Math.min(itemIndex, roots.length - 1));
+}
+
+function collectQuotedTweetLayoutRoots(tweetRoot: Element): Element[] {
+  const candidates = Array.from(tweetRoot.querySelectorAll('[data-testid="simpleTweet"], [data-testid="tweet"], [role="link"]')).filter((candidate) => {
+    if (candidate === tweetRoot) {
+      return false;
+    }
+    if (!candidate.querySelector('[data-testid="User-Name"]')) {
+      return false;
+    }
+    return Boolean(
+      candidate.querySelector('[data-testid="tweetText"], [data-testid="tweetPhoto"], [data-testid="previewInterstitial"], [data-testid="videoPlayer"], [data-testid="article-cover-image"]')
+    );
+  });
+
+  return candidates.filter((candidate) => !candidates.some((other) => other !== candidate && other.contains(candidate)));
+}
+
+function inferMediaDisplay(count: number): 'block' | 'flex' | 'grid' {
+  return count > 1 ? 'grid' : 'block';
+}
+
+function inferQuotedDisplay(root: Element | null, tweet: SimpleTweetCardData): 'block' | 'flex' | 'grid' {
+  const props = extractLayoutProps(root);
+  if (props.display) {
+    return props.display === 'inline-flex' ? 'flex' : props.display;
+  }
+  const hasMedia = tweet.items.some((item) => item.type !== 'text');
+  const hasText = tweet.items.some((item) => item.type === 'text');
+  return hasMedia && hasText ? 'flex' : 'block';
+}
+
+function inferQuotedFlexDirection(root: Element | null, tweet: SimpleTweetCardData): LayoutProps['flexDirection'] {
+  const props = extractLayoutProps(root);
+  if (props.flexDirection) {
+    return props.flexDirection;
+  }
+  const hasMedia = tweet.items.some((item) => item.type !== 'text');
+  const hasText = tweet.items.some((item) => item.type === 'text');
+  return hasMedia && hasText ? 'row' : undefined;
+}
+
+function extractLayoutProps(element: Element | null | undefined): LayoutProps {
+  if (!element) {
+    return {};
+  }
+
+  const style = readComputedLayoutStyle(element);
+  const display = normalizeDisplay(style.display);
+  const flexDirection = normalizeFlexDirection(style.flexDirection);
+  const gridTemplateColumns = normalizeGridTemplateColumns(style.gridTemplateColumns);
+  const gapPx = parsePixelValue(style.columnGap || style.gap) ?? parsePixelValue(style.rowGap);
+  const aspectRatio = parseAspectRatio(style.aspectRatio) ?? getAspectRatioFromPadding(element);
+
+  return compactLayoutProps({
+    display,
+    flexDirection,
+    gridTemplateColumns,
+    gapPx,
+    alignItems: normalizeKeyword(style.alignItems),
+    justifyContent: normalizeKeyword(style.justifyContent),
+    ...getElementRatio(element),
+    aspectRatio
+  });
+}
+
+function readComputedLayoutStyle(element: Element): {
+  display: string;
+  flexDirection: string;
+  gridTemplateColumns: string;
+  gap: string;
+  columnGap: string;
+  rowGap: string;
+  alignItems: string;
+  justifyContent: string;
+  aspectRatio: string;
+} {
+  const inlineStyle = element instanceof HTMLElement ? element.style : null;
+  const computedStyle =
+    typeof window !== 'undefined' && typeof window.getComputedStyle === 'function'
+      ? window.getComputedStyle(element)
+      : null;
+
+  return {
+    display: (inlineStyle?.display || computedStyle?.display || '').trim(),
+    flexDirection: (inlineStyle?.flexDirection || computedStyle?.flexDirection || '').trim(),
+    gridTemplateColumns: (inlineStyle?.gridTemplateColumns || computedStyle?.gridTemplateColumns || '').trim(),
+    gap: (inlineStyle?.gap || computedStyle?.gap || '').trim(),
+    columnGap: (inlineStyle?.columnGap || computedStyle?.columnGap || '').trim(),
+    rowGap: (inlineStyle?.rowGap || computedStyle?.rowGap || '').trim(),
+    alignItems: (inlineStyle?.alignItems || computedStyle?.alignItems || '').trim(),
+    justifyContent: (inlineStyle?.justifyContent || computedStyle?.justifyContent || '').trim(),
+    aspectRatio: (inlineStyle?.aspectRatio || computedStyle?.aspectRatio || '').trim()
+  };
+}
+
+function hasLayoutDisplay(element: Element): boolean {
+  const display = normalizeDisplay(readComputedLayoutStyle(element).display);
+  return display === 'flex' || display === 'inline-flex' || display === 'grid';
+}
+
+function normalizeDisplay(value: string): LayoutProps['display'] {
+  return value === 'block' || value === 'flex' || value === 'inline-flex' || value === 'grid' ? value : undefined;
+}
+
+function normalizeFlexDirection(value: string): LayoutProps['flexDirection'] {
+  return value === 'row' || value === 'row-reverse' || value === 'column' || value === 'column-reverse' ? value : undefined;
+}
+
+function normalizeGridTemplateColumns(value: string): string | undefined {
+  if (!value || value === 'none') {
+    return undefined;
+  }
+  return value;
+}
+
+function normalizeKeyword(value: string): string | undefined {
+  if (!value || value === 'normal' || value === 'auto') {
+    return undefined;
+  }
+  return value;
+}
+
+function parsePixelValue(value: string): number | undefined {
+  const match = /^([\d.]+)px$/.exec(value.trim());
+  if (!match) {
+    return undefined;
+  }
+  const number = Number(match[1]);
+  return Number.isFinite(number) && number >= 0 ? Math.round(number * 100) / 100 : undefined;
+}
+
+function parseAspectRatio(value: string): number | undefined {
+  const normalized = value.trim();
+  const ratioMatch = /^(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)$/.exec(normalized);
+  if (ratioMatch) {
+    const width = Number(ratioMatch[1]);
+    const height = Number(ratioMatch[2]);
+    return height > 0 ? Math.round((width / height) * 10000) / 10000 : undefined;
+  }
+  const number = Number(normalized);
+  return Number.isFinite(number) && number > 0 ? number : undefined;
+}
+
+function getAspectRatioFromPadding(element: Element): number | undefined {
+  const ratioNode = Array.from(element.querySelectorAll<HTMLElement>('[style*="padding-bottom"]')).find((child) =>
+    /padding-bottom:\s*[\d.]+%/i.test(child.getAttribute('style') ?? '')
+  );
+  if (!ratioNode) {
+    return undefined;
+  }
+  const match = /padding-bottom:\s*([\d.]+)%/i.exec(ratioNode.getAttribute('style') ?? '');
+  const padding = Number(match?.[1]);
+  return Number.isFinite(padding) && padding > 0 ? Math.round((100 / padding) * 10000) / 10000 : undefined;
+}
+
+function getElementRatio(element: Element): Pick<LayoutProps, 'widthRatio' | 'heightRatio'> {
+  const preservedWidth = readPositiveNumberAttribute(element, 'data-linelens-media-layout-width');
+  const preservedHeight = readPositiveNumberAttribute(element, 'data-linelens-media-layout-height');
+  if (preservedWidth || preservedHeight) {
+    return {
+      ...(preservedWidth ? { widthRatio: preservedWidth } : {}),
+      ...(preservedHeight ? { heightRatio: preservedHeight } : {})
+    };
+  }
+
+  if (!(element instanceof HTMLElement) || !element.parentElement) {
+    return {};
+  }
+  const rect = element.getBoundingClientRect();
+  const parentRect = element.parentElement.getBoundingClientRect();
+  if (!rect.width || !rect.height || !parentRect.width || !parentRect.height) {
+    return {};
+  }
+  return {
+    widthRatio: Math.round((rect.width / parentRect.width) * 10000) / 10000,
+    heightRatio: Math.round((rect.height / parentRect.height) * 10000) / 10000
+  };
+}
+
+function readPositiveNumberAttribute(element: Element, name: string): number | undefined {
+  const value = Number(element.getAttribute(name));
+  return Number.isFinite(value) && value > 0 ? value : undefined;
+}
+
+function compactLayoutProps<T extends Record<string, string | number | undefined>>(props: T): T {
+  return Object.fromEntries(Object.entries(props).filter(([, value]) => value !== undefined && value !== '')) as T;
+}
+
 
 async function extractSimpleTweetBlockFromRoot(block: Element, id: string, capturedVideos: CapturedXVideo[] = []): Promise<ArticleBlock | null> {
   const tweetRoot = block.matches('[data-testid="simpleTweet"]')
@@ -1386,6 +1794,7 @@ async function extractSimpleTweetBlockFromRoot(block: Element, id: string, captu
   }
 
   const metrics = extractTweetMetrics(tweet);
+  const layoutTree = extractSimpleTweetLayoutTree(tweetRoot, tweet, items);
   return {
     id,
     type: 'simple-tweet',
@@ -1401,6 +1810,7 @@ async function extractSimpleTweetBlockFromRoot(block: Element, id: string, captu
     translationSourceText: extractTweetTranslationSourceText(tweet),
     translationActionText: extractTweetTranslationActionText(tweet),
     ...profile,
+    ...(layoutTree ? { layoutTree } : {}),
     ...(hasTweetMetrics(metrics) ? { metrics } : {})
   };
 }
@@ -1478,7 +1888,7 @@ async function extractSimpleTweetItems(
     candidates.set(
       anchor,
       group.length === 1
-        ? { type: 'photo', photo: group[0].photo }
+        ? extractPhotoItem(group[0].element, group[0].photo)
         : {
             type: 'photo-group',
             photos: group.map((item) => item.photo),
@@ -1655,8 +2065,9 @@ function buildSimpleTweetPhotoLayoutNode(
 }
 
 function getSimpleTweetPhotoLayoutSize(root: Element): { widthRatio?: number; heightRatio?: number } {
-  const widthRatio = getRatioAttribute(root, 'data-linelens-media-layout-width');
-  const heightRatio = getRatioAttribute(root, 'data-linelens-media-layout-height');
+  const computedSize = getSimpleTweetComputedLayoutSize(root);
+  const widthRatio = computedSize.widthRatio ?? getRatioAttribute(root, 'data-linelens-media-layout-width');
+  const heightRatio = computedSize.heightRatio ?? getRatioAttribute(root, 'data-linelens-media-layout-height');
   return {
     ...(widthRatio ? { widthRatio } : {}),
     ...(heightRatio ? { heightRatio } : {})
@@ -1672,6 +2083,11 @@ function getRatioAttribute(root: Element, name: string): number | undefined {
 }
 
 function getSimpleTweetMediaLayoutDirection(root: Element, depth: number): 'row' | 'column' {
+  const computedDirection = getSimpleTweetComputedLayoutDirection(root);
+  if (computedDirection) {
+    return computedDirection;
+  }
+
   const preservedDirection = root.getAttribute('data-linelens-media-layout-direction');
   if (preservedDirection === 'row' || preservedDirection === 'column') {
     return preservedDirection;
@@ -1685,6 +2101,46 @@ function getSimpleTweetMediaLayoutDirection(root: Element, depth: number): 'row'
   }
 
   return depth === 0 ? 'row' : 'column';
+}
+
+function readSimpleTweetComputedLayoutStyle(root: Element): { display: string; flexDirection: string } | null {
+  if (typeof window === 'undefined' || typeof window.getComputedStyle !== 'function') {
+    return null;
+  }
+  const style = window.getComputedStyle(root);
+  return {
+    display: style.display,
+    flexDirection: style.flexDirection
+  };
+}
+
+function getSimpleTweetComputedLayoutDirection(root: Element): 'row' | 'column' | undefined {
+  const style = readSimpleTweetComputedLayoutStyle(root);
+  if (!style || style.display !== 'flex' && style.display !== 'inline-flex') {
+    return undefined;
+  }
+  if (style.flexDirection === 'row' || style.flexDirection === 'row-reverse') {
+    return 'row';
+  }
+  if (style.flexDirection === 'column' || style.flexDirection === 'column-reverse') {
+    return 'column';
+  }
+  return undefined;
+}
+
+function getSimpleTweetComputedLayoutSize(root: Element): { widthRatio?: number; heightRatio?: number } {
+  if (!(root instanceof HTMLElement) || !root.parentElement) {
+    return {};
+  }
+  const rect = root.getBoundingClientRect();
+  const parentRect = root.parentElement.getBoundingClientRect();
+  if (!rect.width || !rect.height || !parentRect.width || !parentRect.height) {
+    return {};
+  }
+  return {
+    widthRatio: Math.round((rect.width / parentRect.width) * 10000) / 10000,
+    heightRatio: Math.round((rect.height / parentRect.height) * 10000) / 10000
+  };
 }
 
 function getSimpleTweetPhotoGroupAspectRatio(layoutRoot: Element): number | undefined {
@@ -1841,6 +2297,15 @@ function extractVideoPreviewItem(element: Element): SimpleTweetContentItem | nul
   };
 }
 
+function extractPhotoItem(element: Element, photo: TweetPhoto): SimpleTweetContentItem {
+  return {
+    type: 'photo',
+    photo,
+    ...(isCondensedPreview(element) ? { layout: 'condensed' as const } : {}),
+    ...(isCondensedPreview(element) ? { shape: 'rounded-square' as const } : {})
+  };
+}
+
 function isCondensedPreview(element: Element): boolean {
   return Boolean(element.closest('[data-testid="testCondensedMedia"]'));
 }
@@ -1865,10 +2330,43 @@ function tweetPhotoElementToPhoto(element: HTMLElement): { src: string; alt?: st
 }
 
 function getTweetPhotoBackgroundUrl(element: Element): string {
-  const backgroundLayer = element.querySelector<HTMLElement>('[style*="background-image"]');
+  const backgroundLayer = getTweetPhotoBackgroundLayer(element);
   const style = backgroundLayer?.style.backgroundImage || backgroundLayer?.getAttribute('style') || '';
   const match = /url\((?:"|&quot;)?([^")]+)(?:"|&quot;)?\)/.exec(style);
   return match?.[1]?.replace(/&amp;/g, '&') ?? '';
+}
+
+function getTweetPhotoBackgroundLayer(element: Element): HTMLElement | null {
+  return element.querySelector<HTMLElement>('[style*="background-image"]');
+}
+
+function normalizeGalleryBackgroundSize(value: string | undefined): ImageGalleryItem['backgroundSize'] {
+  const normalized = normalizeCssText(value);
+  if (normalized === 'cover' || normalized === 'contain' || normalized === 'auto') {
+    return normalized;
+  }
+
+  return undefined;
+}
+
+function normalizeImageObjectFit(value: string | undefined): ImageGalleryItem['objectFit'] {
+  const normalized = normalizeCssText(value);
+  if (
+    normalized === 'cover' ||
+    normalized === 'contain' ||
+    normalized === 'fill' ||
+    normalized === 'none' ||
+    normalized === 'scale-down'
+  ) {
+    return normalized;
+  }
+
+  return undefined;
+}
+
+function normalizeCssText(value: string | undefined): string | undefined {
+  const normalized = value?.trim();
+  return normalized || undefined;
 }
 
 function extractTweetAuthorBadgeAvatarUrl(tweet: Element): string | undefined {
@@ -2048,7 +2546,8 @@ function extractImageFromElement(element: Element, id: string): ImageBlock | nul
 }
 
 function extractImageGalleryFromElement(element: Element, id: string): ImageGalleryBlock | null {
-  const photos = Array.from(element.querySelectorAll<HTMLElement>(X_ARTICLE_SELECTORS.tweetPhoto))
+  const photoElements = Array.from(element.querySelectorAll<HTMLElement>(X_ARTICLE_SELECTORS.tweetPhoto));
+  const photos = photoElements
     .map((photo) => tweetPhotoElementToGalleryItem(photo))
     .filter((item): item is ImageGalleryItem => Boolean(item));
 
@@ -2057,16 +2556,19 @@ function extractImageGalleryFromElement(element: Element, id: string): ImageGall
   }
 
   const aspectRatio = getImageGalleryAspectRatio(element);
+  const layout = getImageGalleryLayout(element, photoElements, photos);
   return {
     id,
     type: 'image-gallery',
     items: photos,
-    ...(aspectRatio ? { aspectRatio } : {})
+    ...(aspectRatio ? { aspectRatio } : {}),
+    ...(layout ? { layout } : {})
   };
 }
 
 function tweetPhotoElementToGalleryItem(element: HTMLElement): ImageGalleryItem | null {
   const image = element.querySelector<HTMLImageElement>('img');
+  const backgroundLayer = getTweetPhotoBackgroundLayer(element);
   const src = image?.currentSrc || image?.src || getTweetPhotoBackgroundUrl(element);
   if (!src) {
     return null;
@@ -2074,11 +2576,22 @@ function tweetPhotoElementToGalleryItem(element: HTMLElement): ImageGalleryItem 
 
   const href = element.closest('a[href]')?.getAttribute('href') ?? undefined;
   const aspectRatio = image ? getImageAspectRatio(image) : undefined;
+  const backgroundSize = normalizeGalleryBackgroundSize(
+    backgroundLayer?.style.backgroundSize || (backgroundLayer ? getInlineStyleValue(backgroundLayer, 'background-size') : '')
+  );
+  const backgroundPosition =
+    normalizeCssText(backgroundLayer?.style.backgroundPosition || backgroundLayer?.style.backgroundPositionX || undefined) ?? 'center center';
+  const objectFit = normalizeImageObjectFit(image?.style.objectFit) ?? 'cover';
+  const objectPosition = normalizeCssText(image?.style.objectPosition) ?? backgroundPosition;
   return {
     src,
     alt: image?.alt || undefined,
     ...(href ? { href: new URL(href, X_CANONICAL_ORIGIN).toString() } : {}),
-    ...(aspectRatio ? { aspectRatio } : {})
+    ...(aspectRatio ? { aspectRatio } : {}),
+    ...(backgroundSize ? { backgroundSize } : {}),
+    ...(backgroundPosition ? { backgroundPosition } : {}),
+    objectFit,
+    ...(objectPosition ? { objectPosition } : {})
   };
 }
 
@@ -2091,6 +2604,106 @@ function getImageGalleryAspectRatio(element: Element): number | undefined {
   }
 
   return undefined;
+}
+
+function getImageGalleryLayout(
+  element: Element,
+  photoElements: HTMLElement[],
+  items: ImageGalleryItem[]
+): ImageGalleryLayoutNode | undefined {
+  const itemIndexes = new Map<HTMLElement, number>();
+  for (const [index, photo] of photoElements.entries()) {
+    if (items[index]) {
+      itemIndexes.set(photo, index);
+    }
+  }
+
+  return buildImageGalleryLayoutNode(element, itemIndexes);
+}
+
+function buildImageGalleryLayoutNode(
+  element: Element,
+  itemIndexes: Map<HTMLElement, number>
+): ImageGalleryLayoutNode | undefined {
+  const ownItemIndex = getOwnGalleryItemIndex(element, itemIndexes);
+  if (ownItemIndex !== undefined) {
+    return {
+      type: 'item',
+      itemIndex: ownItemIndex,
+      ...getGalleryFlexMetrics(element)
+    };
+  }
+
+  const photoChildren = Array.from(element.children).filter((child) => containsGalleryPhoto(child, itemIndexes));
+  if (photoChildren.length === 0) {
+    return undefined;
+  }
+
+  if (photoChildren.length === 1) {
+    return buildImageGalleryLayoutNode(photoChildren[0], itemIndexes);
+  }
+
+  const children = photoChildren
+    .map((child) => buildImageGalleryLayoutNode(child, itemIndexes))
+    .filter((child): child is ImageGalleryLayoutNode => Boolean(child));
+  if (children.length === 0) {
+    return undefined;
+  }
+
+  return {
+    type: getGalleryFlexDirection(element),
+    children,
+    ...getGalleryFlexMetrics(element)
+  };
+}
+
+function getOwnGalleryItemIndex(element: Element, itemIndexes: Map<HTMLElement, number>): number | undefined {
+  const indexes = getContainedGalleryItemIndexes(element, itemIndexes);
+  return indexes.length === 1 ? indexes[0] : undefined;
+}
+
+function getContainedGalleryItemIndexes(element: Element, itemIndexes: Map<HTMLElement, number>): number[] {
+  const indexes: number[] = [];
+  for (const [photo, index] of itemIndexes.entries()) {
+    if (photo === element || element.contains(photo)) {
+      indexes.push(index);
+    }
+  }
+
+  return indexes;
+}
+
+function containsGalleryPhoto(element: Element, itemIndexes: Map<HTMLElement, number>): boolean {
+  for (const photo of itemIndexes.keys()) {
+    if (photo === element || element.contains(photo)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function getGalleryFlexDirection(element: Element): 'row' | 'column' {
+  if (element.classList.contains('r-eqz5dr')) {
+    return 'column';
+  }
+  if (element.classList.contains('r-18u37iz')) {
+    return 'row';
+  }
+
+  return 'row';
+}
+
+function getGalleryFlexMetrics(element: Element): Pick<ImageGalleryLayoutNode, 'grow' | 'shrink' | 'basis'> {
+  const grow = element.classList.contains('r-1iusvr4') || element.classList.contains('r-16y2uox') ? 1 : undefined;
+  const shrink = element.classList.contains('r-16y2uox') ? 1 : undefined;
+  const basis = element.classList.contains('r-bnwqim') ? '0%' : undefined;
+
+  return {
+    ...(grow !== undefined ? { grow } : {}),
+    ...(shrink !== undefined ? { shrink } : {}),
+    ...(basis ? { basis } : {})
+  };
 }
 
 function getMediaAspectRatio(media: HTMLMediaElement, container: Element): number | undefined {
@@ -2367,6 +2980,7 @@ function extractTextWithAnnotations(
   }
 
   const annotations: TextAnnotation[] = [];
+  const linkAnnotations = annotations;
   let text = '';
   let searchCursor = 0;
   for (const textElement of textElements) {
@@ -2419,7 +3033,7 @@ function extractTextWithAnnotations(
     }
   }
 
-  return { text: options.preserveLineBreaks ? fullText : normalize(text), annotations };
+  return { text: options.preserveLineBreaks ? fullText : normalize(text), annotations: linkAnnotations };
 }
 
 function hasTextAnnotationSignal(annotation: TextAnnotation): boolean {

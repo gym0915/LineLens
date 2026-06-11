@@ -532,6 +532,14 @@
   border-radius: var(--reader-simple-tweet-media-radius);
 }
 
+.reader-simple-tweet-condensed-media .reader-simple-tweet-photo-grid {
+  height: 100%;
+  width: 84px;
+  min-height: 84px;
+  aspect-ratio: 1 / 1;
+  border-radius: var(--reader-simple-tweet-media-radius);
+}
+
 .reader-simple-tweet-video-preview-condensed {
   aspect-ratio: 1 / 1;
 }

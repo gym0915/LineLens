@@ -6,6 +6,7 @@ import type {
   GifBlock,
   ImageBlock,
   ImageGalleryBlock,
+  ImageGalleryLayoutNode,
   TableBlock,
   TextAnnotation,
   TextStyle,
@@ -855,6 +856,18 @@ async function extractSimpleTweetBlock(block: Element, id: string, capturedVideo
   return simpleTweetModel.extractSimpleTweetBlockFromRoot(block, id, capturedVideos);
 }
 
+async function extractSimpleTweetImageCard(block: Element, id: string): Promise<ArticleBlock | null> {
+  return simpleTweetModel.extractSimpleTweetBlockFromRoot(block, id, []);
+}
+
+async function extractSimpleTweetVideoCard(block: Element, id: string, capturedVideos: CapturedXVideo[] = []): Promise<ArticleBlock | null> {
+  return simpleTweetModel.extractSimpleTweetBlockFromRoot(block, id, capturedVideos);
+}
+
+async function extractSimpleTweetTextCard(block: Element, id: string): Promise<ArticleBlock | null> {
+  return simpleTweetModel.extractSimpleTweetBlockFromRoot(block, id, []);
+}
+
 function isSimpleTweetCard(block: Element): boolean {
   return block.matches('[data-testid="simpleTweet"]') || Boolean(block.querySelector('[data-testid="simpleTweet"]'));
 }
@@ -875,10 +888,43 @@ function tweetPhotoElementToPhoto(element: HTMLElement): { src: string; alt?: st
 }
 
 function getTweetPhotoBackgroundUrl(element: Element): string {
-  const backgroundLayer = element.querySelector<HTMLElement>('[style*="background-image"]');
+  const backgroundLayer = getTweetPhotoBackgroundLayer(element);
   const style = backgroundLayer?.style.backgroundImage || backgroundLayer?.getAttribute('style') || '';
   const match = /url\((?:"|&quot;)?([^")]+)(?:"|&quot;)?\)/.exec(style);
   return match?.[1]?.replace(/&amp;/g, '&') ?? '';
+}
+
+function getTweetPhotoBackgroundLayer(element: Element): HTMLElement | null {
+  return element.querySelector<HTMLElement>('[style*="background-image"]');
+}
+
+function normalizeGalleryBackgroundSize(value: string | undefined): ImageGalleryBlock['items'][number]['backgroundSize'] {
+  const normalized = normalizeCssText(value);
+  if (normalized === 'cover' || normalized === 'contain' || normalized === 'auto') {
+    return normalized;
+  }
+
+  return undefined;
+}
+
+function normalizeImageObjectFit(value: string | undefined): ImageGalleryBlock['items'][number]['objectFit'] {
+  const normalized = normalizeCssText(value);
+  if (
+    normalized === 'cover' ||
+    normalized === 'contain' ||
+    normalized === 'fill' ||
+    normalized === 'none' ||
+    normalized === 'scale-down'
+  ) {
+    return normalized;
+  }
+
+  return undefined;
+}
+
+function normalizeCssText(value: string | undefined): string | undefined {
+  const normalized = value?.trim();
+  return normalized || undefined;
 }
 
 function extractTweetAuthorBadgeAvatarUrl(tweet: Element): string | undefined {
@@ -1039,7 +1085,8 @@ function extractImageFromElement(element: Element, id: string): ImageBlock | nul
 }
 
 function extractImageGalleryFromElement(element: Element, id: string): ImageGalleryBlock | null {
-  const photos = Array.from(element.querySelectorAll<HTMLElement>(X_ARTICLE_SELECTORS.tweetPhoto))
+  const photoElements = Array.from(element.querySelectorAll<HTMLElement>(X_ARTICLE_SELECTORS.tweetPhoto));
+  const photos = photoElements
     .map((photo) => tweetPhotoElementToGalleryItem(photo))
     .filter((item): item is ImageGalleryBlock['items'][number] => Boolean(item));
 
@@ -1048,16 +1095,19 @@ function extractImageGalleryFromElement(element: Element, id: string): ImageGall
   }
 
   const aspectRatio = getImageGalleryAspectRatio(element);
+  const layout = getImageGalleryLayout(element, photoElements, photos);
   return {
     id,
     type: 'image-gallery',
     items: photos,
-    ...(aspectRatio ? { aspectRatio } : {})
+    ...(aspectRatio ? { aspectRatio } : {}),
+    ...(layout ? { layout } : {})
   };
 }
 
 function tweetPhotoElementToGalleryItem(element: HTMLElement): ImageGalleryBlock['items'][number] | null {
   const image = element.querySelector<HTMLImageElement>('img');
+  const backgroundLayer = getTweetPhotoBackgroundLayer(element);
   const src = image?.currentSrc || image?.src || getTweetPhotoBackgroundUrl(element);
   if (!src) {
     return null;
@@ -1065,11 +1115,22 @@ function tweetPhotoElementToGalleryItem(element: HTMLElement): ImageGalleryBlock
 
   const href = element.closest('a[href]')?.getAttribute('href') ?? undefined;
   const aspectRatio = image ? getImageAspectRatio(image) : undefined;
+  const backgroundSize = normalizeGalleryBackgroundSize(
+    backgroundLayer?.style.backgroundSize || (backgroundLayer ? getInlineStyleValue(backgroundLayer, 'background-size') : '')
+  );
+  const backgroundPosition =
+    normalizeCssText(backgroundLayer?.style.backgroundPosition || backgroundLayer?.style.backgroundPositionX || undefined) ?? 'center center';
+  const objectFit = normalizeImageObjectFit(image?.style.objectFit) ?? 'cover';
+  const objectPosition = normalizeCssText(image?.style.objectPosition) ?? backgroundPosition;
   return {
     src,
     alt: image?.alt || undefined,
     ...(href ? { href: new URL(href, X_CANONICAL_ORIGIN).toString() } : {}),
-    ...(aspectRatio ? { aspectRatio } : {})
+    ...(aspectRatio ? { aspectRatio } : {}),
+    ...(backgroundSize ? { backgroundSize } : {}),
+    ...(backgroundPosition ? { backgroundPosition } : {}),
+    objectFit,
+    ...(objectPosition ? { objectPosition } : {})
   };
 }
 
@@ -1082,6 +1143,106 @@ function getImageGalleryAspectRatio(element: Element): number | undefined {
   }
 
   return undefined;
+}
+
+function getImageGalleryLayout(
+  element: Element,
+  photoElements: HTMLElement[],
+  items: ImageGalleryBlock['items']
+): ImageGalleryLayoutNode | undefined {
+  const itemIndexes = new Map<HTMLElement, number>();
+  for (const [index, photo] of photoElements.entries()) {
+    if (items[index]) {
+      itemIndexes.set(photo, index);
+    }
+  }
+
+  return buildImageGalleryLayoutNode(element, itemIndexes);
+}
+
+function buildImageGalleryLayoutNode(
+  element: Element,
+  itemIndexes: Map<HTMLElement, number>
+): ImageGalleryLayoutNode | undefined {
+  const ownItemIndex = getOwnGalleryItemIndex(element, itemIndexes);
+  if (ownItemIndex !== undefined) {
+    return {
+      type: 'item',
+      itemIndex: ownItemIndex,
+      ...getGalleryFlexMetrics(element)
+    };
+  }
+
+  const photoChildren = Array.from(element.children).filter((child) => containsGalleryPhoto(child, itemIndexes));
+  if (photoChildren.length === 0) {
+    return undefined;
+  }
+
+  if (photoChildren.length === 1) {
+    return buildImageGalleryLayoutNode(photoChildren[0], itemIndexes);
+  }
+
+  const children = photoChildren
+    .map((child) => buildImageGalleryLayoutNode(child, itemIndexes))
+    .filter((child): child is ImageGalleryLayoutNode => Boolean(child));
+  if (children.length === 0) {
+    return undefined;
+  }
+
+  return {
+    type: getGalleryFlexDirection(element),
+    children,
+    ...getGalleryFlexMetrics(element)
+  };
+}
+
+function getOwnGalleryItemIndex(element: Element, itemIndexes: Map<HTMLElement, number>): number | undefined {
+  const indexes = getContainedGalleryItemIndexes(element, itemIndexes);
+  return indexes.length === 1 ? indexes[0] : undefined;
+}
+
+function getContainedGalleryItemIndexes(element: Element, itemIndexes: Map<HTMLElement, number>): number[] {
+  const indexes: number[] = [];
+  for (const [photo, index] of itemIndexes.entries()) {
+    if (photo === element || element.contains(photo)) {
+      indexes.push(index);
+    }
+  }
+
+  return indexes;
+}
+
+function containsGalleryPhoto(element: Element, itemIndexes: Map<HTMLElement, number>): boolean {
+  for (const photo of itemIndexes.keys()) {
+    if (photo === element || element.contains(photo)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function getGalleryFlexDirection(element: Element): 'row' | 'column' {
+  if (element.classList.contains('r-eqz5dr')) {
+    return 'column';
+  }
+  if (element.classList.contains('r-18u37iz')) {
+    return 'row';
+  }
+
+  return 'row';
+}
+
+function getGalleryFlexMetrics(element: Element): Pick<ImageGalleryLayoutNode, 'grow' | 'shrink' | 'basis'> {
+  const grow = element.classList.contains('r-1iusvr4') || element.classList.contains('r-16y2uox') ? 1 : undefined;
+  const shrink = element.classList.contains('r-16y2uox') ? 1 : undefined;
+  const basis = element.classList.contains('r-bnwqim') ? '0%' : undefined;
+
+  return {
+    ...(grow !== undefined ? { grow } : {}),
+    ...(shrink !== undefined ? { shrink } : {}),
+    ...(basis ? { basis } : {})
+  };
 }
 
 function getMediaAspectRatio(media: HTMLMediaElement, container: Element): number | undefined {
@@ -1351,6 +1512,7 @@ function extractTextWithAnnotations(
   }
 
   const annotations: TextAnnotation[] = [];
+  const linkAnnotations = annotations;
   let text = '';
   let searchCursor = 0;
   for (const textElement of textElements) {
@@ -1403,7 +1565,7 @@ function extractTextWithAnnotations(
     }
   }
 
-  return { text: options.preserveLineBreaks ? fullText : normalize(text), annotations };
+  return { text: options.preserveLineBreaks ? fullText : normalize(text), annotations: linkAnnotations };
 }
 
 function hasTextAnnotationSignal(annotation: TextAnnotation): boolean {

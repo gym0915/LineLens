@@ -24,6 +24,10 @@
     "verify:x-video-b31-b39": "npm run build && node scripts/verify-x-video-b31-b39.mjs",
     "verify:x-simpletweet-video": "npm run build && node scripts/verify-x-simpletweet-video.mjs",
     "verify:x-simpletweet-text": "npm run build && node scripts/verify-x-simpletweet-text.mjs",
+    "verify:x-simpletweet-computed-layout": "npm run build && node scripts/verify-x-simpletweet-computed-layout.mjs",
+    "verify:x-simpletweet-computed-layout-runtime": "npm run build && node scripts/verify-x-simpletweet-computed-layout-runtime.mjs",
+    "verify:x-simpletweet-quoted-photo-layout": "npm run build && node scripts/verify-x-simpletweet-quoted-photo-layout.mjs",
+    "verify:x-simpletweet-layout-tree": "npm run build && node scripts/verify-x-simpletweet-layout-tree.mjs",
     "verify:x-simpletweet-flow": "npm run build && node scripts/verify-x-simpletweet-flow.mjs",
     "verify:x-article-dynamic-styles": "npm run build && node scripts/verify-x-article-dynamic-styles.mjs"
   },

@@ -25,8 +25,8 @@
 }
 
 .reader-image-gallery-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  display: flex;
+  flex-direction: row;
   gap: 2px;
   width: 100%;
   aspect-ratio: var(--reader-media-aspect-ratio, 16 / 9);
@@ -34,8 +34,27 @@
   border-radius: var(--reader-radius-media);
 }
 
+.reader-image-gallery-node {
+  display: flex;
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+  gap: 2px;
+  overflow: hidden;
+}
+
+.reader-image-gallery-node[data-layout-type="row"] {
+  flex-direction: row;
+}
+
+.reader-image-gallery-node[data-layout-type="column"] {
+  flex-direction: column;
+}
+
 .reader-image-gallery-item {
+  position: relative;
   display: block;
+  flex: 1 1 0;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
@@ -44,10 +63,22 @@
   background: rgba(44, 37, 33, 0.06);
 }
 
+.reader-image-gallery-background {
+  position: absolute;
+  inset: 0;
+  display: block;
+  background-repeat: no-repeat;
+  background-position: center center;
+  background-size: cover;
+}
+
 .reader-image-gallery-image {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
+  opacity: 0;
   border-radius: 0;
 }
 
@@ -72,19 +103,6 @@
   object-fit: cover;
   filter: saturate(0.5);
   transition: filter 300ms ease;
-}
-
-.reader-video-player:fullscreen,
-.reader-video-player:-webkit-full-screen,
-.reader-video-media:fullscreen .reader-video-player,
-.reader-video-media:-webkit-full-screen .reader-video-player {
-  width: 100vw;
-  height: 100vh;
-  max-width: 100vw;
-  max-height: 100vh;
-  object-fit: contain;
-  object-position: center;
-  background: #000;
 }
 
 .reader-gif-overlay {

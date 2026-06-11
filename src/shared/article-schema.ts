@@ -19,6 +19,7 @@ export type {
   SimpleTweetBlock,
   SimpleTweetCardData,
   SimpleTweetContentItem,
+  SimpleTweetLayoutNode,
   SimpleTweetPhotoLayout,
   SimpleTweetPhotoGroupItem,
   SimpleTweetPhotoItem,

@@ -8,6 +8,7 @@ import type {
   SimpleTweetBlock,
   SimpleTweetCardData,
   SimpleTweetContentItem,
+  SimpleTweetLayoutNode,
   SimpleTweetPhotoLayout,
   TableBlock,
   TextAnnotation,
@@ -835,7 +836,7 @@ function renderSimpleTweetBlock(block: SimpleTweetBlock): HTMLElement {
 }
 
 function renderSimpleTweetCardFrame(
-  block: SimpleTweetCardData & { metrics?: TweetMetrics },
+  block: SimpleTweetCardData & { metrics?: TweetMetrics; layoutTree?: SimpleTweetLayoutNode },
   host: HTMLElement,
   options: { compact: boolean; showActions: boolean }
 ): void {
@@ -856,7 +857,7 @@ function renderSimpleTweetCardFrame(
   shell.className = 'reader-simple-tweet-shell';
   const content = document.createElement('div');
   content.className = 'reader-simple-tweet-content';
-  content.append(renderSimpleTweetContentItems(block.items, options.compact));
+  content.append(block.layoutTree && !options.compact ? renderSimpleTweetLayoutTree(block) : renderSimpleTweetContentItems(block.items, options.compact));
   shell.append(content);
 
   if (options.showActions) {
@@ -876,6 +877,155 @@ function renderSimpleTweetCardFrame(
   }
   tweetFrame.append(renderSimpleTweetAvatar(block), contentColumn);
   host.append(tweetFrame);
+}
+
+function renderSimpleTweetLayoutTree(block: SimpleTweetCardData & { layoutTree?: SimpleTweetLayoutNode }): HTMLElement {
+  const body = findSimpleTweetLayoutRole(block.layoutTree, 'body') ?? block.layoutTree;
+  if (!body) {
+    return renderSimpleTweetContentItems(block.items, false);
+  }
+
+  const wrapper = document.createElement('div');
+  wrapper.className = 'reader-simple-tweet-text-only reader-simple-tweet-layout-tree';
+  for (const child of body.kind === 'container' ? body.children : [body]) {
+    wrapper.append(renderSimpleTweetLayoutNode(child, block));
+  }
+  return wrapper;
+}
+
+function findSimpleTweetLayoutRole(node: SimpleTweetLayoutNode | undefined, role: string): SimpleTweetLayoutNode | null {
+  if (!node) {
+    return null;
+  }
+  if (node.role === role) {
+    return node;
+  }
+  if (node.kind === 'container') {
+    for (const child of node.children) {
+      const found = findSimpleTweetLayoutRole(child, role);
+      if (found) {
+        return found;
+      }
+    }
+  }
+  return null;
+}
+
+function renderSimpleTweetLayoutNode(node: SimpleTweetLayoutNode, block: SimpleTweetCardData): HTMLElement {
+  if (node.kind === 'leaf') {
+    return renderSimpleTweetLayoutLeaf(node, block);
+  }
+
+  if (node.role === 'quotedTweet') {
+    const quoted = resolveQuotedTweetLayoutItem(node, block);
+    if (quoted) {
+      const element = renderSimpleTweetContentItem(quoted);
+      element.classList.add('reader-simple-tweet-layout-node', 'reader-simple-tweet-layout-quotedTweet');
+      return element;
+    }
+  }
+
+  const container = document.createElement('div');
+  container.className = 'reader-simple-tweet-layout-node reader-simple-tweet-layout-' + node.role;
+  applySimpleTweetLayoutProps(container, node);
+  for (const child of node.children) {
+    container.append(renderSimpleTweetLayoutNode(child, block));
+  }
+  return container;
+}
+
+function resolveQuotedTweetLayoutItem(
+  node: Extract<SimpleTweetLayoutNode, { kind: 'container' }>,
+  block: SimpleTweetCardData
+): Extract<SimpleTweetContentItem, { type: 'quoted-tweet' }> | null {
+  const firstRef = findFirstSimpleTweetLayoutContentRef(node);
+  const itemIndex = firstRef ? /^item:(\d+):item:/.exec(firstRef)?.[1] : undefined;
+  const item = itemIndex !== undefined ? block.items[Number(itemIndex)] : undefined;
+  return item?.type === 'quoted-tweet' ? item : null;
+}
+
+function findFirstSimpleTweetLayoutContentRef(node: SimpleTweetLayoutNode): string | null {
+  if (node.kind === 'leaf') {
+    return node.contentRef;
+  }
+  for (const child of node.children) {
+    const ref = findFirstSimpleTweetLayoutContentRef(child);
+    if (ref) {
+      return ref;
+    }
+  }
+  return null;
+}
+
+function renderSimpleTweetLayoutLeaf(node: Extract<SimpleTweetLayoutNode, { kind: 'leaf' }>, block: SimpleTweetCardData): HTMLElement {
+  const item = resolveSimpleTweetLayoutContent(node.contentRef, block);
+  if (!item) {
+    const empty = document.createElement('span');
+    empty.className = `reader-simple-tweet-layout-leaf reader-simple-tweet-layout-${node.role}`;
+    return empty;
+  }
+
+  const element = renderSimpleTweetContentItem(item);
+  element.classList.add('reader-simple-tweet-layout-leaf', `reader-simple-tweet-layout-${node.role}`);
+  return element;
+}
+
+function resolveSimpleTweetLayoutContent(contentRef: string, block: SimpleTweetCardData): SimpleTweetContentItem | null {
+  const parts = contentRef.split(':');
+  let items = block.items;
+  let cursor = 0;
+
+  while (cursor < parts.length) {
+    const token = parts[cursor];
+    if (token === 'item') {
+      const itemIndex = Number(parts[cursor + 1]);
+      const item = items[itemIndex];
+      if (!item) {
+        return null;
+      }
+      if (parts[cursor + 2] === 'photo' && item.type === 'photo-group') {
+        const photoIndex = Number(parts[cursor + 3]);
+        const photo = item.photos[photoIndex];
+        return photo ? { type: 'photo', photo } : null;
+      }
+      if (parts[cursor + 2] === 'item' && item.type === 'quoted-tweet') {
+        items = item.tweet.items;
+        cursor += 2;
+        continue;
+      }
+      return item;
+    }
+    cursor += 1;
+  }
+
+  return null;
+}
+
+function applySimpleTweetLayoutProps(
+  element: HTMLElement,
+  node: Extract<SimpleTweetLayoutNode, { kind: 'container' }>
+): void {
+  if (node.display) {
+    element.style.display = node.display;
+  }
+  if (node.flexDirection) {
+    element.style.flexDirection = node.flexDirection;
+  }
+  if (node.gridTemplateColumns) {
+    element.style.gridTemplateColumns = node.gridTemplateColumns;
+  }
+  if (typeof node.gapPx === 'number') {
+    element.style.gap = `${node.gapPx}px`;
+  }
+  if (node.alignItems) {
+    element.style.alignItems = node.alignItems;
+  }
+  if (node.justifyContent) {
+    element.style.justifyContent = node.justifyContent;
+  }
+  if (typeof node.aspectRatio === 'number') {
+    element.style.aspectRatio = String(node.aspectRatio);
+  }
 }
 
 function withRenderableItems<T extends SimpleTweetCardData & { metrics?: TweetMetrics }>(block: T): T {
@@ -990,7 +1140,7 @@ function renderSimpleTweetContentItems(items: SimpleTweetContentItem[], compact:
 }
 
 function renderCondensedSimpleTweetItems(items: SimpleTweetContentItem[]): HTMLElement | null {
-  const previewIndex = items.findIndex((item) => item.type === 'video-preview');
+  const previewIndex = items.findIndex((item) => item.type === 'video-preview' || (item.type === 'photo' && item.layout === 'condensed'));
   const textIndex = items.findIndex((item) => item.type === 'text');
   if (previewIndex < 0 || textIndex < 0) {
     return null;

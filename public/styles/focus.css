@@ -1,4 +1,5 @@
 .focus-unit {
+  color: var(--reader-text-muted);
   cursor: pointer;
   transition:
     color 250ms ease,
@@ -8,6 +9,10 @@
     filter 250ms ease,
     opacity 250ms ease,
     padding 250ms ease;
+}
+
+.focus-unit:hover {
+  color: var(--reader-text-hover);
 }
 
 p .focus-unit {

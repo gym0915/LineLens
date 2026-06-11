@@ -226,6 +226,14 @@ for (const source of [modularExtractorSource, liveExtractorSource]) {
   assert.match(source, /function getSimpleTweetHref/, 'simple tweets should use a dedicated href extractor');
   assert.match(source, /function extractSimpleTweetImageCard/, 'simple tweets should parse image-card tweets without article covers');
   assert.match(source, /function extractImageGalleryFromElement/, 'extractor should parse X article image grid blocks');
+  assert.match(source, /function getImageGalleryLayout/, 'extractor should parse nested image gallery layouts');
+  assert.match(source, /function buildImageGalleryLayoutNode/, 'image gallery layout parsing should walk component-internal DOM structure');
+  assert.match(source, /function getGalleryFlexMetrics/, 'image gallery layout parsing should preserve component flex sizing');
+  assert.match(source, /backgroundSize/, 'image gallery items should preserve source crop mode');
+  assert.match(source, /backgroundPosition/, 'image gallery items should preserve source alignment');
+  assert.match(source, /objectFit/, 'image gallery items should preserve image fit semantics');
+  assert.match(source, /r-eqz5dr/, 'image gallery layout parsing should preserve X column flex direction');
+  assert.match(source, /r-18u37iz/, 'image gallery layout parsing should preserve X row flex direction');
   assert.match(source, /function extractGifFromElement/, 'extractor should parse GIF media inside tweetPhoto videoPlayer');
   assert.match(source, /function extractVideoFromElement/, 'extractor should parse video media inside tweetPhoto videoPlayer');
   assert.match(source, /function getCapturedVideos/, 'extractor should ask background for captured network video groups');
@@ -279,6 +287,9 @@ assert.match(articleModelSource, /type: 'gif'/, 'GIF model should use a dedicate
 assert.match(articleModelSource, /VideoBlock/, 'article model should include video blocks');
 assert.match(articleModelSource, /type: 'video'/, 'video model should use a dedicated block type');
 assert.match(articleModelSource, /type: 'image-gallery'/, 'article model should include image gallery blocks');
+assert.match(articleModelSource, /ImageGalleryLayoutNode/, 'image gallery model should support component-internal layout nodes');
+assert.match(articleModelSource, /backgroundSize\?: 'cover' \| 'contain' \| 'auto'/, 'image gallery model should preserve media crop mode');
+assert.match(articleModelSource, /objectPosition\?: string/, 'image gallery model should preserve media alignment');
 assert.match(articleModelSource, /sourceType\?: string/, 'video model should preserve source MIME type');
 assert.match(articleModelSource, /hls\?: \{/, 'video model should preserve HLS playback metadata');
 assert.match(articleModelSource, /audioPlaylistUrl\?: string/, 'video model should preserve separated audio playlist metadata');

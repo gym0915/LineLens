@@ -10,6 +10,7 @@ import type {
 import type { CapturedXVideo } from '../../../shared/messages.js';
 import { normalizePreWrapText, normalizeText } from '../../../shared/text.js';
 import { X_CANONICAL_ORIGIN } from '../../../shared/url.js';
+import { extractSimpleTweetLayoutTree } from './block-layout-tree.js';
 
 const AMPLIFY_VIDEO_ID_PATTERN = /amplify_video(?:_thumb)?\/(\d+)/;
 
@@ -45,10 +46,12 @@ export async function extractSimpleTweetBlockFromRoot(
   }
 
   const metrics = extractTweetMetrics(tweet);
+  const layoutTree = extractSimpleTweetLayoutTree(tweetRoot, tweet, card.items);
   return {
     id,
     type: 'simple-tweet',
     ...card,
+    ...(layoutTree ? { layoutTree } : {}),
     ...(hasTweetMetrics(metrics) ? { metrics } : {})
   };
 }
@@ -154,7 +157,7 @@ async function extractSimpleTweetItems(
     candidates.set(
       anchor,
       group.length === 1
-        ? { type: 'photo', photo: group[0].photo }
+        ? extractPhotoItem(group[0].element, group[0].photo)
         : {
             type: 'photo-group',
             photos: group.map((item) => item.photo),
@@ -286,8 +289,9 @@ function buildSimpleTweetPhotoLayoutNode(
 }
 
 function getSimpleTweetPhotoLayoutSize(root: Element): { widthRatio?: number; heightRatio?: number } {
-  const widthRatio = getRatioAttribute(root, 'data-linelens-media-layout-width');
-  const heightRatio = getRatioAttribute(root, 'data-linelens-media-layout-height');
+  const computedSize = getSimpleTweetComputedLayoutSize(root);
+  const widthRatio = computedSize.widthRatio ?? getRatioAttribute(root, 'data-linelens-media-layout-width');
+  const heightRatio = computedSize.heightRatio ?? getRatioAttribute(root, 'data-linelens-media-layout-height');
   return {
     ...(widthRatio ? { widthRatio } : {}),
     ...(heightRatio ? { heightRatio } : {})
@@ -303,6 +307,11 @@ function getRatioAttribute(root: Element, name: string): number | undefined {
 }
 
 function getSimpleTweetMediaLayoutDirection(root: Element, depth: number): 'row' | 'column' {
+  const computedDirection = getSimpleTweetComputedLayoutDirection(root);
+  if (computedDirection) {
+    return computedDirection;
+  }
+
   const preservedDirection = root.getAttribute('data-linelens-media-layout-direction');
   if (preservedDirection === 'row' || preservedDirection === 'column') {
     return preservedDirection;
@@ -316,6 +325,46 @@ function getSimpleTweetMediaLayoutDirection(root: Element, depth: number): 'row'
   }
 
   return depth === 0 ? 'row' : 'column';
+}
+
+function readSimpleTweetComputedLayoutStyle(root: Element): { display: string; flexDirection: string } | null {
+  if (typeof window === 'undefined' || typeof window.getComputedStyle !== 'function') {
+    return null;
+  }
+  const style = window.getComputedStyle(root);
+  return {
+    display: style.display,
+    flexDirection: style.flexDirection
+  };
+}
+
+function getSimpleTweetComputedLayoutDirection(root: Element): 'row' | 'column' | undefined {
+  const style = readSimpleTweetComputedLayoutStyle(root);
+  if (!style || style.display !== 'flex' && style.display !== 'inline-flex') {
+    return undefined;
+  }
+  if (style.flexDirection === 'row' || style.flexDirection === 'row-reverse') {
+    return 'row';
+  }
+  if (style.flexDirection === 'column' || style.flexDirection === 'column-reverse') {
+    return 'column';
+  }
+  return undefined;
+}
+
+function getSimpleTweetComputedLayoutSize(root: Element): { widthRatio?: number; heightRatio?: number } {
+  if (!(root instanceof HTMLElement) || !root.parentElement) {
+    return {};
+  }
+  const rect = root.getBoundingClientRect();
+  const parentRect = root.parentElement.getBoundingClientRect();
+  if (!rect.width || !rect.height || !parentRect.width || !parentRect.height) {
+    return {};
+  }
+  return {
+    widthRatio: Math.round((rect.width / parentRect.width) * 10000) / 10000,
+    heightRatio: Math.round((rect.height / parentRect.height) * 10000) / 10000
+  };
 }
 
 function getSimpleTweetPhotoGroupAspectRatio(layoutRoot: Element): number | undefined {
@@ -516,6 +565,15 @@ function extractVideoPreviewItem(element: Element): SimpleTweetContentItem | nul
     aspectRatio: getPreviewAspectRatio(element),
     ...(isCondensedPreview(element) ? { layout: 'condensed' as const } : {}),
     ...(isRoundedSquarePreview(element) ? { shape: 'rounded-square' as const } : {})
+  };
+}
+
+function extractPhotoItem(element: Element, photo: TweetPhoto): SimpleTweetContentItem {
+  return {
+    type: 'photo',
+    photo,
+    ...(isCondensedPreview(element) ? { layout: 'condensed' as const } : {}),
+    ...(isCondensedPreview(element) ? { shape: 'rounded-square' as const } : {})
   };
 }
 

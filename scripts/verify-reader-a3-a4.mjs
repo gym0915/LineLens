@@ -243,11 +243,28 @@ const galleryRendered = renderArticleShell({
       id: 'gallery1',
       type: 'image-gallery',
       aspectRatio: 1.7778,
+      layout: {
+        type: 'row',
+        children: [
+          { type: 'item', itemIndex: 0 },
+          {
+            type: 'column',
+            grow: 1,
+            shrink: 1,
+            basis: '0%',
+            children: [
+              { type: 'item', itemIndex: 1 },
+              { type: 'item', itemIndex: 2 }
+            ]
+          },
+          { type: 'item', itemIndex: 3 }
+        ]
+      },
       items: [
-        { src: 'https://example.com/1.jpg', alt: 'One', href: 'https://x.com/example/media/1' },
-        { src: 'https://example.com/2.jpg', alt: 'Two', href: 'https://x.com/example/media/2' },
-        { src: 'https://example.com/3.jpg', alt: 'Three', href: 'https://x.com/example/media/3' },
-        { src: 'https://example.com/4.jpg', alt: 'Four', href: 'https://x.com/example/media/4' }
+        { src: 'https://example.com/1.jpg', alt: 'One', href: 'https://x.com/example/media/1', backgroundSize: 'cover', backgroundPosition: 'center center', objectFit: 'cover' },
+        { src: 'https://example.com/2.jpg', alt: 'Two', href: 'https://x.com/example/media/2', backgroundSize: 'cover', backgroundPosition: 'center center', objectFit: 'cover' },
+        { src: 'https://example.com/3.jpg', alt: 'Three', href: 'https://x.com/example/media/3', backgroundSize: 'cover', backgroundPosition: 'center center', objectFit: 'cover' },
+        { src: 'https://example.com/4.jpg', alt: 'Four', href: 'https://x.com/example/media/4', backgroundSize: 'cover', backgroundPosition: 'center center', objectFit: 'cover' }
       ]
     }
   ]
@@ -262,6 +279,12 @@ assert(galleryItems.length === 4, 'image-gallery should render every item');
 assert(galleryItems[0].tagName === 'A', 'image-gallery items with href should render as anchors');
 assert(galleryItems[0].attributes.href === 'https://x.com/example/media/1', 'image-gallery item should preserve href');
 assert(findByClass(galleryItems[0], 'reader-image-gallery-image')?.tagName === 'IMG', 'image-gallery item should render an image');
+assert(findByClass(galleryItems[0], 'reader-image-gallery-background')?.style.backgroundImage === 'url("https://example.com/1.jpg")', 'image-gallery should render a tweetPhoto-style background layer');
+assert(findByClass(galleryItems[0], 'reader-image-gallery-background')?.style.backgroundSize === 'cover', 'image-gallery should preserve source crop mode');
+const galleryLayoutNodes = galleryElement.querySelectorAll('.reader-image-gallery-node');
+assert(galleryLayoutNodes.some((node) => node.dataset.layoutType === 'row'), 'image-gallery should render layout rows');
+assert(galleryLayoutNodes.some((node) => node.dataset.layoutType === 'column' && node.style.flexBasis === '0%'), 'image-gallery should render layout columns with flex sizing');
+assert(galleryItems[2].dataset.itemIndex === '2', 'image-gallery layout should address items by source index');
 const codeRendered = renderArticleShell({
   ...mediaArticle,
   blocks: [{ id: 'code1', type: 'code', language: 'rust', text: 'pub struct AgentLoop {\\n  config: AppConfig, // 运行配置\\n}' }]
@@ -526,6 +549,8 @@ for (const token of [
   assert(css.includes(token), `missing visual token ${token}`);
 }
 assert(css.includes('aspect-ratio: var(--reader-media-aspect-ratio)'), 'reader image should use extracted aspect ratio');
+assert(css.includes('reader-image-gallery-node'), 'reader image gallery should support recursive layout nodes');
+assert(css.includes('reader-image-gallery-background'), 'reader image gallery should use tweetPhoto-style background rendering');
 assert(!css.includes('height: 230px'), 'reader image should not force a fixed media height');
 assert(css.includes('object-fit: contain'), 'reader image should preserve the complete source image');
 assert(css.includes('.reader-article a'), 'all anchors inside the reader should inherit focus color');

@@ -79,7 +79,8 @@
     grid-template-columns: 76px minmax(0, 1fr);
   }
 
-  .reader-simple-tweet-condensed-media .reader-simple-tweet-media {
+  .reader-simple-tweet-condensed-media .reader-simple-tweet-media,
+  .reader-simple-tweet-condensed-media .reader-simple-tweet-photo-grid {
     width: 76px;
     min-height: 76px;
   }
