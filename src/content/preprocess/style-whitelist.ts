@@ -2,7 +2,11 @@ import type { StyleWhitelistConfig } from '../../shared/reader-config.js';
 
 export type StyleWhitelistContext = {
   isLink: boolean;
+  isInlineEmphasis: boolean;
   isPreformatted: boolean;
+  isCodeLike: boolean;
+  isReadableText: boolean;
+  isTableLike: boolean;
   matchesCustomColorSelector: boolean;
 };
 
@@ -11,6 +15,33 @@ export type StylePropertyContext = StyleWhitelistContext & {
 };
 
 const EMPHASIS_STYLE_PROPS = new Set(['font-weight', 'font-style', 'text-decoration']);
+const READABLE_TEXT_STYLE_PROPS = new Set(['color', 'font-size', 'line-height', 'text-align', 'font-style', 'font-weight']);
+const CODE_STYLE_PROPS = new Set([
+  'background',
+  'background-color',
+  'color',
+  'font-family',
+  'font-size',
+  'font-style',
+  'font-weight',
+  'line-height',
+  'tab-size',
+  'white-space'
+]);
+const TABLE_STYLE_PROPS = new Set([
+  'background',
+  'background-color',
+  'border',
+  'border-color',
+  'border-style',
+  'border-width',
+  'color',
+  'font-size',
+  'font-style',
+  'font-weight',
+  'line-height',
+  'text-align'
+]);
 
 export function applyStyleWhitelistToTree(root: Element, config: StyleWhitelistConfig): void {
   for (const element of [root, ...Array.from(root.querySelectorAll('*'))]) {
@@ -63,8 +94,24 @@ export function shouldPreserveStyleProperty(
     const preserveColorFor = config.preserveColorFor ?? [];
     return (
       (context.isLink && preserveColorFor.includes('link')) ||
-      (context.matchesCustomColorSelector && preserveColorFor.includes('custom-selector'))
+      (context.isInlineEmphasis && preserveColorFor.includes('inline-emphasis')) ||
+      (context.matchesCustomColorSelector && preserveColorFor.includes('custom-selector')) ||
+      context.isReadableText ||
+      context.isCodeLike ||
+      context.isTableLike
     );
+  }
+
+  if (context.isCodeLike && CODE_STYLE_PROPS.has(normalizedProperty)) {
+    return true;
+  }
+
+  if (context.isTableLike && TABLE_STYLE_PROPS.has(normalizedProperty)) {
+    return true;
+  }
+
+  if (context.isReadableText && READABLE_TEXT_STYLE_PROPS.has(normalizedProperty)) {
+    return true;
   }
 
   if (normalizedProperty === 'white-space') {
@@ -84,7 +131,11 @@ export function shouldPreserveStyleProperty(
 function getStyleWhitelistContext(element: Element, config: StyleWhitelistConfig): StyleWhitelistContext {
   return {
     isLink: isLinkElement(element),
+    isInlineEmphasis: isInlineEmphasisElement(element),
     isPreformatted: isPreformattedElement(element),
+    isCodeLike: isCodeLikeElement(element),
+    isReadableText: isReadableTextElement(element),
+    isTableLike: isTableLikeElement(element),
     matchesCustomColorSelector: matchesCustomColorSelector(element, config)
   };
 }
@@ -96,6 +147,39 @@ function isLinkElement(element: Element): boolean {
 function isPreformattedElement(element: Element): boolean {
   const tagName = element.tagName.toUpperCase();
   return tagName === 'PRE' || tagName === 'CODE';
+}
+
+function isCodeLikeElement(element: Element): boolean {
+  return isPreformattedElement(element) || element.closest('[data-testid="markdown-code-block"], pre, code') !== null;
+}
+
+function isTableLikeElement(element: Element): boolean {
+  const tagName = element.tagName.toUpperCase();
+  return (
+    tagName === 'TABLE' ||
+    tagName === 'THEAD' ||
+    tagName === 'TBODY' ||
+    tagName === 'TR' ||
+    tagName === 'TH' ||
+    tagName === 'TD' ||
+    ['table', 'grid', 'row', 'columnheader', 'rowheader', 'cell', 'gridcell'].includes(element.getAttribute('role') ?? '') ||
+    element.closest('table, [role="table"], [role="grid"], [data-testid="markdown-table"]') !== null
+  );
+}
+
+function isReadableTextElement(element: Element): boolean {
+  const tagName = element.tagName.toUpperCase();
+  return (
+    element.hasAttribute('data-text') ||
+    element.hasAttribute('data-block') ||
+    isLinkElement(element) ||
+    ['P', 'SPAN', 'DIV', 'LI', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'BLOCKQUOTE'].includes(tagName)
+  );
+}
+
+function isInlineEmphasisElement(element: Element): boolean {
+  const tagName = element.tagName.toUpperCase();
+  return tagName === 'STRONG' || tagName === 'B' || tagName === 'EM' || tagName === 'I' || element.hasAttribute('data-text');
 }
 
 function matchesCustomColorSelector(element: Element, config: StyleWhitelistConfig): boolean {

@@ -14,7 +14,7 @@ export const weixinArticleAdapter: PlatformAdapter = {
   enabledFixes: [],
   styleWhitelist: {
     preserveProps: ['font-weight', 'font-style', 'text-align'],
-    preserveColorFor: ['link', 'inline-code', 'custom-selector'],
+    preserveColorFor: ['link', 'inline-emphasis', 'custom-selector'],
     preserveWhiteSpaceValues: ['pre', 'pre-wrap'],
     customColorSelectors: ['strong', 'em']
   }

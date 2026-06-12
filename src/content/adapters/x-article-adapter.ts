@@ -19,7 +19,7 @@ export const xArticleAdapter: PlatformAdapter = {
     {
       id: 'normalize-handwritten-ordered-list',
       enabledByDefault: true,
-      description: 'Normalize manually typed ordered-list markers into list blocks.'
+      description: 'Normalize X Draft.js list semantics while preserving manually typed ordered markers as text.'
     },
     {
       id: 'preserve-svg-emoji',
@@ -30,9 +30,20 @@ export const xArticleAdapter: PlatformAdapter = {
       id: 'capture-x-video-hls',
       enabledByDefault: true,
       description: 'Use captured X HLS metadata when embedded videos do not expose direct playable sources.'
+    },
+    {
+      id: 'preserve-x-media-layout',
+      enabledByDefault: true,
+      description: 'Preserve X media layout direction and aspect ratio before class/style sanitizing.'
     }
   ],
-  enabledFixes: ['expand-folded-tweet-text', 'normalize-handwritten-ordered-list', 'preserve-svg-emoji', 'capture-x-video-hls'],
+  enabledFixes: [
+    'expand-folded-tweet-text',
+    'normalize-handwritten-ordered-list',
+    'preserve-svg-emoji',
+    'capture-x-video-hls',
+    'preserve-x-media-layout'
+  ],
   styleWhitelist: {
     preserveProps: ['font-weight'],
     preserveColorFor: ['link'],

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import { createExtractorRegistry } from '../dist/content/extractor-registry.js';
@@ -10,37 +10,38 @@ import { validateArticle } from '../dist/shared/article-validator.js';
 import { normalizeText } from '../dist/shared/text.js';
 import { getXArticleIdFromUrl, isXArticleUrl } from '../dist/shared/url.js';
 
-const rootDir = resolve(import.meta.dirname, '..', '..');
+const projectRoot = resolve(import.meta.dirname, '..');
+const workspaceRoot = findWorkspaceRoot(projectRoot);
 const detailSnapshot = readFileSync(
-  resolve(rootDir, 'assets/x-article-detail.html'),
+  resolve(workspaceRoot, 'assets/x-article-detail.html'),
   'utf8'
 );
 const detail2Snapshot = readFileSync(
-  resolve(rootDir, 'assets/x-article-detail2.html'),
+  resolve(workspaceRoot, 'assets/x-article-detail2.html'),
   'utf8'
 );
 const statusSnapshot = readFileSync(
-  resolve(rootDir, 'assets/x-article-status.html'),
+  resolve(workspaceRoot, 'assets/x-article-status.html'),
   'utf8'
 );
 const mainSnapshot = readFileSync(
-  resolve(rootDir, 'assets/x-article-main.html'),
+  resolve(workspaceRoot, 'assets/x-article-main.html'),
   'utf8'
 );
 const picTweetSnapshot = readFileSync(
-  resolve(rootDir, 'assets/x-article-pic-tweet.html'),
+  resolve(workspaceRoot, 'assets/x-article-pic-tweet.html'),
   'utf8'
 );
 const videoGifSnapshot = readFileSync(
-  resolve(rootDir, 'assets/x-article-video-gif.html'),
+  resolve(workspaceRoot, 'assets/x-article-video-gif.html'),
   'utf8'
 );
 const codeBlockSnapshot = readFileSync(
-  resolve(rootDir, 'assets/x-article-codeblock.html'),
+  resolve(workspaceRoot, 'assets/x-article-codeblock.html'),
   'utf8'
 );
 const imageGridSnapshot = readFileSync(
-  resolve(rootDir, 'assets/x-article-image-grid.html'),
+  resolve(workspaceRoot, 'assets/x-article-image-grid.html'),
   'utf8'
 );
 const completeDomLinkBlock = `<div class="longform-unstyled-narrow" data-block="true" data-editor="2vhgc" data-offset-key="5upd3-0-0"><div data-offset-key="5upd3-0-0" class="public-DraftStyleDefault-block public-DraftStyleDefault-ltr"><div class="css-175oi2r r-1loqt21 r-1471scf r-o7ynqc r-6416eg r-1ny4l3l"><a href="https://kvcache.ai/tools/kv-cache-calculator/" dir="ltr" rel="noopener noreferrer nofollow" target="_blank" role="link" class="css-146c3p1 r-bcqeeo r-1ttztb7 r-qvutc0 r-37j5jr r-1inkyih r-rjixqe r-16dba41 r-1ddef8g r-tjvw6i r-1loqt21" style="color: rgb(15, 20, 25);"><span data-offset-key="5upd3-0-0"><span data-text="true">https://kvcache.ai/tools/kv-cache-calculator/</span></span></a></div></div></div>`;
@@ -178,23 +179,29 @@ assert.deepEqual(extractSvgEmojiHeadingFixture(svgEmojiHeadingBlock), {
 });
 
 const modularExtractorSource = readFileSync(
-  resolve(rootDir, 'LineLens/src/content/extractors/x/article-extractor.ts'),
+  resolve(projectRoot, 'src/content/extractors/x/article-extractor.ts'),
   'utf8'
 );
-const liveExtractorSource = readFileSync(resolve(rootDir, 'LineLens/src/content/index.ts'), 'utf8');
-const articleModelSource = readFileSync(resolve(rootDir, 'LineLens/src/shared/article.ts'), 'utf8');
-const readerRendererSource = readFileSync(resolve(rootDir, 'LineLens/src/reader/block-renderer.ts'), 'utf8');
+const liveExtractorSource = readFileSync(resolve(projectRoot, 'src/content/index.ts'), 'utf8');
+const articleModelSource = readFileSync(resolve(projectRoot, 'src/shared/article.ts'), 'utf8');
+const readerRendererSource = readFileSync(resolve(projectRoot, 'src/reader/block-renderer.ts'), 'utf8');
+const cleanTreeBlockConverterSource = readFileSync(resolve(projectRoot, 'src/content/preprocess/clean-tree-block-converter.ts'), 'utf8');
+const platformFixesSource = readFileSync(resolve(projectRoot, 'src/content/preprocess/apply-platform-fixes.ts'), 'utf8');
 for (const source of [modularExtractorSource, liveExtractorSource]) {
   assert.match(source, /X_CANONICAL_ORIGIN/, 'extractor should use a dedicated X canonical origin constant');
   assert.match(source, /function getListKind/, 'extractor should detect Draft.js list items and preserve list kind');
   assert.match(source, /function extractHandwrittenOrderedListItem/, 'extractor should normalize handwritten ordered list markers');
-  assert.match(source, /getHandwrittenOrderedListMarker/, 'extractor should strip handwritten ordered list markers from item text');
+  assert.match(source, /getHandwrittenOrderedListMarker/, 'extractor should detect handwritten ordered list markers');
+  assert.match(source, /annotations: extracted\.annotations/, 'extractor should preserve handwritten ordered list marker annotations');
+  assert.doesNotMatch(source, /slice\(marker\.length\)/, 'extractor should keep handwritten ordered list markers in item text');
+  assert.doesNotMatch(source, /function shiftAnnotations/, 'extractor should not shift annotations after stripping handwritten markers');
   assert.match(source, /\[ivxlcdm\]/, 'extractor should recognize handwritten roman numeral list markers');
   assert.match(source, /[一二三四五六七八九十百千]/, 'extractor should recognize handwritten Chinese numeral list markers');
   assert.match(source, /hasNonTextContent/, 'handwritten list detection should skip media, code, tweets, and link-like rich blocks');
   assert.match(source, /flushPendingList/, 'extractor should group consecutive list items');
   assert.match(source, /function extractCoverImage/, 'extractor should have dedicated cover extraction');
   assert.match(source, /findImageBeforeTitle/, 'cover extraction should be constrained to images before the title');
+  assert.match(source, /image\.closest\('a\[href\]'\)\?\.getAttribute\('href'\)/, 'cover image extraction should preserve the wrapping media href');
   assert.match(source, /function isHeadingBlock/, 'extractor should preserve explicit X heading tags');
   assert.match(source, /function getHeadingLevel/, 'extractor should preserve explicit X heading levels');
   assert.match(source, /function extractTextWithAnnotations/, 'extractor should preserve bold text annotations');
@@ -225,6 +232,14 @@ for (const source of [modularExtractorSource, liveExtractorSource]) {
   assert.match(source, /function getSimpleTweetHref/, 'simple tweets should use a dedicated href extractor');
   assert.match(source, /function extractSimpleTweetImageCard/, 'simple tweets should parse image-card tweets without article covers');
   assert.match(source, /function extractImageGalleryFromElement/, 'extractor should parse X article image grid blocks');
+  assert.match(source, /function getImageGalleryLayout/, 'extractor should parse nested image gallery layouts');
+  assert.match(source, /function buildImageGalleryLayoutNode/, 'image gallery layout parsing should walk component-internal DOM structure');
+  assert.match(source, /function getGalleryFlexMetrics/, 'image gallery layout parsing should preserve component flex sizing');
+  assert.match(source, /backgroundSize/, 'image gallery items should preserve source crop mode');
+  assert.match(source, /backgroundPosition/, 'image gallery items should preserve source alignment');
+  assert.match(source, /objectFit/, 'image gallery items should preserve image fit semantics');
+  assert.match(source, /r-eqz5dr/, 'image gallery layout parsing should preserve X column flex direction');
+  assert.match(source, /r-18u37iz/, 'image gallery layout parsing should preserve X row flex direction');
   assert.match(source, /function extractGifFromElement/, 'extractor should parse GIF media inside tweetPhoto videoPlayer');
   assert.match(source, /function extractVideoFromElement/, 'extractor should parse video media inside tweetPhoto videoPlayer');
   assert.match(source, /function getCapturedVideos/, 'extractor should ask background for captured network video groups');
@@ -269,6 +284,11 @@ for (const source of [modularExtractorSource, liveExtractorSource]) {
   assert.doesNotMatch(source, /section\[data-block="true"\]\[contenteditable="false"\]/, 'image detection should not rely on contenteditable=false section blocks');
 }
 assert.match(articleModelSource, /kind\?: 'ordered' \| 'unordered'/, 'list model should include ordered/unordered kind');
+assert.match(cleanTreeBlockConverterSource, /function getOrderedListMarker/, 'clean-tree conversion should extract handwritten ordered-list markers');
+assert.match(cleanTreeBlockConverterSource, /kind === 'ordered' && markerLength > 0 \? rawText/, 'clean-tree conversion should keep handwritten ordered-list markers in item text');
+assert.doesNotMatch(platformFixesSource, /isHandwrittenOrderedListItem/, 'platform fixes should not convert handwritten ordered marker text into list blocks');
+assert.doesNotMatch(platformFixesSource, /querySelectorAll\('\[data-block="true"\]'\)[\s\S]*data-linelens-list-kind', 'ordered'/, 'platform fixes should only mark real Draft.js ordered list items');
+assert.doesNotMatch(modularExtractorSource, /legacyBlocks = await extractBlocks/, 'X article browser path should not execute legacy extraction as fallback input');
 assert.match(articleModelSource, /photos\?: TweetPhoto\[\]/, 'simple tweet model should include optional photo cards');
 assert.match(articleModelSource, /authorName\?: string/, 'simple tweet model should include dynamic author name');
 assert.match(articleModelSource, /metrics\?: TweetMetrics/, 'simple tweet model should include dynamic action metrics');
@@ -278,6 +298,9 @@ assert.match(articleModelSource, /type: 'gif'/, 'GIF model should use a dedicate
 assert.match(articleModelSource, /VideoBlock/, 'article model should include video blocks');
 assert.match(articleModelSource, /type: 'video'/, 'video model should use a dedicated block type');
 assert.match(articleModelSource, /type: 'image-gallery'/, 'article model should include image gallery blocks');
+assert.match(articleModelSource, /ImageGalleryLayoutNode/, 'image gallery model should support component-internal layout nodes');
+assert.match(articleModelSource, /backgroundSize\?: 'cover' \| 'contain' \| 'auto'/, 'image gallery model should preserve media crop mode');
+assert.match(articleModelSource, /objectPosition\?: string/, 'image gallery model should preserve media alignment');
 assert.match(articleModelSource, /sourceType\?: string/, 'video model should preserve source MIME type');
 assert.match(articleModelSource, /hls\?: \{/, 'video model should preserve HLS playback metadata');
 assert.match(articleModelSource, /audioPlaylistUrl\?: string/, 'video model should preserve separated audio playlist metadata');
@@ -288,7 +311,7 @@ assert.match(articleModelSource, /tabIndex\?: number/, 'video model should prese
 assert.match(articleModelSource, /ariaLabel\?: string/, 'video model should preserve aria-label');
 assert.match(articleModelSource, /backgroundColor\?: string/, 'GIF model should preserve media background color');
 assert.match(readerRendererSource, /renderSimpleTweetBlock\(block\)/, 'reader should render simple tweets from the complete block data');
-assert.match(readerRendererSource, /renderCodeBlock\(block\.id, block\.text, block\.language\)/, 'reader should render code blocks with dynamic language');
+assert.match(readerRendererSource, /renderCodeBlock\(block\)/, 'reader should render code blocks with dynamic language');
 assert.match(readerRendererSource, /renderGifBlock\(block\)/, 'reader should render GIF blocks');
 assert.match(readerRendererSource, /renderImageGalleryBlock\(block\)/, 'reader should render image gallery blocks');
 assert.match(readerRendererSource, /renderVideoBlock\(block\)/, 'reader should render video blocks');
@@ -511,4 +534,22 @@ function decodeHtml(value) {
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&nbsp;/g, ' ');
+}
+
+function findWorkspaceRoot(startDir) {
+  let current = startDir;
+  for (let depth = 0; depth < 8; depth += 1) {
+    if (existsSync(resolve(current, 'assets/x-article-detail.html'))) {
+      return current;
+    }
+
+    const parent = resolve(current, '..');
+    if (parent === current) {
+      break;
+    }
+
+    current = parent;
+  }
+
+  throw new Error(`Unable to locate workspace assets directory from ${startDir}`);
 }

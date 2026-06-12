@@ -29,6 +29,10 @@
   }
 
   .reader-simple-tweet-shell {
+    border-radius: 0;
+  }
+
+  .reader-simple-tweet-quoted .reader-simple-tweet-shell {
     border-radius: 16px;
   }
 
@@ -59,7 +63,41 @@
   }
 
   .reader-simple-tweet-content {
-    padding: 14px 16px 16px;
+    padding: 0;
+  }
+
+  .reader-simple-tweet-frame-compact {
+    grid-template-columns: 24px minmax(0, 1fr);
+  }
+
+  .reader-simple-tweet-frame-compact .reader-simple-tweet-avatar {
+    width: 24px;
+    height: 24px;
+  }
+
+  .reader-simple-tweet-condensed {
+    grid-template-columns: 76px minmax(0, 1fr);
+  }
+
+  .reader-simple-tweet-condensed-media .reader-simple-tweet-media,
+  .reader-simple-tweet-condensed-media .reader-simple-tweet-photo-grid {
+    width: 76px;
+    min-height: 76px;
+  }
+
+  .reader-simple-tweet-actions {
+    gap: 8px;
+    padding-top: 4px;
+    font-size: 13px;
+  }
+
+  .reader-simple-tweet-actions-primary {
+    gap: 8px;
+  }
+
+  .reader-simple-tweet-actions-secondary {
+    gap: 2px;
+    margin-left: 4px;
   }
 
   .reader-simple-tweet-title {
@@ -71,8 +109,6 @@
   }
 
   .reader-simple-tweet-actions {
-    gap: 10px;
-    padding-top: 10px;
     font-size: 14px;
   }
 

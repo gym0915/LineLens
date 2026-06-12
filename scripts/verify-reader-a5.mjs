@@ -136,6 +136,18 @@ assert(!overlay.classList.contains('is-visible'), 'hide should remove visible st
 assert(layer.activeId === null, 'hide should clear active id');
 
 const css = readReaderCss();
+assert(
+  /\.focus-unit\s*\{[\s\S]*?color: var\(--reader-text-muted\);[\s\S]*?cursor: pointer;/.test(css),
+  'focus units should default to muted text before HighlightLayer applies is-muted'
+);
+assert(
+  /\.focus-unit:hover\s*\{[\s\S]*?color: var\(--reader-text-hover\);[\s\S]*?\}/.test(css),
+  'inactive focus units should expose a hover text color'
+);
+assert(
+  /\.focus-unit\.is-active\s*\{[\s\S]*?color: var\(--reader-text-active\) !important;[\s\S]*?cursor: default;/.test(css),
+  'active focus units should use full text color and default cursor'
+);
 for (const expected of [
   '.highlight-layer',
   '.highlight-focus',
@@ -145,7 +157,14 @@ for (const expected of [
   '--reader-media-active-width',
   '--reader-card-shadow',
   '--reader-quote-border-active',
+  '.focus-unit:hover',
   '.focus-unit.is-muted:hover',
+  '.focus-unit.is-muted *',
+  '.focus-unit.is-muted:hover *',
+  '.focus-unit.is-active *',
+  'color: var(--reader-text-muted) !important',
+  'color: var(--reader-text-hover) !important',
+  'color: var(--reader-text-active) !important',
   '@media (prefers-reduced-motion: reduce)',
   '.reader-media.focus-unit.is-active',
   '.reader-media.focus-unit.is-active img',

@@ -5,7 +5,13 @@ export type Article = {
   source: ArticleSource;
   sourceUrl: string;
   canonicalUrl: string;
+  authorName?: string;
   authorHandle?: string;
+  authorAvatarUrl?: string;
+  authorVerified?: boolean;
+  publishedAt?: string;
+  publishedAtText?: string;
+  metrics?: TweetMetrics;
   title: string;
   coverImage?: ImageBlock;
   extractedAt: number;
@@ -21,6 +27,7 @@ export type ArticleBlock =
   | ListBlock
   | LinkBlock
   | CodeBlock
+  | TableBlock
   | GifBlock
   | VideoBlock
   | SimpleTweetBlock
@@ -32,6 +39,7 @@ export type HeadingBlock = {
   text: string;
   level?: 1 | 2 | 3 | 4 | 5 | 6;
   annotations?: TextAnnotation[];
+  textStyle?: TextStyle;
 };
 
 export type ParagraphBlock = {
@@ -39,6 +47,7 @@ export type ParagraphBlock = {
   type: 'paragraph';
   text: string;
   annotations?: TextAnnotation[];
+  textStyle?: TextStyle;
 };
 
 export type QuoteBlock = {
@@ -46,6 +55,7 @@ export type QuoteBlock = {
   type: 'quote';
   text: string;
   annotations?: TextAnnotation[];
+  textStyle?: TextStyle;
 };
 
 export type ImageBlock = {
@@ -59,20 +69,43 @@ export type ImageBlock = {
 
 export type ImageGalleryItem = {
   src: string;
+  displaySrc?: string;
   alt?: string;
   href?: string;
   aspectRatio?: number;
+  backgroundSize?: 'cover' | 'contain' | 'auto';
+  backgroundPosition?: string;
+  objectFit?: 'cover' | 'contain' | 'fill' | 'none' | 'scale-down';
+  objectPosition?: string;
 };
+
+export type ImageGalleryLayoutNode =
+  | {
+      type: 'item';
+      itemIndex: number;
+      grow?: number;
+      shrink?: number;
+      basis?: string;
+    }
+  | {
+      type: 'row' | 'column';
+      children: ImageGalleryLayoutNode[];
+      grow?: number;
+      shrink?: number;
+      basis?: string;
+    };
 
 export type ImageGalleryBlock = {
   id: string;
   type: 'image-gallery';
   items: ImageGalleryItem[];
   aspectRatio?: number;
+  layout?: ImageGalleryLayoutNode;
 };
 
 export type TweetPhoto = {
   src: string;
+  displaySrc?: string;
   alt?: string;
   href?: string;
 };
@@ -91,6 +124,7 @@ export type ListBlock = {
   kind?: 'ordered' | 'unordered';
   items: string[];
   itemAnnotations?: TextAnnotation[][];
+  itemTextStyles?: TextStyle[];
 };
 
 export type LinkBlock = {
@@ -106,6 +140,56 @@ export type CodeBlock = {
   type: 'code';
   language?: string;
   text: string;
+  codeStyle?: CodeBlockStyle;
+  tokens?: CodeToken[];
+};
+
+export type CodeBlockStyle = {
+  headerBackgroundColor?: string;
+  headerColor?: string;
+  copyColor?: string;
+  preBackgroundColor?: string;
+  preColor?: string;
+  codeBackgroundColor?: string;
+  codeColor?: string;
+  fontFamily?: string;
+  fontSize?: string;
+  lineHeight?: string;
+  tabSize?: string;
+};
+
+export type CodeToken = {
+  text: string;
+  color?: string;
+  fontStyle?: string;
+  fontWeight?: string;
+};
+
+export type TableBlock = {
+  id: string;
+  type: 'table';
+  rows: TableRow[];
+  columnCount?: number;
+  tableStyle?: TableStyle;
+};
+
+export type TableRow = {
+  cells: TableCell[];
+};
+
+export type TableCell = {
+  text: string;
+  header?: boolean;
+  colSpan?: number;
+  rowSpan?: number;
+  textStyle?: TextStyle;
+  backgroundColor?: string;
+  borderColor?: string;
+};
+
+export type TableStyle = {
+  backgroundColor?: string;
+  borderColor?: string;
 };
 
 export type GifBlock = {
@@ -150,17 +234,77 @@ export type VideoBlock = {
   paused?: boolean;
 };
 
-export type SimpleTweetBlock = {
-  id: string;
-  type: 'simple-tweet';
+export type SimpleTweetTextItem = {
+  type: 'text';
+  text: string;
+};
+
+export type SimpleTweetVideoItem = {
+  type: 'video';
+  video: VideoBlock;
+};
+
+export type SimpleTweetVideoPreviewItem = {
+  type: 'video-preview';
+  src: string;
+  alt?: string;
+  href?: string;
+  durationText?: string;
+  aspectRatio?: number;
+  layout?: 'condensed';
+  shape?: 'rounded-square';
+};
+
+export type SimpleTweetPhotoItem = {
+  type: 'photo';
+  photo: TweetPhoto;
+  layout?: 'condensed';
+  shape?: 'rounded-square';
+};
+
+export type SimpleTweetPhotoLayout =
+  | {
+      kind: 'photo';
+      photo: TweetPhoto;
+      widthRatio?: number;
+      heightRatio?: number;
+    }
+  | {
+      kind: 'row' | 'column';
+      children: SimpleTweetPhotoLayout[];
+      widthRatio?: number;
+      heightRatio?: number;
+    };
+
+export type SimpleTweetPhotoGroupItem = {
+  type: 'photo-group';
+  photos: TweetPhoto[];
+  layout: SimpleTweetPhotoLayout;
+  aspectRatio?: number;
+};
+
+export type SimpleTweetArticleCoverItem = {
+  type: 'article-cover';
   coverUrl: string;
   coverAlt?: string;
+  title?: string;
+  excerpt?: string;
+  href?: string;
+  authorName?: string;
+  authorHandle?: string;
+  authorAvatarUrl?: string;
+  authorVerified?: boolean;
+  publishedAt?: string;
+  publishedAtText?: string;
+  metrics?: TweetMetrics;
+};
+
+export type SimpleTweetCardData = {
   source: string;
   title: string;
   excerpt: string;
   href?: string;
-  photos?: TweetPhoto[];
-  video?: VideoBlock;
+  items: SimpleTweetContentItem[];
   authorName?: string;
   authorHandle?: string;
   authorAvatarUrl?: string;
@@ -172,7 +316,64 @@ export type SimpleTweetBlock = {
   replyToHandle?: string;
   translationSourceText?: string;
   translationActionText?: string;
+  aiGeneratedText?: string;
+};
+
+export type SimpleTweetQuotedTweetItem = {
+  type: 'quoted-tweet';
+  tweet: SimpleTweetCardData;
+};
+
+export type SimpleTweetLayoutRole =
+  | 'root'
+  | 'header'
+  | 'body'
+  | 'media'
+  | 'text'
+  | 'photo'
+  | 'video'
+  | 'actions'
+  | 'quotedTweet';
+
+export type SimpleTweetLayoutContainer = {
+  kind: 'container';
+  role: Extract<SimpleTweetLayoutRole, 'root' | 'header' | 'body' | 'media' | 'actions' | 'quotedTweet'>;
+  display?: 'block' | 'flex' | 'inline-flex' | 'grid';
+  flexDirection?: 'row' | 'row-reverse' | 'column' | 'column-reverse';
+  gridTemplateColumns?: string;
+  gapPx?: number;
+  alignItems?: string;
+  justifyContent?: string;
+  widthRatio?: number;
+  heightRatio?: number;
+  aspectRatio?: number;
+  children: SimpleTweetLayoutNode[];
+};
+
+export type SimpleTweetLayoutLeaf = {
+  kind: 'leaf';
+  role: Extract<SimpleTweetLayoutRole, 'text' | 'photo' | 'video'>;
+  contentRef: string;
+  children?: SimpleTweetLayoutNode[];
+};
+
+export type SimpleTweetLayoutNode = SimpleTweetLayoutContainer | SimpleTweetLayoutLeaf;
+
+export type SimpleTweetContentItem =
+  | SimpleTweetTextItem
+  | SimpleTweetVideoItem
+  | SimpleTweetVideoPreviewItem
+  | SimpleTweetPhotoItem
+  | SimpleTweetPhotoGroupItem
+  | SimpleTweetArticleCoverItem
+  | SimpleTweetQuotedTweetItem;
+
+export type SimpleTweetBlock = SimpleTweetCardData & {
+  id: string;
+  type: 'simple-tweet';
+  photos?: TweetPhoto[];
   metrics?: TweetMetrics;
+  layoutTree?: SimpleTweetLayoutNode;
 };
 
 export type EmbedBlock = {
@@ -190,4 +391,18 @@ export type TextAnnotation = {
   href?: string;
   target?: string;
   emojiImageUrl?: string;
+  color?: string;
+  fontSize?: string;
+  lineHeight?: string;
+  textAlign?: string;
+  fontStyle?: string;
+};
+
+export type TextStyle = {
+  color?: string;
+  fontSize?: string;
+  lineHeight?: string;
+  textAlign?: string;
+  fontStyle?: string;
+  fontWeight?: string;
 };

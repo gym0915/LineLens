@@ -11,14 +11,26 @@
     "verify:reader-a6-a7": "npm run build && node scripts/verify-reader-a6-a7.mjs",
     "verify:reader-a8-a9": "npm run build && node scripts/verify-reader-a8-a9.mjs",
     "verify:reader-m1-m2": "npm run build && node scripts/verify-reader-m1-m2.mjs",
+    "verify:video-fullscreen": "npm run build && node scripts/verify-video-fullscreen.mjs",
     "verify:m3-adapters-settings": "npm run build && node scripts/verify-m3-adapters-settings.mjs",
+    "verify:phase4": "npm run verify:phase4-pipeline-baseline && npm run verify:phase4-x-article-full",
     "verify:phase4-pipeline-baseline": "npm run build && node scripts/verify-phase4-pipeline-baseline.mjs",
+    "verify:phase4-x-article-full": "npm run build && node scripts/verify-phase4-x-article-full.mjs",
+    "verify:phase4-x-article-boundaries": "npm run build && node scripts/verify-phase4-x-article-boundaries.mjs",
+    "verify:phase4-gemini-ui-boundaries": "npm run build && node scripts/verify-phase4-gemini-ui-boundaries.mjs",
     "verify:x-article-b1-b9": "npm run build && node scripts/verify-x-article-b1-b9.mjs",
     "verify:x-article-b10-b15": "npm run build && node scripts/verify-x-article-b10-b15.mjs",
     "verify:x-article-b29": "npm run verify:x-article-b10-b15",
     "verify:x-video-b31-b39": "npm run build && node scripts/verify-x-video-b31-b39.mjs",
     "verify:x-simpletweet-video": "npm run build && node scripts/verify-x-simpletweet-video.mjs",
-    "verify:x-simpletweet-text": "npm run build && node scripts/verify-x-simpletweet-text.mjs"
+    "verify:x-simpletweet-text": "npm run build && node scripts/verify-x-simpletweet-text.mjs",
+    "verify:x-simpletweet-computed-layout": "npm run build && node scripts/verify-x-simpletweet-computed-layout.mjs",
+    "verify:x-simpletweet-computed-layout-runtime": "npm run build && node scripts/verify-x-simpletweet-computed-layout-runtime.mjs",
+    "verify:x-simpletweet-quoted-photo-layout": "npm run build && node scripts/verify-x-simpletweet-quoted-photo-layout.mjs",
+    "verify:x-simpletweet-layout-tree": "npm run build && node scripts/verify-x-simpletweet-layout-tree.mjs",
+    "verify:x-article-image-gallery": "npm run build && node scripts/verify-x-article-image-gallery.mjs",
+    "verify:x-simpletweet-flow": "npm run build && node scripts/verify-x-simpletweet-flow.mjs",
+    "verify:x-article-dynamic-styles": "npm run build && node scripts/verify-x-article-dynamic-styles.mjs"
   },
   "devDependencies": {
     "typescript": "^5.5.4"

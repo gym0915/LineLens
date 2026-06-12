@@ -8,6 +8,7 @@ import {
 import {
   DEFAULT_SETTINGS,
   LINE_LENS_SETTINGS_STORAGE_KEY,
+  loadSettingsFromLocalStorage,
   mergePlatformAdapterConfig,
   mergeSettings,
   normalizeSettings
@@ -54,13 +55,13 @@ assert.equal(mergedAdapter.rootSelector, 'article[data-custom-root]', 'user conf
 assert.deepEqual(mergedAdapter.enabledFixes, ['normalize-handwritten-ordered-list'], 'user config should override enabled fixes declaratively');
 assert.deepEqual(
   mergedAdapter.styleWhitelist.preserveProps,
-  ['font-weight', 'font-style'],
-  'style whitelist should merge and dedupe preserve props'
+  ['font-style'],
+  'style whitelist arrays should replace defaults when user config provides the field'
 );
 assert.deepEqual(
   mergedAdapter.styleWhitelist.customColorSelectors,
   ['.rich_media_content strong'],
-  'style whitelist should accept declarative custom selectors'
+  'style whitelist should accept declarative custom selectors without hardcoded defaults'
 );
 
 const mergedSettings = mergeSettings(DEFAULT_SETTINGS, {
@@ -104,4 +105,58 @@ assert.equal(
   'settings should not allow arbitrary scripts'
 );
 
+const localStorageSettings = loadSettingsFromLocalStorage(fakeStorage({
+  [LINE_LENS_SETTINGS_STORAGE_KEY]: JSON.stringify({
+    schemaVersion: 1,
+    platformAdapters: {
+      'x.article': {
+        styleWhitelist: {
+          preserveProps: ['font-style'],
+          preserveColorFor: ['inline-emphasis']
+        }
+      },
+      'weixin.article': {
+        enabled: true,
+        styleWhitelist: {
+          preserveProps: ['letter-spacing'],
+          customColorSelectors: ['.custom-rich-text strong']
+        }
+      }
+    }
+  })
+}));
+assert.deepEqual(
+  localStorageSettings.platformAdapters['x.article'].styleWhitelist.preserveProps,
+  ['font-style'],
+  'localStorage settings should replace X-specific style whitelist fields'
+);
+assert.deepEqual(
+  localStorageSettings.platformAdapters['x.article'].styleWhitelist.preserveColorFor,
+  ['inline-emphasis'],
+  'localStorage settings should replace X-specific color whitelist fields'
+);
+assert.equal(
+  localStorageSettings.platformAdapters['weixin.article'].enabled,
+  true,
+  'localStorage settings should apply platform-specific adapter flags'
+);
+assert.deepEqual(
+  localStorageSettings.platformAdapters['weixin.article'].styleWhitelist.customColorSelectors,
+  ['.custom-rich-text strong'],
+  'localStorage settings should replace Weixin-specific style whitelist fields independently'
+);
+assert.equal(
+  loadSettingsFromLocalStorage(fakeStorage({ [LINE_LENS_SETTINGS_STORAGE_KEY]: '{' })).platformAdapters['x.article'].rootSelector,
+  xArticleAdapter.rootSelector,
+  'invalid localStorage settings should fall back to defaults'
+);
+
 console.log('M3 adapter and settings verification passed');
+
+function fakeStorage(values) {
+  return {
+    getItem(key) {
+      return Object.hasOwn(values, key) ? values[key] : null;
+    }
+  };
+}

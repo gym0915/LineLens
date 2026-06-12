@@ -1,4 +1,18 @@
-import type { Article, ArticleBlock, GifBlock, ImageBlock, ImageGalleryBlock, TextAnnotation, VideoBlock } from '../../../shared/article.js';
+import type {
+  Article,
+  ArticleBlock,
+  CodeBlockStyle,
+  CodeToken,
+  GifBlock,
+  ImageBlock,
+  ImageGalleryBlock,
+  ImageGalleryLayoutNode,
+  TableBlock,
+  TextAnnotation,
+  TextStyle,
+  TweetMetrics,
+  VideoBlock
+} from '../../../shared/article.js';
 import { validateArticle } from '../../../shared/article-validator.js';
 import type { ArticleExtractor, ExtractorContext } from '../../../shared/extractor-types.js';
 import type { CapturedXVideo } from '../../../shared/messages.js';
@@ -9,8 +23,10 @@ import {
   getXArticleIdFromUrl,
   isXArticleUrl
 } from '../../../shared/url.js';
+import { loadSettingsFromLocalStorage } from '../../../shared/settings.js';
 import { detectXArticleDom } from './article-detector.js';
 import { X_ARTICLE_SELECTORS } from './article-selectors.js';
+import * as simpleTweetModel from './simple-tweet.js';
 import { xArticleAdapter } from '../../adapters/x-article-adapter.js';
 import { buildCleanTreePrimaryBlocks } from '../../preprocess/clean-tree-main-path.js';
 
@@ -53,22 +69,22 @@ export const xArticleExtractor: ArticleExtractor = {
       throw new Error('article_not_ready');
     }
 
-    const capturedVideos = await getCapturedVideos();
-    const legacyBlocks = await extractBlocks(longform, articleId, capturedVideos);
+    const adapter = loadSettingsFromLocalStorage().platformAdapters[xArticleAdapter.id] ?? xArticleAdapter;
     const blocks = buildCleanTreePrimaryBlocks({
       sourceRoot: longform,
-      adapter: xArticleAdapter,
+      adapter,
       sourceUrl: context.url.toString(),
-      debugId: `x.article:${articleId}`,
-      legacyBlocks
+      debugId: `x.article:${articleId}`
     }).blocks;
     const coverImage = extractCoverImage(readView, articleId);
+    const articleMeta = extractArticleHeaderMetadata(readView, longform);
     const article: Article = {
       id: articleId,
       source: 'x-article',
       sourceUrl: context.url.toString(),
       canonicalUrl: `${X_CANONICAL_ORIGIN}/${getXArticleAuthorHandleFromUrl(context.url) ?? 'i'}/article/${articleId}`,
       authorHandle: getXArticleAuthorHandleFromUrl(context.url),
+      ...articleMeta,
       title,
       coverImage,
       extractedAt: context.now?.() ?? Date.now(),
@@ -90,10 +106,77 @@ function getRoot(context: ExtractorContext): ParentNode | null {
   return context.root ?? context.document ?? null;
 }
 
+function extractArticleHeaderMetadata(readView: Element, longform: Element): Partial<Article> {
+  const titleElement = readView.querySelector(X_ARTICLE_SELECTORS.title);
+  const authorRoot = findHeaderElementAfterTitle(readView, longform, '[itemprop="author"]', titleElement);
+  const metricsGroup = findHeaderElementAfterTitle(readView, longform, '[role="group"][aria-label]', titleElement);
+  const additionalName = normalizeText(authorRoot?.querySelector('meta[itemprop="additionalName"]')?.getAttribute('content') ?? '');
+  const authorHandle = additionalName ? `@${additionalName.replace(/^@/, '')}` : undefined;
+  const authorName = normalizeText(authorRoot?.querySelector('meta[itemprop="name"]')?.getAttribute('content') ?? '');
+  const authorAvatar =
+    authorRoot?.querySelector<HTMLImageElement>('img')?.currentSrc ||
+    authorRoot?.querySelector<HTMLImageElement>('img')?.src ||
+    authorRoot?.querySelector('meta[itemprop="image"]')?.getAttribute('content') ||
+    '';
+  const time = authorRoot?.parentElement?.querySelector<HTMLTimeElement>('time') ?? readView.querySelector<HTMLTimeElement>('time');
+  const metrics = extractMetricsFromGroup(metricsGroup);
+
+  return {
+    ...(authorName ? { authorName } : {}),
+    ...(authorHandle ? { authorHandle } : {}),
+    ...(authorAvatar ? { authorAvatarUrl: authorAvatar } : {}),
+    ...(authorRoot?.querySelector('[data-testid="icon-verified"], [aria-label="认证账号"], [aria-label="Verified account"]')
+      ? { authorVerified: true }
+      : {}),
+    ...(time?.dateTime ? { publishedAt: time.dateTime } : {}),
+    ...(time?.textContent ? { publishedAtText: normalizeText(time.textContent) } : {}),
+    ...(hasTweetMetrics(metrics) ? { metrics } : {})
+  };
+}
+
+function findHeaderElementAfterTitle(readView: Element, longform: Element, selector: string, titleElement: Element | null): Element | null {
+  const candidates = Array.from(readView.querySelectorAll(selector)).filter((candidate) => !longform.contains(candidate));
+  if (!titleElement) {
+    return candidates[0] ?? null;
+  }
+  return candidates.find((candidate) => Boolean(titleElement.compareDocumentPosition(candidate) & Node.DOCUMENT_POSITION_FOLLOWING)) ?? null;
+}
+
+function extractMetricsFromGroup(group: Element | null): TweetMetrics {
+  if (!group) {
+    return {};
+  }
+
+  return {
+    replies: extractMetricValueFromGroup(group, 'reply'),
+    reposts: extractMetricValueFromGroup(group, 'retweet'),
+    likes: extractMetricValueFromGroup(group, 'like'),
+    views:
+      normalizeText(group.querySelector('a[href*="/analytics"]')?.textContent ?? '') ||
+      parseXMetricLabel(group.getAttribute('aria-label') ?? '', /(?:查看|观看|view)/i),
+    bookmarks: extractMetricValueFromGroup(group, 'bookmark')
+  };
+}
+
+function extractMetricValueFromGroup(group: Element, testId: string): string | undefined {
+  const action = group.querySelector(`[data-testid="${testId}"]`);
+  const value = normalizeText(action?.textContent ?? '') || parseXMetricLabel(action?.getAttribute('aria-label') ?? '');
+  return value || undefined;
+}
+
+function parseXMetricLabel(label: string, hint?: RegExp): string {
+  const text = normalizeText(label);
+  if (hint && !hint.test(text)) {
+    return '';
+  }
+  return text.match(/[\d,.]+(?:\.\d+)?(?:万|[KMB])?/i)?.[0] ?? '';
+}
+
 async function extractBlocks(longform: Element, articleId: string, capturedVideos: CapturedXVideo[]): Promise<ArticleBlock[]> {
   const blocks: ArticleBlock[] = [];
   let pendingListItems: string[] = [];
   let pendingListItemAnnotations: TextAnnotation[][] = [];
+  let pendingListItemTextStyles: TextStyle[] = [];
   let pendingListKind: 'ordered' | 'unordered' = 'unordered';
 
   function flushPendingList() {
@@ -110,17 +193,21 @@ async function extractBlocks(longform: Element, articleId: string, capturedVideo
     if (pendingListItemAnnotations.some((annotations) => annotations.length > 0)) {
       listBlock.itemAnnotations = pendingListItemAnnotations;
     }
+    if (pendingListItemTextStyles.some((style) => Object.keys(style).length > 0)) {
+      listBlock.itemTextStyles = pendingListItemTextStyles;
+    }
 
     blocks.push(listBlock);
     pendingListItems = [];
     pendingListItemAnnotations = [];
+    pendingListItemTextStyles = [];
     pendingListKind = 'unordered';
   }
 
   for (const block of Array.from(longform.querySelectorAll(X_ARTICLE_SELECTORS.block))) {
     const listKind = getListKind(block);
     if (listKind) {
-      const extracted = extractTextWithAnnotations(block);
+      const extracted = extractTextWithAnnotations(block, { preserveLineBreaks: true });
       if (extracted.text) {
         if (pendingListItems.length === 0) {
           pendingListKind = listKind;
@@ -130,6 +217,7 @@ async function extractBlocks(longform: Element, articleId: string, capturedVideo
         }
         pendingListItems.push(extracted.text);
         pendingListItemAnnotations.push(extracted.annotations);
+        pendingListItemTextStyles.push(extractElementTextStyle(block));
       }
       continue;
     }
@@ -144,6 +232,7 @@ async function extractBlocks(longform: Element, articleId: string, capturedVideo
       }
       pendingListItems.push(handwrittenOrderedListItem.text);
       pendingListItemAnnotations.push(handwrittenOrderedListItem.annotations);
+      pendingListItemTextStyles.push(extractElementTextStyle(block));
       continue;
     }
 
@@ -157,6 +246,16 @@ async function extractBlocks(longform: Element, articleId: string, capturedVideo
   flushPendingList();
 
   return blocks;
+}
+
+// Debug/reporting helper for comparing legacy extraction against clean-tree output
+// on the same longform root without changing the production extractor contract.
+export async function extractXArticleLegacyBlocksForDebug(params: {
+  longform: Element;
+  articleId: string;
+  capturedVideos?: CapturedXVideo[];
+}): Promise<ArticleBlock[]> {
+  return extractBlocks(params.longform, params.articleId, params.capturedVideos ?? []);
 }
 
 function getListKind(block: Element): 'ordered' | 'unordered' | null {
@@ -184,35 +283,25 @@ function extractHandwrittenOrderedListItem(block: Element): { text: string; anno
     return null;
   }
 
-  const extracted = extractTextWithAnnotations(block);
+  const extracted = extractTextWithAnnotations(block, { preserveLineBreaks: true });
   const marker = getHandwrittenOrderedListMarker(extracted.text);
   if (!marker) {
     return null;
   }
 
-  const text = extracted.text.slice(marker.length).trim();
+  const text = extracted.text.trim();
   if (!text) {
     return null;
   }
 
   return {
     text,
-    annotations: shiftAnnotations(extracted.annotations, marker.length, text.length)
+    annotations: extracted.annotations
   };
 }
 
 function getHandwrittenOrderedListMarker(text: string): string | null {
   return text.match(/^\s*(?:(?:\d+|[ivxlcdm]+)\s*[.)、:：]|[一二三四五六七八九十百千]+\s*[、.．:：])\s*/i)?.[0] ?? null;
-}
-
-function shiftAnnotations(annotations: TextAnnotation[], markerLength: number, textLength: number): TextAnnotation[] {
-  return annotations
-    .map((annotation) => ({
-      ...annotation,
-      startOffset: Math.max(0, annotation.startOffset - markerLength),
-      endOffset: Math.min(textLength, annotation.endOffset - markerLength)
-    }))
-    .filter((annotation) => annotation.endOffset > annotation.startOffset);
 }
 
 function hasNonTextContent(block: Element): boolean {
@@ -233,6 +322,7 @@ async function extractBlock(block: Element, articleId: string, index: number, ca
           id: blockId(articleId, index),
           type: 'quote',
           text: extracted.text,
+          textStyle: extractElementTextStyle(block),
           ...(extracted.annotations.length > 0 ? { annotations: extracted.annotations } : {})
         }
       : null;
@@ -243,7 +333,7 @@ async function extractBlock(block: Element, articleId: string, index: number, ca
     return nonTextBlock;
   }
 
-  const extracted = extractTextWithAnnotations(block);
+  const extracted = extractTextWithAnnotations(block, { preserveLineBreaks: true });
   if (!extracted.text) {
     return null;
   }
@@ -254,6 +344,7 @@ async function extractBlock(block: Element, articleId: string, index: number, ca
       type: 'heading',
       text: extracted.text,
       level: getHeadingLevel(block),
+      textStyle: extractElementTextStyle(block),
       ...(extracted.annotations.length > 0 ? { annotations: extracted.annotations } : {})
     };
   }
@@ -261,7 +352,8 @@ async function extractBlock(block: Element, articleId: string, index: number, ca
   const textBlock: ArticleBlock = {
     id: blockId(articleId, index),
     type: 'paragraph',
-    text: extracted.text
+    text: extracted.text,
+    textStyle: extractElementTextStyle(block)
   };
   if (textBlock.type === 'paragraph' && extracted.annotations.length > 0) {
     textBlock.annotations = extracted.annotations;
@@ -306,6 +398,11 @@ async function extractNonTextBlock(block: Element, articleId: string, index: num
     return link;
   }
 
+  const table = extractTableBlock(block, blockId(articleId, index));
+  if (table) {
+    return table;
+  }
+
   const code = extractCodeBlock(block, blockId(articleId, index));
   if (code) {
     return code;
@@ -340,12 +437,198 @@ function extractCodeBlock(block: Element, id: string): ArticleBlock | null {
     id,
     type: 'code',
     text,
-    ...(language ? { language } : {})
+    ...(language ? { language } : {}),
+    codeStyle: extractCodeBlockStyle(codeRoot, pre, code),
+    tokens: extractCodeTokens(code)
+  };
+}
+
+function extractTableBlock(block: Element, id: string): TableBlock | null {
+  const tableRoot = findTableRoot(block);
+  if (!tableRoot) {
+    return null;
+  }
+
+  const rowElements = getTableRowElements(tableRoot);
+  const rows = rowElements
+    .map((row) => ({
+      cells: getTableCellElements(row).map((cell) => ({
+        text: normalizePreWrapText(getElementDisplayText(cell, true)),
+        ...(isTableHeaderCell(cell) ? { header: true } : {}),
+        ...getTableSpanAttributes(cell),
+        textStyle: extractElementTextStyle(cell),
+        ...extractTableCellSurface(cell)
+      }))
+    }))
+    .filter((row) => row.cells.some((cell) => cell.text));
+
+  if (rows.length === 0) {
+    return null;
+  }
+
+  return {
+    id,
+    type: 'table',
+    rows,
+    columnCount: Math.max(...rows.map((row) => row.cells.reduce((total, cell) => total + (cell.colSpan ?? 1), 0))),
+    tableStyle: extractTableSurface(tableRoot)
   };
 }
 
 function normalizeCodeLanguage(language: string): string {
   return normalizeText(language).replace(/^language-/, '').toLowerCase();
+}
+
+function extractCodeBlockStyle(codeRoot: Element, pre: Element | null, code: Element | null): CodeBlockStyle {
+  const header = codeRoot.querySelector(':scope > div:first-child');
+  const copyIcon = codeRoot.querySelector('button svg, button [style*="color"]');
+  return compactStyle({
+    headerBackgroundColor: getStyleValue(header, 'backgroundColor'),
+    headerColor: getStyleValue(header, 'color'),
+    copyColor: getStyleValue(copyIcon, 'color'),
+    preBackgroundColor: getStyleValue(pre, 'backgroundColor'),
+    preColor: getStyleValue(pre, 'color'),
+    codeBackgroundColor: getStyleValue(code, 'backgroundColor'),
+    codeColor: getStyleValue(code, 'color'),
+    fontFamily: getStyleValue(code, 'fontFamily') || getStyleValue(pre, 'fontFamily'),
+    fontSize: getStyleValue(code, 'fontSize') || getStyleValue(pre, 'fontSize'),
+    lineHeight: getStyleValue(code, 'lineHeight') || getStyleValue(pre, 'lineHeight'),
+    tabSize: getStyleValue(code, 'tabSize') || getStyleValue(pre, 'tabSize')
+  });
+}
+
+function extractCodeTokens(code: Element | null): CodeToken[] | undefined {
+  if (!code) {
+    return undefined;
+  }
+
+  const tokens: CodeToken[] = [];
+  collectCodeTokens(code, tokens, extractCodeTokenStyle(code));
+  return tokens.length > 0 ? tokens : undefined;
+}
+
+function collectCodeTokens(node: Node, tokens: CodeToken[], inheritedStyle: Omit<CodeToken, 'text'> = {}): void {
+  if (node.nodeType === Node.TEXT_NODE) {
+    const text = node.textContent ?? '';
+    if (text) {
+      tokens.push({ text, ...inheritedStyle });
+    }
+    return;
+  }
+
+  if (!(node instanceof Element)) {
+    return;
+  }
+
+  const style = { ...inheritedStyle, ...extractCodeTokenStyle(node) };
+  for (const child of Array.from(node.childNodes)) {
+    collectCodeTokens(child, tokens, style);
+  }
+}
+
+function extractCodeTokenStyle(element: Element | null): Omit<CodeToken, 'text'> {
+  return compactStyle({
+    color: getStyleValue(element, 'color'),
+    fontStyle: getStyleValue(element, 'fontStyle'),
+    fontWeight: getStyleValue(element, 'fontWeight')
+  });
+}
+
+function findTableRoot(block: Element): Element | null {
+  if (block.matches('table, [role="table"], [role="grid"]')) {
+    return block;
+  }
+  return block.querySelector('table, [role="table"], [role="grid"], [data-testid="markdown-table"]');
+}
+
+function getTableRowElements(tableRoot: Element): Element[] {
+  const rows = Array.from(tableRoot.querySelectorAll(':scope tr, :scope [role="row"]'));
+  if (rows.length > 0) {
+    return rows;
+  }
+
+  const directRows = Array.from(tableRoot.children).filter((child) => getTableCellElements(child).length > 0);
+  return directRows.length > 0 ? directRows : [tableRoot];
+}
+
+function getTableCellElements(row: Element): Element[] {
+  const cells = Array.from(
+    row.querySelectorAll(':scope > th, :scope > td, :scope > [role="columnheader"], :scope > [role="rowheader"], :scope > [role="cell"], :scope > [role="gridcell"]')
+  );
+  if (cells.length > 0) {
+    return cells;
+  }
+  return Array.from(row.children).filter((child) => normalizeText(child.textContent ?? '') !== '');
+}
+
+function isTableHeaderCell(cell: Element): boolean {
+  const role = cell.getAttribute('role');
+  return cell.tagName.toUpperCase() === 'TH' || role === 'columnheader' || role === 'rowheader';
+}
+
+function getTableSpanAttributes(cell: Element): Pick<TableBlock['rows'][number]['cells'][number], 'colSpan' | 'rowSpan'> {
+  const colSpan = Number(cell.getAttribute('colspan') ?? cell.getAttribute('aria-colspan') ?? '');
+  const rowSpan = Number(cell.getAttribute('rowspan') ?? cell.getAttribute('aria-rowspan') ?? '');
+  return {
+    ...(Number.isFinite(colSpan) && colSpan > 1 ? { colSpan } : {}),
+    ...(Number.isFinite(rowSpan) && rowSpan > 1 ? { rowSpan } : {})
+  };
+}
+
+function extractTableSurface(element: Element): TableBlock['tableStyle'] {
+  return compactStyle({
+    backgroundColor: getStyleValue(element, 'backgroundColor'),
+    borderColor: getStyleValue(element, 'borderColor')
+  });
+}
+
+function extractTableCellSurface(element: Element): Pick<TableBlock['rows'][number]['cells'][number], 'backgroundColor' | 'borderColor'> {
+  return compactStyle({
+    backgroundColor: getStyleValue(element, 'backgroundColor'),
+    borderColor: getStyleValue(element, 'borderColor')
+  });
+}
+
+function extractElementTextStyle(element: Element | null): TextStyle {
+  return compactStyle({
+    color: getStyleValue(element, 'color'),
+    fontSize: getStyleValue(element, 'fontSize'),
+    lineHeight: getStyleValue(element, 'lineHeight'),
+    textAlign: getStyleValue(element, 'textAlign'),
+    fontStyle: getStyleValue(element, 'fontStyle'),
+    fontWeight: getStyleValue(element, 'fontWeight')
+  });
+}
+
+function extractTextAnnotationStyle(element: Element | null): Pick<TextAnnotation, 'color' | 'fontSize' | 'lineHeight' | 'textAlign' | 'fontStyle'> {
+  return compactStyle({
+    color: getStyleValue(element, 'color'),
+    fontSize: getStyleValue(element, 'fontSize'),
+    lineHeight: getStyleValue(element, 'lineHeight'),
+    textAlign: getStyleValue(element, 'textAlign'),
+    fontStyle: getStyleValue(element, 'fontStyle')
+  });
+}
+
+function getStyleValue(element: Element | null | undefined, property: keyof CSSStyleDeclaration): string | undefined {
+  if (!element || !(element instanceof HTMLElement)) {
+    return undefined;
+  }
+
+  const inlineValue = element.style[property];
+  const computedValue =
+    typeof window !== 'undefined' && typeof window.getComputedStyle === 'function'
+      ? window.getComputedStyle(element)[property]
+      : '';
+  const value = String(inlineValue || computedValue || '').trim();
+  if (!value || value === 'normal' || value === 'auto' || value === 'none' || value === 'rgba(0, 0, 0, 0)') {
+    return undefined;
+  }
+  return value;
+}
+
+function compactStyle<T extends Record<string, string | number | boolean | undefined>>(style: T): T {
+  return Object.fromEntries(Object.entries(style).filter(([, value]) => value !== undefined && value !== '')) as T;
 }
 
 async function extractTweetRefBlock(block: Element, id: string, capturedVideos: CapturedXVideo[]): Promise<ArticleBlock | null> {
@@ -354,7 +637,9 @@ async function extractTweetRefBlock(block: Element, id: string, capturedVideos: 
     return null;
   }
 
-  const articleCard = (await extractSimpleTweetBlock(block, id, capturedVideos)) ?? (await extractSimpleTweetBlock(tweet, id, capturedVideos));
+  const articleCard =
+    (await simpleTweetModel.extractSimpleTweetBlockFromRoot(block, id, capturedVideos)) ??
+    (await simpleTweetModel.extractSimpleTweetBlockFromRoot(tweet, id, capturedVideos));
   if (articleCard) {
     return articleCard;
   }
@@ -363,25 +648,25 @@ async function extractTweetRefBlock(block: Element, id: string, capturedVideos: 
 }
 
 async function extractTweetSummaryBlock(tweet: Element, id: string, fallbackBlock?: Element): Promise<ArticleBlock> {
-  const profile = extractTweetProfile(tweet);
-  const metrics = extractTweetMetrics(tweet);
-  const authorLine = buildTweetAuthorLine(profile);
-  const body = await extractTweetBodyText(tweet);
+  const profile = simpleTweetModel.extractTweetProfile(tweet);
+  const metrics = simpleTweetModel.extractTweetMetrics(tweet);
+  const authorLine = simpleTweetModel.buildTweetAuthorLine(profile);
+  const body = await simpleTweetModel.extractTweetBodyText(tweet);
   const fallbackText = normalizeText(tweet.querySelector('[data-testid="User-Name"]') ? '' : (tweet.textContent ?? fallbackBlock?.textContent ?? ''));
   const title = authorLine || (body ? 'X Tweet' : fallbackText || 'X Tweet');
   const excerpt = body || (authorLine ? '' : fallbackText);
-  const href = getSimpleTweetHref(tweet) ?? (fallbackBlock ? getSimpleTweetHref(fallbackBlock) : undefined);
+  const href = simpleTweetModel.getSimpleTweetHref(tweet) ?? (fallbackBlock ? simpleTweetModel.getSimpleTweetHref(fallbackBlock) : undefined);
 
   return {
     id,
     type: 'simple-tweet',
-    coverUrl: '',
     source: 'X Tweet',
     title,
     excerpt,
     href,
+    items: body ? [{ type: 'text', text: body }] : [],
     ...profile,
-    ...(hasTweetMetrics(metrics) ? { metrics } : {})
+    ...(simpleTweetModel.hasTweetMetrics(metrics) ? { metrics } : {})
   };
 }
 
@@ -551,158 +836,33 @@ function extractLinkBlock(block: Element, id: string): ArticleBlock | null {
 }
 
 async function extractSimpleTweetBlock(block: Element, id: string, capturedVideos: CapturedXVideo[] = []): Promise<ArticleBlock | null> {
-  if (isSimpleTweetArticleCard(block)) {
-    return extractSimpleTweetArticleCard(block, id);
-  }
-
-  if (!isSimpleTweetCard(block)) {
+  if (!simpleTweetModel.isSimpleTweetCard(block)) {
     return null;
   }
 
-  const videoCard = await extractSimpleTweetVideoCard(block, id, capturedVideos);
-  if (videoCard) {
-    return videoCard;
-  }
+  return simpleTweetModel.extractSimpleTweetBlockFromRoot(block, id, capturedVideos);
+}
 
-  const imageCard = await extractSimpleTweetImageCard(block, id);
-  if (imageCard) {
-    return imageCard;
-  }
+async function extractSimpleTweetImageCard(block: Element, id: string): Promise<ArticleBlock | null> {
+  return simpleTweetModel.extractSimpleTweetBlockFromRoot(block, id, []);
+}
 
-  const textCard = await extractSimpleTweetTextCard(block, id);
-  return textCard;
+async function extractSimpleTweetVideoCard(block: Element, id: string, capturedVideos: CapturedXVideo[] = []): Promise<ArticleBlock | null> {
+  return simpleTweetModel.extractSimpleTweetBlockFromRoot(block, id, capturedVideos);
+}
+
+async function extractSimpleTweetTextCard(block: Element, id: string): Promise<ArticleBlock | null> {
+  return simpleTweetModel.extractSimpleTweetBlockFromRoot(block, id, []);
 }
 
 function isSimpleTweetCard(block: Element): boolean {
   return block.matches('[data-testid="simpleTweet"]') || Boolean(block.querySelector('[data-testid="simpleTweet"]'));
 }
 
-function isSimpleTweetArticleCard(block: Element): boolean {
-  return Boolean(block.querySelector('[data-testid="article-cover-image"]'));
-}
-
-function extractSimpleTweetArticleCard(block: Element, id: string): ArticleBlock | null {
-  const coverRoot = block.querySelector('[data-testid="article-cover-image"]');
-  if (!coverRoot) {
-    return null;
-  }
-
-  const coverImage = coverRoot.querySelector<HTMLImageElement>('img');
-  const coverUrl = coverImage?.currentSrc || coverImage?.src || '';
-  if (!coverUrl) {
-    return null;
-  }
-
-  const href = getSimpleTweetHref(block);
-  const title = normalizeText(getTextAfterCover(coverRoot, 0));
-  const excerpt = normalizeText(getTextAfterCover(coverRoot, 1));
-  const profile = extractTweetProfile(block);
-  const metrics = extractTweetMetrics(block);
-
-  return {
-    id,
-    type: 'simple-tweet',
-    coverUrl,
-    coverAlt: coverImage?.alt || undefined,
-    source: 'X Article',
-    title: title || 'X Article',
-    excerpt,
-    href,
-    ...profile,
-    ...(hasTweetMetrics(metrics) ? { metrics } : {})
-  };
-}
-
-async function extractSimpleTweetImageCard(block: Element, id: string): Promise<ArticleBlock | null> {
-  const photos = Array.from(block.querySelectorAll<HTMLElement>(X_ARTICLE_SELECTORS.tweetPhoto))
-    .map(tweetPhotoElementToPhoto)
-    .filter((photo): photo is NonNullable<ReturnType<typeof tweetPhotoElementToPhoto>> => Boolean(photo));
-
-  if (photos.length === 0) {
-    return null;
-  }
-
-  const tweet = block.querySelector(X_ARTICLE_SELECTORS.tweetBlock) ?? block;
-  const body = await extractTweetBodyText(tweet);
-  const profile = extractTweetProfile(tweet);
-  const metrics = extractTweetMetrics(tweet);
-
-  return {
-    id,
-    type: 'simple-tweet',
-    coverUrl: '',
-    source: 'X Tweet',
-    title: buildTweetAuthorLine(profile) || 'X Tweet',
-    excerpt: body,
-    href: getSimpleTweetHref(block),
-    photos,
-    ...profile,
-    ...(hasTweetMetrics(metrics) ? { metrics } : {})
-  };
-}
-
-async function extractSimpleTweetVideoCard(block: Element, id: string, capturedVideos: CapturedXVideo[]): Promise<ArticleBlock | null> {
-  const video = extractVideoFromElement(block, id, capturedVideos);
-  if (!video) {
-    return null;
-  }
-
-  const tweet = block.querySelector(X_ARTICLE_SELECTORS.tweetBlock) ?? block;
-  const body = await extractTweetBodyText(tweet);
-  const profile = extractTweetProfile(tweet);
-  const metrics = extractTweetMetrics(tweet);
-
-  return {
-    id,
-    type: 'simple-tweet',
-    coverUrl: '',
-    source: 'X Tweet',
-    title: buildTweetAuthorLine(profile) || 'X Tweet',
-    excerpt: body,
-    href: getSimpleTweetHref(block),
-    video,
-    ...profile,
-    ...(hasTweetMetrics(metrics) ? { metrics } : {})
-  };
-}
-
-async function extractSimpleTweetTextCard(block: Element, id: string): Promise<ArticleBlock | null> {
-  const tweet = block.querySelector(X_ARTICLE_SELECTORS.tweetBlock) ?? block;
-  const textElement = block.querySelector('[data-testid="tweetText"]');
-  if (!textElement || block.querySelector('[data-testid="article-cover-image"], [data-testid="videoPlayer"]') || block.querySelector(X_ARTICLE_SELECTORS.tweetPhoto)) {
-    return null;
-  }
-
-  const body = await extractTweetBodyText(tweet);
-  if (!body) {
-    return null;
-  }
-
-  const profile = extractTweetProfile(tweet);
-  const metrics = extractTweetMetrics(tweet);
-
-  return {
-    id,
-    type: 'simple-tweet',
-    coverUrl: '',
-    source: 'X Tweet',
-    title: buildTweetAuthorLine(profile) || 'X Tweet',
-    excerpt: body,
-    href: getSimpleTweetHref(block),
-    authorBadgeAvatarUrl: extractTweetAuthorBadgeAvatarUrl(tweet),
-    authorVerified: Boolean(tweet.querySelector('[data-testid="icon-verified"]')),
-    replyContextText: extractTweetReplyContextText(tweet),
-    replyToHandle: extractTweetReplyToHandle(tweet),
-    translationSourceText: extractTweetTranslationSourceText(tweet),
-    translationActionText: extractTweetTranslationActionText(tweet),
-    ...profile,
-    ...(hasTweetMetrics(metrics) ? { metrics } : {})
-  };
-}
-
-function tweetPhotoElementToPhoto(element: HTMLElement): { src: string; alt?: string; href?: string } | null {
+function tweetPhotoElementToPhoto(element: HTMLElement): { src: string; displaySrc?: string; alt?: string; href?: string } | null {
   const image = element.querySelector<HTMLImageElement>('img');
-  const src = image?.currentSrc || image?.src || getTweetPhotoBackgroundUrl(element);
+  const displaySrc = getTweetPhotoBackgroundUrl(element);
+  const src = image?.currentSrc || image?.src || displaySrc;
   if (!src) {
     return null;
   }
@@ -710,16 +870,50 @@ function tweetPhotoElementToPhoto(element: HTMLElement): { src: string; alt?: st
   const href = element.closest('a[href]')?.getAttribute('href') ?? undefined;
   return {
     src,
+    ...(displaySrc ? { displaySrc } : {}),
     alt: image?.alt || undefined,
     ...(href ? { href: new URL(href, X_CANONICAL_ORIGIN).toString() } : {})
   };
 }
 
 function getTweetPhotoBackgroundUrl(element: Element): string {
-  const backgroundLayer = element.querySelector<HTMLElement>('[style*="background-image"]');
+  const backgroundLayer = getTweetPhotoBackgroundLayer(element);
   const style = backgroundLayer?.style.backgroundImage || backgroundLayer?.getAttribute('style') || '';
   const match = /url\((?:"|&quot;)?([^")]+)(?:"|&quot;)?\)/.exec(style);
   return match?.[1]?.replace(/&amp;/g, '&') ?? '';
+}
+
+function getTweetPhotoBackgroundLayer(element: Element): HTMLElement | null {
+  return element.querySelector<HTMLElement>('[style*="background-image"]');
+}
+
+function normalizeGalleryBackgroundSize(value: string | undefined): ImageGalleryBlock['items'][number]['backgroundSize'] {
+  const normalized = normalizeCssText(value);
+  if (normalized === 'cover' || normalized === 'contain' || normalized === 'auto') {
+    return normalized;
+  }
+
+  return undefined;
+}
+
+function normalizeImageObjectFit(value: string | undefined): ImageGalleryBlock['items'][number]['objectFit'] {
+  const normalized = normalizeCssText(value);
+  if (
+    normalized === 'cover' ||
+    normalized === 'contain' ||
+    normalized === 'fill' ||
+    normalized === 'none' ||
+    normalized === 'scale-down'
+  ) {
+    return normalized;
+  }
+
+  return undefined;
+}
+
+function normalizeCssText(value: string | undefined): string | undefined {
+  const normalized = value?.trim();
+  return normalized || undefined;
 }
 
 function extractTweetAuthorBadgeAvatarUrl(tweet: Element): string | undefined {
@@ -880,7 +1074,8 @@ function extractImageFromElement(element: Element, id: string): ImageBlock | nul
 }
 
 function extractImageGalleryFromElement(element: Element, id: string): ImageGalleryBlock | null {
-  const photos = Array.from(element.querySelectorAll<HTMLElement>(X_ARTICLE_SELECTORS.tweetPhoto))
+  const photoElements = Array.from(element.querySelectorAll<HTMLElement>(X_ARTICLE_SELECTORS.tweetPhoto));
+  const photos = photoElements
     .map((photo) => tweetPhotoElementToGalleryItem(photo))
     .filter((item): item is ImageGalleryBlock['items'][number] => Boolean(item));
 
@@ -889,32 +1084,53 @@ function extractImageGalleryFromElement(element: Element, id: string): ImageGall
   }
 
   const aspectRatio = getImageGalleryAspectRatio(element);
+  const layout = getImageGalleryLayout(element, photoElements, photos);
   return {
     id,
     type: 'image-gallery',
     items: photos,
-    ...(aspectRatio ? { aspectRatio } : {})
+    ...(aspectRatio ? { aspectRatio } : {}),
+    ...(layout ? { layout } : {})
   };
 }
 
 function tweetPhotoElementToGalleryItem(element: HTMLElement): ImageGalleryBlock['items'][number] | null {
   const image = element.querySelector<HTMLImageElement>('img');
-  const src = image?.currentSrc || image?.src || getTweetPhotoBackgroundUrl(element);
+  const backgroundLayer = getTweetPhotoBackgroundLayer(element);
+  const displaySrc = getTweetPhotoBackgroundUrl(element);
+  const src = image?.currentSrc || image?.src || displaySrc;
   if (!src) {
     return null;
   }
 
   const href = element.closest('a[href]')?.getAttribute('href') ?? undefined;
   const aspectRatio = image ? getImageAspectRatio(image) : undefined;
+  const backgroundSize = normalizeGalleryBackgroundSize(
+    backgroundLayer?.style.backgroundSize || (backgroundLayer ? getInlineStyleValue(backgroundLayer, 'background-size') : '')
+  );
+  const backgroundPosition =
+    normalizeCssText(backgroundLayer?.style.backgroundPosition || backgroundLayer?.style.backgroundPositionX || undefined) ?? 'center center';
+  const objectFit = normalizeImageObjectFit(image?.style.objectFit) ?? 'cover';
+  const objectPosition = normalizeCssText(image?.style.objectPosition) ?? backgroundPosition;
   return {
     src,
+    ...(displaySrc ? { displaySrc } : {}),
     alt: image?.alt || undefined,
     ...(href ? { href: new URL(href, X_CANONICAL_ORIGIN).toString() } : {}),
-    ...(aspectRatio ? { aspectRatio } : {})
+    ...(aspectRatio ? { aspectRatio } : {}),
+    ...(backgroundSize ? { backgroundSize } : {}),
+    ...(backgroundPosition ? { backgroundPosition } : {}),
+    objectFit,
+    ...(objectPosition ? { objectPosition } : {})
   };
 }
 
 function getImageGalleryAspectRatio(element: Element): number | undefined {
+  const descendantRatio = getDescendantPaddingBottomAspectRatio(element);
+  if (descendantRatio) {
+    return descendantRatio;
+  }
+
   for (let current: Element | null = element; current; current = current.parentElement) {
     const paddingRatio = getPaddingBottomAspectRatio(current);
     if (paddingRatio) {
@@ -923,6 +1139,117 @@ function getImageGalleryAspectRatio(element: Element): number | undefined {
   }
 
   return undefined;
+}
+
+function getDescendantPaddingBottomAspectRatio(element: Element): number | undefined {
+  for (const child of Array.from(element.querySelectorAll<HTMLElement>('[style*="padding-bottom"]'))) {
+    const paddingBottom = getInlinePaddingBottomPercent(child);
+    if (paddingBottom) {
+      return roundAspectRatio(100 / paddingBottom);
+    }
+  }
+
+  return undefined;
+}
+
+function getImageGalleryLayout(
+  element: Element,
+  photoElements: HTMLElement[],
+  items: ImageGalleryBlock['items']
+): ImageGalleryLayoutNode | undefined {
+  const itemIndexes = new Map<HTMLElement, number>();
+  for (const [index, photo] of photoElements.entries()) {
+    if (items[index]) {
+      itemIndexes.set(photo, index);
+    }
+  }
+
+  return buildImageGalleryLayoutNode(element, itemIndexes);
+}
+
+function buildImageGalleryLayoutNode(
+  element: Element,
+  itemIndexes: Map<HTMLElement, number>
+): ImageGalleryLayoutNode | undefined {
+  const ownItemIndex = getOwnGalleryItemIndex(element, itemIndexes);
+  if (ownItemIndex !== undefined) {
+    return {
+      type: 'item',
+      itemIndex: ownItemIndex,
+      ...getGalleryFlexMetrics(element)
+    };
+  }
+
+  const photoChildren = Array.from(element.children).filter((child) => containsGalleryPhoto(child, itemIndexes));
+  if (photoChildren.length === 0) {
+    return undefined;
+  }
+
+  if (photoChildren.length === 1) {
+    return buildImageGalleryLayoutNode(photoChildren[0], itemIndexes);
+  }
+
+  const children = photoChildren
+    .map((child) => buildImageGalleryLayoutNode(child, itemIndexes))
+    .filter((child): child is ImageGalleryLayoutNode => Boolean(child));
+  if (children.length === 0) {
+    return undefined;
+  }
+
+  return {
+    type: getGalleryFlexDirection(element),
+    children,
+    ...getGalleryFlexMetrics(element)
+  };
+}
+
+function getOwnGalleryItemIndex(element: Element, itemIndexes: Map<HTMLElement, number>): number | undefined {
+  const indexes = getContainedGalleryItemIndexes(element, itemIndexes);
+  return indexes.length === 1 ? indexes[0] : undefined;
+}
+
+function getContainedGalleryItemIndexes(element: Element, itemIndexes: Map<HTMLElement, number>): number[] {
+  const indexes: number[] = [];
+  for (const [photo, index] of itemIndexes.entries()) {
+    if (photo === element || element.contains(photo)) {
+      indexes.push(index);
+    }
+  }
+
+  return indexes;
+}
+
+function containsGalleryPhoto(element: Element, itemIndexes: Map<HTMLElement, number>): boolean {
+  for (const photo of itemIndexes.keys()) {
+    if (photo === element || element.contains(photo)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function getGalleryFlexDirection(element: Element): 'row' | 'column' {
+  if (element.classList.contains('r-eqz5dr')) {
+    return 'column';
+  }
+  if (element.classList.contains('r-18u37iz')) {
+    return 'row';
+  }
+
+  return 'row';
+}
+
+function getGalleryFlexMetrics(element: Element): Pick<ImageGalleryLayoutNode, 'grow' | 'shrink' | 'basis'> {
+  const grow = element.classList.contains('r-1iusvr4') || element.classList.contains('r-16y2uox') ? 1 : undefined;
+  const shrink = element.classList.contains('r-16y2uox') ? 1 : undefined;
+  const basis = element.classList.contains('r-bnwqim') ? '0%' : undefined;
+
+  return {
+    ...(grow !== undefined ? { grow } : {}),
+    ...(shrink !== undefined ? { shrink } : {}),
+    ...(basis ? { basis } : {})
+  };
 }
 
 function getMediaAspectRatio(media: HTMLMediaElement, container: Element): number | undefined {
@@ -1186,32 +1513,49 @@ function extractTextWithAnnotations(
 ): { text: string; annotations: TextAnnotation[] } {
   const normalize = options.preserveLineBreaks ? normalizePreWrapText : normalizeText;
   const textElements = Array.from(element.querySelectorAll<HTMLElement>('[data-text="true"]'));
+  const fullText = normalize(getElementDisplayText(element, options.preserveLineBreaks));
   if (textElements.length === 0) {
-    return { text: normalize(element.textContent ?? ''), annotations: [] };
+    return { text: fullText, annotations: [] };
   }
 
-  let text = '';
   const annotations: TextAnnotation[] = [];
-  const linkAnnotations: TextAnnotation[] = [];
+  const linkAnnotations = annotations;
+  let text = '';
+  let searchCursor = 0;
   for (const textElement of textElements) {
-    const segment = textElement.textContent ?? '';
-    const startOffset = text.length;
-    text += segment;
-    const endOffset = text.length;
+    const segment = normalize(textElement.textContent ?? '');
+    if (!segment) {
+      continue;
+    }
 
-    if (endOffset > startOffset && isBoldTextElement(textElement)) {
-      annotations.push({ startOffset, endOffset, bold: true });
+    const startOffset = options.preserveLineBreaks ? fullText.indexOf(segment, searchCursor) : text.length;
+    if (startOffset === -1) {
+      continue;
+    }
+
+    if (!options.preserveLineBreaks) {
+      text += segment;
+    }
+    const endOffset = text.length;
+    const resolvedEndOffset = options.preserveLineBreaks ? startOffset + segment.length : endOffset;
+    searchCursor = resolvedEndOffset;
+    const annotation: TextAnnotation = {
+      startOffset,
+      endOffset: resolvedEndOffset,
+      ...extractTextAnnotationStyle(textElement)
+    };
+
+    if (resolvedEndOffset > startOffset && isBoldTextElement(textElement)) {
+      annotation.bold = true;
     }
     const anchor = textElement.closest<HTMLAnchorElement>('a[href][role="link"], a[href]');
-    if (endOffset > startOffset && anchor) {
+    if (resolvedEndOffset > startOffset && anchor) {
       const href = anchor.getAttribute('href');
       if (href) {
-        linkAnnotations.push({
-          startOffset,
-          endOffset,
-          href,
-          target: anchor.getAttribute('target') ?? undefined
-        });
+        const linkStyle = extractTextAnnotationStyle(anchor);
+        annotation.href = href;
+        annotation.target = anchor.getAttribute('target') ?? undefined;
+        Object.assign(annotation, linkStyle);
       }
     }
     if (isEmojiTextElement(textElement)) {
@@ -1220,12 +1564,35 @@ function extractTextWithAnnotations(
       // include the emoji instead of dropping it from the reading flow.
       const emojiImageUrl = getEmojiImageUrl(textElement);
       if (emojiImageUrl) {
-        annotations.push({ startOffset, endOffset, emojiImageUrl });
+        annotation.emojiImageUrl = emojiImageUrl;
       }
+    }
+    if (resolvedEndOffset > startOffset && hasTextAnnotationSignal(annotation)) {
+      annotations.push(annotation);
     }
   }
 
-  return { text: normalize(text), annotations: [...annotations, ...linkAnnotations] };
+  return { text: options.preserveLineBreaks ? fullText : normalize(text), annotations: linkAnnotations };
+}
+
+function hasTextAnnotationSignal(annotation: TextAnnotation): boolean {
+  return Boolean(
+    annotation.bold ||
+      annotation.href ||
+      annotation.emojiImageUrl ||
+      annotation.color ||
+      annotation.fontSize ||
+      annotation.lineHeight ||
+      annotation.textAlign ||
+      annotation.fontStyle
+  );
+}
+
+function getElementDisplayText(element: Element, preserveLineBreaks = false): string {
+  if (preserveLineBreaks && element instanceof HTMLElement && typeof element.innerText === 'string') {
+    return element.innerText;
+  }
+  return element.textContent ?? '';
 }
 
 function blockId(articleId: string, index: number): string {

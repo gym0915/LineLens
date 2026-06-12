@@ -1,0 +1,180 @@
+[
+  {
+    "id": "assets2:how-to-make-stunning-html-slides-for-complete-beginners:clean-block-0",
+    "text": "Don't make PowerPoint decks. Make HTML slides that look like these:",
+    "annotations": [],
+    "type": "paragraph"
+  },
+  {
+    "id": "assets2:how-to-make-stunning-html-slides-for-complete-beginners:clean-block-1",
+    "type": "image",
+    "src": "https://pbs.twimg.com/amplify_video_thumb/2053916866964590592/img/3pE8XJrlgNBM7EQC.jpg",
+    "alt": ""
+  },
+  {
+    "id": "assets2:how-to-make-stunning-html-slides-for-complete-beginners:clean-block-2",
+    "text": "If you want to adopt a more AI-native way of working but don't know where to start, the easiest and highest-leverage thing you can do is probably starting to replace all your PPT decks with HTML slides.",
+    "annotations": [
+      {
+        "startOffset": 84,
+        "endOffset": 202,
+        "bold": true
+      }
+    ],
+    "type": "paragraph"
+  },
+  {
+    "id": "assets2:how-to-make-stunning-html-slides-for-complete-beginners:clean-block-3",
+    "text": "HTML slides are taking over the world because:",
+    "annotations": [],
+    "type": "paragraph"
+  },
+  {
+    "id": "assets2:how-to-make-stunning-html-slides-for-complete-beginners:clean-block-4",
+    "type": "list",
+    "kind": "ordered",
+    "items": [
+      "AI is very good at generating beautiful HTML, especially arranging text and images into boxed layouts (since their training data contains lots of websites)",
+      "Humans are visual animals. We simply like beautiful things. The most important thing your slides need to do is to capture someone's attention",
+      "It is FAST. If you have a presentation in half an hour and need a quick deck, you simply don't have time to push boxes around in PowerPoint. Just send the content to AI and it will magically arrange all the content in beautiful layouts in A COUPLE MINUTES",
+      "Users have told me that they got extremely positive feedback from audiences because they usually have never seen anything like this, and admire how AI-native the presenter is"
+    ],
+    "itemAnnotations": [
+      [],
+      [],
+      [],
+      []
+    ]
+  },
+  {
+    "id": "assets2:how-to-make-stunning-html-slides-for-complete-beginners:clean-block-5",
+    "text": "Here's a practical guide for complete beginners, without assuming prior knowledge in coding, using an agent, or knowing about GitHub or skills:",
+    "annotations": [
+      {
+        "startOffset": 25,
+        "endOffset": 143,
+        "bold": true
+      }
+    ],
+    "type": "paragraph"
+  },
+  {
+    "id": "assets2:how-to-make-stunning-html-slides-for-complete-beginners:clean-block-6",
+    "type": "list",
+    "kind": "ordered",
+    "items": [
+      "Go to AnyGen (You can get started for free and get free credits)",
+      "Select \"Build slides\" -> \"Frontend\", then choose a template you like"
+    ],
+    "itemAnnotations": [
+      [
+        {
+          "startOffset": 6,
+          "endOffset": 12,
+          "href": "https://www.anygen.io/slides?type=frontend_slides",
+          "target": "_blank"
+        },
+        {
+          "startOffset": 6,
+          "endOffset": 12,
+          "href": "https://www.anygen.io/slides?type=frontend_slides",
+          "target": "_blank"
+        }
+      ],
+      []
+    ]
+  },
+  {
+    "id": "assets2:how-to-make-stunning-html-slides-for-complete-beginners:clean-block-7",
+    "type": "list",
+    "kind": "ordered",
+    "items": [
+      "Type your instruction for creating the slides in the prompt box",
+      "Iterate and edit. All HTML decks are editable in AnyGen! Just click on any text to edit, or click on \"Boss mode\" to give targeted edits in batch: just comment on elements to tell AI what to change"
+    ],
+    "itemAnnotations": [
+      [],
+      []
+    ]
+  },
+  {
+    "id": "assets2:how-to-make-stunning-html-slides-for-complete-beginners:clean-block-8",
+    "text": "If you wanna insert your own images, just send them to AI and tell it where to insert",
+    "annotations": [],
+    "type": "paragraph"
+  },
+  {
+    "id": "assets2:how-to-make-stunning-html-slides-for-complete-beginners:clean-block-9",
+    "type": "list",
+    "kind": "ordered",
+    "items": [
+      "All HTML decks are sharable as links, so you can just send it to others (without having to learn how to deploy a website)"
+    ],
+    "itemAnnotations": [
+      []
+    ]
+  },
+  {
+    "id": "assets2:how-to-make-stunning-html-slides-for-complete-beginners:clean-block-10",
+    "type": "image",
+    "src": "https://pbs.twimg.com/media/HIEZtKPa0AAeOPP?format=jpg&name=medium",
+    "alt": "图像",
+    "href": "/zarazhangrui/article/2053953371762286954/media/2053951168691490816"
+  },
+  {
+    "id": "assets2:how-to-make-stunning-html-slides-for-complete-beginners:clean-block-11",
+    "type": "list",
+    "kind": "ordered",
+    "items": [
+      "All HTML decks can be exported as PDF or PPT files"
+    ],
+    "itemAnnotations": [
+      []
+    ]
+  },
+  {
+    "id": "assets2:how-to-make-stunning-html-slides-for-complete-beginners:clean-block-12",
+    "type": "image",
+    "src": "https://pbs.twimg.com/media/HIEZz0fa8AA36kl?format=jpg&name=medium",
+    "alt": "图像",
+    "href": "/zarazhangrui/article/2053953371762286954/media/2053951283112112128"
+  },
+  {
+    "id": "assets2:how-to-make-stunning-html-slides-for-complete-beginners:clean-block-13",
+    "text": "Your next slide deck doesn't need to be a PowerPoint. HTML is the future , and the easiest way to get started making HTML is to creating slides.",
+    "annotations": [
+      {
+        "startOffset": 59,
+        "endOffset": 72,
+        "href": "https://x.com/trq212/status/2052809885763747935?s=20",
+        "target": "_blank"
+      },
+      {
+        "startOffset": 59,
+        "endOffset": 72,
+        "href": "https://x.com/trq212/status/2052809885763747935?s=20",
+        "target": "_blank"
+      }
+    ],
+    "type": "paragraph"
+  },
+  {
+    "id": "assets2:how-to-make-stunning-html-slides-for-complete-beginners:clean-block-14",
+    "text": "Get started here",
+    "annotations": [
+      {
+        "startOffset": 12,
+        "endOffset": 16,
+        "href": "https://www.anygen.io/slides?type=frontend_slides",
+        "target": "_blank"
+      },
+      {
+        "startOffset": 12,
+        "endOffset": 16,
+        "href": "https://www.anygen.io/slides?type=frontend_slides",
+        "target": "_blank"
+      }
+    ],
+    "type": "paragraph"
+  }
+]

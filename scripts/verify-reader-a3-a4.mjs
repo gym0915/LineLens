@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { renderArticleShell } from '../dist/reader/block-renderer.js';
 import { buildFocusUnits } from '../dist/reader/focus-unit-builder.js';
@@ -116,7 +116,7 @@ globalThis.document = {
 };
 
 const root = new URL('..', import.meta.url).pathname;
-const fixtureDir = join(root, 'fixtures', 'articles');
+const fixtureDir = resolveFixtureDir(root);
 const mediaArticle = readFixture('media-and-quote');
 const longArticle = readFixture('long-paragraphs');
 const mixedArticle = readFixture('mixed-content');
@@ -140,6 +140,17 @@ assert(
   findChildIndex(findByClass(rendered, 'article-header'), cover) < findChildIndex(findByClass(rendered, 'article-header'), title),
   'cover image should render above the title'
 );
+
+const linkedCoverRendered = renderArticleShell({
+  ...mediaArticle,
+  coverImage: {
+    ...mediaArticle.coverImage,
+    href: 'https://x.com/example/article/1/media/cover'
+  }
+});
+const linkedCover = findByClass(linkedCoverRendered, 'reader-cover');
+assert(linkedCover?.tagName === 'A', 'linked cover image should render as an anchor for media preview');
+assert(linkedCover.attributes.href === 'https://x.com/example/article/1/media/cover', 'linked cover image should preserve its media href');
 
 for (const block of mediaArticle.blocks) {
   const element = rendered.querySelector(`[data-block-id="${block.id}"]`);
@@ -220,6 +231,17 @@ const orderedListRendered = renderArticleShell({
   blocks: [{ id: 'ordered-list', type: 'list', kind: 'ordered', items: ['第一项', '第二项'] }]
 });
 assert(orderedListRendered.querySelector('[data-block-id="ordered-list"]')?.tagName === 'OL', 'ordered list should render as ol');
+const orderedListWithOriginalMarkerRendered = renderArticleShell({
+  ...mediaArticle,
+  blocks: [{ id: 'ordered-list-marker', type: 'list', kind: 'ordered', items: ['2. 进阶配置'] }]
+});
+const orderedListWithOriginalMarker = orderedListWithOriginalMarkerRendered.querySelector('[data-block-id="ordered-list-marker"]');
+assert(orderedListWithOriginalMarker?.textContent.startsWith('2. 进阶配置'), 'ordered list text should preserve original source marker');
+assert(!orderedListWithOriginalMarker?.textContent.startsWith('1.2.'), 'ordered list should not duplicate generated and source markers');
+assert(
+  findByClass(orderedListWithOriginalMarker, 'reader-list-item--source-marker'),
+  'ordered list item with source marker should remove the generated bullet column'
+);
 const linkRendered = renderArticleShell({
   ...mediaArticle,
   blocks: [{ id: 'link1', type: 'link', text: '原文链接', href: 'https://x.com/example/status/1', target: '_blank' }]
@@ -243,11 +265,28 @@ const galleryRendered = renderArticleShell({
       id: 'gallery1',
       type: 'image-gallery',
       aspectRatio: 1.7778,
+      layout: {
+        type: 'row',
+        children: [
+          { type: 'item', itemIndex: 0 },
+          {
+            type: 'column',
+            grow: 1,
+            shrink: 1,
+            basis: '0%',
+            children: [
+              { type: 'item', itemIndex: 1 },
+              { type: 'item', itemIndex: 2 }
+            ]
+          },
+          { type: 'item', itemIndex: 3 }
+        ]
+      },
       items: [
-        { src: 'https://example.com/1.jpg', alt: 'One', href: 'https://x.com/example/media/1' },
-        { src: 'https://example.com/2.jpg', alt: 'Two', href: 'https://x.com/example/media/2' },
-        { src: 'https://example.com/3.jpg', alt: 'Three', href: 'https://x.com/example/media/3' },
-        { src: 'https://example.com/4.jpg', alt: 'Four', href: 'https://x.com/example/media/4' }
+        { src: 'https://example.com/1.jpg', alt: 'One', href: 'https://x.com/example/media/1', backgroundSize: 'cover', backgroundPosition: 'center center', objectFit: 'cover' },
+        { src: 'https://example.com/2.jpg', alt: 'Two', href: 'https://x.com/example/media/2', backgroundSize: 'cover', backgroundPosition: 'center center', objectFit: 'cover' },
+        { src: 'https://example.com/3.jpg', alt: 'Three', href: 'https://x.com/example/media/3', backgroundSize: 'cover', backgroundPosition: 'center center', objectFit: 'cover' },
+        { src: 'https://example.com/4.jpg', alt: 'Four', href: 'https://x.com/example/media/4', backgroundSize: 'cover', backgroundPosition: 'center center', objectFit: 'cover' }
       ]
     }
   ]
@@ -262,6 +301,12 @@ assert(galleryItems.length === 4, 'image-gallery should render every item');
 assert(galleryItems[0].tagName === 'A', 'image-gallery items with href should render as anchors');
 assert(galleryItems[0].attributes.href === 'https://x.com/example/media/1', 'image-gallery item should preserve href');
 assert(findByClass(galleryItems[0], 'reader-image-gallery-image')?.tagName === 'IMG', 'image-gallery item should render an image');
+assert(findByClass(galleryItems[0], 'reader-image-gallery-background')?.style.backgroundImage === 'url("https://example.com/1.jpg")', 'image-gallery should render a tweetPhoto-style background layer');
+assert(findByClass(galleryItems[0], 'reader-image-gallery-background')?.style.backgroundSize === 'cover', 'image-gallery should preserve source crop mode');
+const galleryLayoutNodes = galleryElement.querySelectorAll('.reader-image-gallery-node');
+assert(galleryLayoutNodes.some((node) => node.dataset.layoutType === 'row'), 'image-gallery should render layout rows');
+assert(galleryLayoutNodes.some((node) => node.dataset.layoutType === 'column' && node.style.flexBasis === '0%'), 'image-gallery should render layout columns with flex sizing');
+assert(galleryItems[2].dataset.itemIndex === '2', 'image-gallery layout should address items by source index');
 const codeRendered = renderArticleShell({
   ...mediaArticle,
   blocks: [{ id: 'code1', type: 'code', language: 'rust', text: 'pub struct AgentLoop {\\n  config: AppConfig, // 运行配置\\n}' }]
@@ -526,10 +571,37 @@ for (const token of [
   assert(css.includes(token), `missing visual token ${token}`);
 }
 assert(css.includes('aspect-ratio: var(--reader-media-aspect-ratio)'), 'reader image should use extracted aspect ratio');
+assert(css.includes('reader-image-gallery-node'), 'reader image gallery should support recursive layout nodes');
+assert(css.includes('reader-image-gallery-background'), 'reader image gallery should use tweetPhoto-style background rendering');
 assert(!css.includes('height: 230px'), 'reader image should not force a fixed media height');
 assert(css.includes('object-fit: contain'), 'reader image should preserve the complete source image');
+assert(css.includes('max-height: 100vh'), 'reader media preview should scale images against the browser height');
+assert(css.includes('max-width: 100vw'), 'reader media preview should allow images to use the full browser width');
+assert(css.includes('padding: 0'), 'reader media preview should not reserve horizontal layout space for nav buttons');
+assert(!css.includes('max-height: min(760px'), 'reader media preview should not cap image height below the viewport');
+assert(!css.includes('max-width: min(1120px'), 'reader media preview should not cap image width below the viewport');
+assert(!css.includes('max-width: calc(100vw - 176px)'), 'reader media preview nav buttons should not reduce the image viewport width');
+assert(css.includes('.reader-media-preview-status'), 'reader media preview should expose a loading/error status element');
+assert(css.includes('.reader-media-preview.is-loading'), 'reader media preview should style loading state instead of showing the previous image');
+assert(css.includes('.reader-media-preview-close:hover'), 'reader media preview close button should expose hover feedback');
+assert(css.includes('.reader-media-preview-nav:not(:disabled):hover'), 'reader media preview nav buttons should expose hover feedback');
+assert(css.includes('var(--reader-highlight-surface) 16%'), 'reader media preview nav buttons should use the same base color strength as the close button');
+assert(/\.reader-media-preview-nav\s*\{[\s\S]*?font-size:\s*28px;[\s\S]*?font-weight:\s*300;/.test(css), 'reader media preview nav symbols should match close button icon styling');
+assert(css.includes('.reader-media-preview-nav:disabled'), 'reader media preview should style unavailable nav directions');
+assert(css.includes('display: none'), 'reader media preview should hide unavailable nav direction buttons');
+assert(css.includes('z-index: 84'), 'reader media preview controls should render above the preview image content');
+assert(css.includes('@keyframes reader-media-preview-enter-from-left'), 'reader media preview should define left-enter animation for keyboard navigation');
+assert(css.includes('@keyframes reader-media-preview-enter-from-right'), 'reader media preview should define right-enter animation for keyboard navigation');
+assert(css.includes('animation: reader-media-preview-enter-from-left 400ms ease-out both'), 'left preview navigation animation should use 400ms ease-out motion');
+assert(css.includes('animation: reader-media-preview-enter-from-right 400ms ease-out both'), 'right preview navigation animation should use 400ms ease-out motion');
+assert(css.includes('translateX(calc(-50vw - 50%))'), 'left preview navigation animation should enter from outside the browser viewport');
+assert(css.includes('translateX(calc(50vw + 50%))'), 'right preview navigation animation should enter from outside the browser viewport');
+assert(css.includes('transform: translateX(-8px)'), 'left preview navigation animation should add a damped slowdown before center');
+assert(css.includes('transform: translateX(8px)'), 'right preview navigation animation should add a damped slowdown before center');
 assert(css.includes('.reader-article a'), 'all anchors inside the reader should inherit focus color');
 assert(css.includes('.focus-unit a'), 'inline paragraph links should share hyperlink styling');
+assert(css.includes('.reader-list-item--source-marker'), 'source-marker ordered list items should have alignment styles');
+assert(css.includes('gap: 0'), 'source-marker ordered list items should not reserve generated bullet gap');
 assert(!css.includes('--reader-link'), 'reader links should not use a dedicated blue hyperlink token');
 assert(css.includes('.reader-link'), 'reader link block should have explicit hyperlink styling');
 assert(css.includes('.reader-link.focus-unit.is-active'), 'reader link block should use active highlight styling');
@@ -552,6 +624,19 @@ function readReaderCss() {
       .sort()
       .map((fileName) => readFileSync(join(stylesDir, fileName), 'utf8'))
   ].join('\n');
+}
+
+function resolveFixtureDir(rootDir) {
+  const candidates = [
+    join(rootDir, 'fixtures', 'articles'),
+    resolve(rootDir, '..', '..', 'fixtures', 'articles')
+  ];
+  const fixtureDir = candidates.find((candidate) => existsSync(candidate));
+  if (!fixtureDir) {
+    throw new Error(`Unable to locate reader fixtures from ${rootDir}`);
+  }
+
+  return fixtureDir;
 }
 
 function querySelector(rootElement, selector) {

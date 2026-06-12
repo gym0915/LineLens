@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import { weixinArticleAdapter, xArticleAdapter } from '../dist/content/adapters/index.js';
@@ -19,7 +19,8 @@ import {
   shouldPreserveStyleProperty
 } from '../dist/content/preprocess/style-whitelist.js';
 
-const rootDir = resolve(import.meta.dirname, '..', '..');
+const projectRoot = resolve(import.meta.dirname, '..');
+const workspaceRoot = findWorkspaceRoot(projectRoot);
 const detailSnapshot = readAsset('x-article-detail.html');
 const fullDomSnapshot = readAsset('x-article-full-dom.html');
 const codeBlockSnapshot = readAsset('x-article-codeblock.html');
@@ -46,15 +47,21 @@ assert.deepEqual(getPlatformFixOrder(xArticleAdapter), [
   'expand-folded-tweet-text',
   'normalize-handwritten-ordered-list',
   'preserve-svg-emoji',
-  'capture-x-video-hls'
+  'capture-x-video-hls',
+  'preserve-x-media-layout'
 ]);
-assert.deepEqual(CLEAN_TREE_PRIMARY_BLOCK_TYPES, ['paragraph', 'heading', 'quote', 'list', 'image']);
-assert.deepEqual(HIGH_RISK_DUAL_TRACK_BLOCK_TYPES, ['video', 'simple-tweet', 'code', 'image-gallery']);
+assert.deepEqual(CLEAN_TREE_PRIMARY_BLOCK_TYPES, ['paragraph', 'heading', 'quote', 'list', 'image', 'code', 'table', 'simple-tweet', 'image-gallery']);
+assert.deepEqual(HIGH_RISK_DUAL_TRACK_BLOCK_TYPES, ['video']);
 assert.equal(weixinArticleAdapter.rootSelector, '#js_content', 'P4.5 should keep second-platform root selector expressible');
 assert.equal(weixinArticleAdapter.titleSelector, '#activity-name', 'P4.5 should keep second-platform title selector expressible');
 assert.ok(weixinArticleAdapter.contentSelector, 'P4.5 should keep second-platform content selector expressible');
 assert.ok(weixinArticleAdapter.styleWhitelist.preserveProps.length > 0, 'P4.5 should keep second-platform style whitelist expressible');
 assert.deepEqual(weixinArticleAdapter.enabledFixes, [], 'P4.5 should allow second-platform adapter to opt out of platform fixes');
+const weixinMinimalFixture = `<article id="js_content"><h1 id="activity-name">Weixin Phase4 fixture</h1><p><a href="https://example.com" style="color: #576b95">link</a><strong style="color: #d92121">emphasis</strong></p></article>`;
+assert.equal(hasMinimalSelectorMatch(weixinMinimalFixture, weixinArticleAdapter.rootSelector), true, 'P4 should include a second-platform root sample in the minimal validation pool');
+assert.equal(hasMinimalSelectorMatch(weixinMinimalFixture, weixinArticleAdapter.titleSelector), true, 'P4 should include a second-platform title sample in the minimal validation pool');
+assert.equal(count(weixinMinimalFixture, 'href='), 1, 'P4 second-platform sample should include link semantics');
+assert.equal(count(weixinMinimalFixture, '<strong'), 1, 'P4 second-platform sample should include inline emphasis semantics');
 
 const regressionInventory = {
   title: count(detailSnapshot, 'data-testid="twitter-article-title"'),
@@ -85,7 +92,7 @@ assert.equal(cleanTreeBaseline.boldInlineCount > 0, true, 'clean tree baseline s
 assert.equal(cleanTreeBaseline.svgEmojiCount > 0, true, 'clean tree baseline should retain SVG emoji metadata');
 
 const cleanTreeSource = readFileSync(
-  resolve(rootDir, 'LineLens/src/content/preprocess/clone-content-tree.ts'),
+  resolve(projectRoot, 'src/content/preprocess/clone-content-tree.ts'),
   'utf8'
 );
 assert.match(cleanTreeSource, /export type CleanTreeContext/, 'P4.1 should define a clean tree context type');
@@ -111,7 +118,7 @@ assert.doesNotMatch(
   'clean tree should not preserve platform class attributes in P4.1'
 );
 const platformFixesSource = readFileSync(
-  resolve(rootDir, 'LineLens/src/content/preprocess/apply-platform-fixes.ts'),
+  resolve(projectRoot, 'src/content/preprocess/apply-platform-fixes.ts'),
   'utf8'
 );
 assert.match(platformFixesSource, /const FIX_ORDER/, 'P4.3 should define deterministic fix order');
@@ -122,43 +129,44 @@ assert.match(platformFixesSource, /data-linelens-emoji-image-url/, 'P4.3 should 
 assert.match(platformFixesSource, /data-linelens-video-hls-candidate/, 'P4.3 should mark video HLS candidates without cutting main path');
 
 const blockConverterSource = readFileSync(
-  resolve(rootDir, 'LineLens/src/content/preprocess/clean-tree-block-converter.ts'),
+  resolve(projectRoot, 'src/content/preprocess/clean-tree-block-converter.ts'),
   'utf8'
 );
 assert.match(blockConverterSource, /export function convertCleanTreeToBlocks/, 'P4.4 should define clean tree to block conversion entry');
 assert.match(blockConverterSource, /enabledBlockTypes/, 'P4.4 should allow block type level rollout');
-assert.match(blockConverterSource, /'paragraph', 'heading', 'quote', 'list', 'image'/, 'P4.4 should initially target low-risk block types');
+assert.match(blockConverterSource, /'paragraph', 'heading', 'quote', 'list', 'image', 'code', 'table', 'simple-tweet', 'image-gallery'/, 'P4.4 should include code, table, simple-tweet, and image-gallery after X Article migrations');
 assert.match(blockConverterSource, /extractTextAnnotations/, 'P4.4 should preserve inline annotations');
 assert.match(blockConverterSource, /annotation\.bold = true/, 'P4.4 should preserve bold annotations');
 assert.match(blockConverterSource, /annotation\.href = href/, 'P4.4 should preserve link annotations');
 assert.match(blockConverterSource, /annotation\.emojiImageUrl = emojiImageUrl/, 'P4.4 should preserve emoji annotations');
 assert.doesNotMatch(
   blockConverterSource.match(/const DEFAULT_ENABLED_BLOCK_TYPES[\s\S]*?\];/)?.[0] ?? '',
-  /video|simple-tweet|code|image-gallery/,
-  'P4.4 should keep high-risk block types on old path or dual-track only'
+  /video/,
+  'P4.4 should keep video on the old path or dual-track only'
 );
 
 const mainPathSource = readFileSync(
-  resolve(rootDir, 'LineLens/src/content/preprocess/clean-tree-main-path.ts'),
+  resolve(projectRoot, 'src/content/preprocess/clean-tree-main-path.ts'),
   'utf8'
 );
 assert.match(mainPathSource, /buildCleanTreePrimaryBlocks/, 'P4.5 should define clean tree primary block builder');
-assert.match(mainPathSource, /mergeCleanTreePrimaryBlocks/, 'P4.5 should define legacy fallback merge');
+assert.match(mainPathSource, /mergeCleanTreePrimaryBlocks/, 'P4.5 should keep legacy merge statistics available');
+assert.match(mainPathSource, /blocks:\s*cleanTreeBlocks/, 'P4.5 should expose cleanTreeBlocks directly as the browser output');
 assert.match(mainPathSource, /id: legacyBlock\.id/, 'P4.5 should preserve legacy block ids for Reader progress and FocusUnit stability');
 assert.match(mainPathSource, /fallbackBlockCount/, 'P4.5 should report legacy fallback count');
 assert.match(mainPathSource, /highRiskBlockCount/, 'P4.5 should report high-risk dual-track count');
 
 const modularExtractorSource = readFileSync(
-  resolve(rootDir, 'LineLens/src/content/extractors/x/article-extractor.ts'),
+  resolve(projectRoot, 'src/content/extractors/x/article-extractor.ts'),
   'utf8'
 );
 for (const source of [modularExtractorSource]) {
   assert.match(source, /buildCleanTreePrimaryBlocks/, 'P4.5 should wire clean tree primary blocks into the modular X extractor path');
-  assert.match(source, /legacyBlocks = await extractBlocks/, 'P4.5 should keep legacy extraction as fallback input');
+  assert.doesNotMatch(source, /legacyBlocks = await extractBlocks/, 'P4.5 browser path should not execute legacy extraction as fallback input');
 }
-const liveExtractorSource = readFileSync(resolve(rootDir, 'LineLens/src/content/index.ts'), 'utf8');
+const liveExtractorSource = readFileSync(resolve(projectRoot, 'src/content/index.ts'), 'utf8');
 assert.doesNotMatch(liveExtractorSource, /^import /m, 'live content script source should remain import-free because manifest content_scripts are not modules');
-const builtContentSource = readFileSync(resolve(rootDir, 'LineLens/dist/content.js'), 'utf8');
+const builtContentSource = readFileSync(resolve(projectRoot, 'dist/content.js'), 'utf8');
 assert.doesNotMatch(builtContentSource, /^import /m, 'built content.js should remain import-free so Chrome can execute it as a content script');
 
 const mergeProbe = mergeCleanTreePrimaryBlocks(
@@ -261,12 +269,24 @@ assert.equal(
 assert.equal(
   shouldPreserveStyleProperty('font-style', { preserveProps: ['font-weight', 'font-style'], preserveColorFor: [], preserveWhiteSpaceValues: [] }, {
     isLink: false,
+    isInlineEmphasis: false,
     isPreformatted: false,
     matchesCustomColorSelector: false,
     value: 'italic'
   }),
   true,
   'P4.2 should allow emphasis props when adapter config opts in'
+);
+assert.equal(
+  shouldPreserveStyleProperty('color', { preserveProps: [], preserveColorFor: ['inline-emphasis'], preserveWhiteSpaceValues: [] }, {
+    isLink: false,
+    isInlineEmphasis: true,
+    isPreformatted: false,
+    matchesCustomColorSelector: false,
+    value: 'rgb(224, 36, 94)'
+  }),
+  true,
+  'P4.2 should preserve configured inline emphasis colors without preserving body container color'
 );
 
 const baselineReport = {
@@ -284,9 +304,9 @@ const baselineReport = {
     videoHlsCandidateMetadata: true
   },
   blockConversion: {
-    lowRiskBlockTypes: ['paragraph', 'heading', 'quote', 'list', 'image'],
+    lowRiskBlockTypes: ['paragraph', 'heading', 'quote', 'list', 'image', 'code', 'table', 'simple-tweet', 'image-gallery'],
     preservesInlineSemantics: ['bold', 'link', 'emoji'],
-    highRiskBlocksRemainDualTrack: ['video', 'simple-tweet', 'code', 'image-gallery'],
+    highRiskBlocksRemainDualTrack: ['video'],
     legacyIdsPreserved: true,
     legacyFallbackAvailable: true,
     secondPlatformAdapterWired: true
@@ -305,7 +325,25 @@ console.log(JSON.stringify(baselineReport, null, 2));
 console.log('Phase4 pipeline baseline verification passed');
 
 function readAsset(fileName) {
-  return readFileSync(resolve(rootDir, 'assets', fileName), 'utf8');
+  return readFileSync(resolve(workspaceRoot, 'assets', fileName), 'utf8');
+}
+
+function findWorkspaceRoot(startDir) {
+  let current = startDir;
+  for (let depth = 0; depth < 8; depth += 1) {
+    if (existsSync(resolve(current, 'assets'))) {
+      return current;
+    }
+
+    const parent = resolve(current, '..');
+    if (parent === current) {
+      break;
+    }
+
+    current = parent;
+  }
+
+  throw new Error(`Unable to locate workspace assets directory from ${startDir}`);
 }
 
 function count(source, needle) {
@@ -314,6 +352,18 @@ function count(source, needle) {
 
 function matchAllCount(source, pattern) {
   return Array.from(source.matchAll(pattern)).length;
+}
+
+function hasMinimalSelectorMatch(html, selector) {
+  if (selector.startsWith('#')) {
+    return html.includes(`id="${selector.slice(1)}"`);
+  }
+
+  if (selector.startsWith('.')) {
+    return html.includes(`class="${selector.slice(1)}"`);
+  }
+
+  return html.includes(`<${selector}`) || html.includes(`data-testid="${selector.match(/data-testid="([^"]+)"/)?.[1] ?? ''}"`);
 }
 
 function summarizeCleanTreeCandidate(html) {

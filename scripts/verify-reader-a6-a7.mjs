@@ -1,5 +1,5 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import { FocusEngine } from '../dist/reader/focus-engine.js';
 import { ProgressStore } from '../dist/reader/progress-store.js';
 import { mountReaderApp } from '../dist/reader/reader-app.js';
@@ -97,6 +97,20 @@ class ElementLike extends NodeLike {
     this.attributes.set(name, value);
   }
 
+  getAttribute(name) {
+    return this.attributes.get(name) ?? null;
+  }
+
+  removeAttribute(name) {
+    this.attributes.delete(name);
+    if (name === 'href') this.href = '';
+    if (name === 'src') this.src = '';
+  }
+
+  get parentElement() {
+    return this.parent instanceof ElementLike ? this.parent : null;
+  }
+
   remove() {
     if (!this.parent) return;
     this.parent.children = this.parent.children.filter((child) => child !== this);
@@ -127,16 +141,63 @@ class ElementLike extends NodeLike {
   scrollIntoView(options) {
     this.scrollCalls.push(options);
   }
+
+  play() {
+    this.paused = false;
+    return Promise.resolve();
+  }
+
+  pause() {
+    this.paused = true;
+  }
+
+  load() {}
 }
 
 const windowListeners = new Map();
 const documentListeners = new Map();
 const storage = new Map();
 let selectedText = '';
+const openCalls = [];
+const runtimeMessages = [];
+const imagePreloadRequests = [];
+const documentBody = new ElementLike('body');
+
+class ImagePreloadLike {
+  constructor() {
+    this.onload = null;
+    this.onerror = null;
+    this.alt = '';
+    this.complete = false;
+    this._src = '';
+  }
+
+  set src(value) {
+    this._src = value;
+    this.complete = false;
+    imagePreloadRequests.push(this);
+  }
+
+  get src() {
+    return this._src;
+  }
+
+  triggerLoad() {
+    this.complete = true;
+    this.onload?.({ target: this });
+  }
+
+  triggerError() {
+    this.complete = false;
+    this.onerror?.({ target: this });
+  }
+}
 
 globalThis.Element = ElementLike;
 globalThis.HTMLElement = ElementLike;
+globalThis.Image = ImagePreloadLike;
 globalThis.document = {
+  body: documentBody,
   visibilityState: 'visible',
   fonts: { ready: Promise.resolve() },
   createElement(tagName) {
@@ -147,6 +208,12 @@ globalThis.document = {
   },
   createTextNode(text) {
     return new TextNodeLike(text);
+  },
+  querySelector(selector) {
+    return documentBody.querySelector(selector);
+  },
+  querySelectorAll(selector) {
+    return documentBody.querySelectorAll(selector);
   },
   addEventListener(type, listener) {
     if (!documentListeners.has(type)) documentListeners.set(type, []);
@@ -167,6 +234,23 @@ globalThis.window = {
   },
   getSelection() {
     return { toString: () => selectedText };
+  },
+  open(href, target) {
+    openCalls.push({ href, target });
+    return {};
+  },
+  location: {
+    assign(href) {
+      openCalls.push({ href, target: 'assign' });
+    }
+  }
+};
+globalThis.chrome = {
+  runtime: {
+    sendMessage(message) {
+      runtimeMessages.push(message);
+      return Promise.resolve({ ok: true });
+    }
   }
 };
 globalThis.localStorage = {
@@ -204,7 +288,7 @@ storage.set('linelens:fixture-progress:broken', '{');
 assert(progressStore.get('broken') === null, 'ProgressStore should tolerate invalid JSON');
 
 const article = JSON.parse(
-  readFileSync(join(new URL('..', import.meta.url).pathname, 'fixtures/articles/simple-chinese.json'), 'utf8')
+  readFileSync(join(resolveFixtureDir(new URL('..', import.meta.url).pathname), 'simple-chinese.json'), 'utf8')
 );
 const root = new ElementLike('main');
 mountReaderApp(root, article);
@@ -304,16 +388,144 @@ tweetClickListener?.({
 });
 assert(!preventedActiveTweetClick, 'Active simpleTweet link click should be allowed to navigate');
 
+const tweetVideoArticle = {
+  ...article,
+  id: 'simple-tweet-video-click',
+  blocks: [
+    { id: 'intro-video', type: 'paragraph', text: 'Intro paragraph' },
+    {
+      id: 'tweet-video-click',
+      type: 'simple-tweet',
+      source: 'X Tweet',
+      title: 'Portrait clip',
+      excerpt: 'Portrait clip',
+      href: 'https://x.com/example/status/999',
+      authorName: 'Jackywine',
+      authorHandle: '@Jackywine',
+      publishedAtText: '2月11日',
+      items: [
+        { type: 'text', text: 'Portrait clip' },
+        {
+          type: 'video',
+          video: {
+            id: 'tweet-video',
+            type: 'video',
+            src: 'https://example.com/video.mp4',
+            aspectRatio: 0.564,
+            poster: 'https://example.com/poster.jpg'
+          }
+        }
+      ]
+    }
+  ]
+};
+const tweetVideoRoot = new ElementLike('main');
+mountReaderApp(tweetVideoRoot, tweetVideoArticle);
+const tweetVideoClickListener = tweetVideoRoot.eventListeners.get('click')?.at(-1);
+const tweetVideoCard = walk(tweetVideoRoot).find((element) => element.dataset.blockId === 'tweet-video-click');
+const tweetVideoPlayer = walk(tweetVideoRoot).find((element) => element.className.split(/\s+/).includes('reader-video-player'));
+assert(tweetVideoCard?.tagName === 'DIV', 'simpleTweet with video should render as div-backed card with data-href navigation');
+assert(tweetVideoCard?.dataset.href === 'https://x.com/example/status/999', 'simpleTweet with video should preserve href on data-href');
+let preventedInactiveTweetVideoClick = false;
+tweetVideoClickListener?.({
+  target: tweetVideoCard,
+  preventDefault() {
+    preventedInactiveTweetVideoClick = true;
+  },
+  stopPropagation() {}
+});
+assert(preventedInactiveTweetVideoClick, 'Inactive simpleTweet video card click should be intercepted before navigation');
+assert(findByClass(tweetVideoRoot, 'is-active')?.dataset.blockId === 'tweet-video-click', 'Inactive simpleTweet video card click should first select the card');
+const openCountBeforeVideoClick = openCalls.length;
+let preventedVideoControlClick = false;
+tweetVideoClickListener?.({
+  target: tweetVideoPlayer,
+  preventDefault() {
+    preventedVideoControlClick = true;
+  },
+  stopPropagation() {}
+});
+assert(!preventedVideoControlClick, 'Clicking the embedded video should keep video controls interactive');
+assert(openCalls.length === openCountBeforeVideoClick, 'Clicking the embedded video should not navigate away');
+let preventedActiveTweetVideoCardClick = false;
+tweetVideoClickListener?.({
+  target: tweetVideoCard,
+  preventDefault() {
+    preventedActiveTweetVideoCardClick = true;
+  },
+  stopPropagation() {}
+});
+assert(preventedActiveTweetVideoCardClick, 'Active simpleTweet video card click should intercept default browser behavior before manual navigation');
+assert(openCalls.at(-1)?.href === 'https://x.com/example/status/999', 'Active simpleTweet video card click should navigate using the preserved href');
+
 const imageClickArticle = {
   ...article,
   id: 'image-click',
   blocks: [
     { id: 'intro-image', type: 'paragraph', text: 'Intro paragraph' },
-    { id: 'image-click-block', type: 'image', src: 'https://example.com/image.jpg', alt: 'Linked image', href: 'https://x.com/example/photo/1' }
+    {
+      id: 'image-click-block',
+      type: 'image',
+      src: 'https://pbs.twimg.com/media/IMAGE123?format=jpg&name=large',
+      alt: 'Linked image',
+      href: 'https://x.com/example/photo/1'
+    }
   ]
 };
+const coverClickArticle = {
+  ...article,
+  id: 'cover-click',
+  coverImage: {
+    id: 'cover-click-block',
+    type: 'image',
+    src: 'https://pbs.twimg.com/media/COVER123?format=jpg&name=large',
+    alt: 'Linked cover',
+    href: 'https://x.com/example/article/cover/media/1'
+  },
+  blocks: [{ id: 'cover-body', type: 'paragraph', text: 'Cover body paragraph' }]
+};
+const coverClickRoot = new ElementLike('main');
+imagePreloadRequests.length = 0;
+mountReaderApp(coverClickRoot, coverClickArticle);
+assert(
+  findPreloadRequest('https://pbs.twimg.com/media/COVER123?format=jpg&name=orig'),
+  'Reader should preload high-res cover media when the article mounts'
+);
+findPreloadRequest('https://pbs.twimg.com/media/COVER123?format=jpg&name=orig')?.triggerLoad();
+await flushAsyncWork();
+const coverClickListener = coverClickRoot.eventListeners.get('click')?.at(-1);
+const coverLink = findByClass(coverClickRoot, 'reader-cover');
+assert(coverLink?.tagName === 'A', 'linked cover image should remain an anchor in Reader');
+let preventedCoverClick = false;
+coverClickListener?.({
+  target: coverLink,
+  preventDefault() {
+    preventedCoverClick = true;
+  },
+  stopPropagation() {}
+});
+assert(preventedCoverClick, 'Cover image click should intercept default browser behavior');
+assert(findByClass(documentBody, 'reader-media-preview')?.classList.contains('is-visible'), 'Cover image click should show the media preview in the current page');
+assert(findByClass(documentBody, 'reader-media-preview')?.dataset.href === 'https://x.com/example/article/cover/media/1', 'Cover image preview should keep the source anchor href');
+assert(
+  findByClass(documentBody, 'reader-media-preview-image')?.getAttribute('src') === 'https://pbs.twimg.com/media/COVER123?format=jpg&name=orig',
+  'Cover image preview should upgrade the article cover image URL to the original X image'
+);
+findByClass(documentBody, 'reader-media-preview-close')?.eventListeners.get('click')?.at(-1)?.({
+  target: findByClass(documentBody, 'reader-media-preview-close'),
+  preventDefault() {},
+  stopPropagation() {}
+});
+
 const imageClickRoot = new ElementLike('main');
+imagePreloadRequests.length = 0;
 mountReaderApp(imageClickRoot, imageClickArticle);
+assert(
+  findPreloadRequest('https://pbs.twimg.com/media/IMAGE123?format=jpg&name=orig'),
+  'Reader should preload high-res image block media when the article mounts'
+);
+findPreloadRequest('https://pbs.twimg.com/media/IMAGE123?format=jpg&name=orig')?.triggerLoad();
+await flushAsyncWork();
 const imageClickListener = imageClickRoot.eventListeners.get('click')?.at(-1);
 const imageLink = walk(imageClickRoot).find((element) => element.dataset.blockId === 'image-click-block');
 assert(imageLink?.tagName === 'A', 'linked image block should remain an anchor');
@@ -328,6 +540,7 @@ imageClickListener?.({
 assert(preventedImageClick, 'Inactive image link click should be intercepted before navigation');
 assert(findByClass(imageClickRoot, 'is-active')?.dataset.blockId === 'image-click-block', 'Inactive image link click should first select the image');
 let preventedActiveImageClick = false;
+const openCountBeforeActiveImageClick = openCalls.length;
 imageClickListener?.({
   target: imageLink,
   preventDefault() {
@@ -335,7 +548,81 @@ imageClickListener?.({
   },
   stopPropagation() {}
 });
-assert(!preventedActiveImageClick, 'Active image link click should be allowed to navigate');
+assert(preventedActiveImageClick, 'Active image link click should intercept default browser behavior');
+assert(openCalls.length === openCountBeforeActiveImageClick, 'Active image link click should not navigate away');
+assert(findByClass(documentBody, 'reader-media-preview')?.classList.contains('is-visible'), 'Active image link click should show the media preview in the current page');
+assert(findByClass(documentBody, 'reader-media-preview')?.dataset.href === 'https://x.com/example/photo/1', 'Active image preview should keep the source anchor href');
+assert(
+  findByClass(documentBody, 'reader-media-preview-image')?.getAttribute('src') === 'https://pbs.twimg.com/media/IMAGE123?format=jpg&name=orig',
+  'Active image preview should upgrade the article image URL to the original X image'
+);
+assert(runtimeMessages.at(-1)?.type === 'READER_MEDIA_LINK_CLICKED', 'Active image click should log the media href through runtime messaging');
+assert(runtimeMessages.at(-1)?.href === 'https://x.com/example/photo/1', 'Active image click should log the image anchor href');
+assert(runtimeMessages.at(-1)?.resolvedImageUrl === 'https://pbs.twimg.com/media/IMAGE123?format=jpg&name=orig', 'Active image click should log the final article-resolved image URL');
+assert(runtimeMessages.at(-1)?.lookupSource === 'article', 'Active image click should log that the final URL came from article data lookup');
+assert(runtimeMessages.at(-1)?.blockId === 'image-click-block', 'Active image click should log the source block id');
+const secondImageClickArticle = {
+  ...article,
+  id: 'image-click-switch',
+  blocks: [
+    {
+      id: 'image-click-switch-a',
+      type: 'image',
+      src: 'https://pbs.twimg.com/media/SWITCHA?format=jpg&name=large',
+      alt: 'Switch image A',
+      href: 'https://x.com/example/photo/a'
+    },
+    {
+      id: 'image-click-switch-b',
+      type: 'image',
+      src: 'https://pbs.twimg.com/media/SWITCHB?format=jpg&name=small',
+      alt: 'Switch image B',
+      href: 'https://x.com/example/photo/b'
+    }
+  ]
+};
+const secondImageClickRoot = new ElementLike('main');
+imagePreloadRequests.length = 0;
+mountReaderApp(secondImageClickRoot, secondImageClickArticle);
+assert(
+  findPreloadRequest('https://pbs.twimg.com/media/SWITCHA?format=jpg&name=orig') &&
+    findPreloadRequest('https://pbs.twimg.com/media/SWITCHB?format=jpg&name=orig'),
+  'Reader should preload all high-res image block media when the article mounts'
+);
+const secondImageClickListener = secondImageClickRoot.eventListeners.get('click')?.at(-1);
+const switchingImageLinks = walk(secondImageClickRoot).filter((element) => element.className.split(/\s+/).includes('reader-media'));
+assert(switchingImageLinks.length === 2, 'Switching image fixture should render two image anchors');
+findPreloadRequest('https://pbs.twimg.com/media/SWITCHA?format=jpg&name=orig')?.triggerLoad();
+await flushAsyncWork();
+secondImageClickListener?.({ target: switchingImageLinks[0], preventDefault() {}, stopPropagation() {} });
+secondImageClickListener?.({ target: switchingImageLinks[0], preventDefault() {}, stopPropagation() {} });
+assert(
+  findByClass(documentBody, 'reader-media-preview-image')?.getAttribute('src') === 'https://pbs.twimg.com/media/SWITCHA?format=jpg&name=orig',
+  'Active image preview should show the first clicked image source'
+);
+secondImageClickListener?.({ target: switchingImageLinks[1], preventDefault() {}, stopPropagation() {} });
+secondImageClickListener?.({ target: switchingImageLinks[1], preventDefault() {}, stopPropagation() {} });
+assert(findByClass(documentBody, 'reader-media-preview')?.dataset.href === 'https://x.com/example/photo/b', 'Active image preview should update to the second clicked image href');
+assert(findByClass(documentBody, 'reader-media-preview')?.classList.contains('is-loading'), 'Active image preview should enter loading state when the clicked image is not ready');
+assert(
+  !findByClass(documentBody, 'reader-media-preview-image')?.getAttribute('src'),
+  'Active image preview should clear the previous image while the clicked image is loading'
+);
+findPreloadRequest('https://pbs.twimg.com/media/SWITCHB?format=jpg&name=orig')?.triggerLoad();
+await flushAsyncWork();
+assert(
+  findByClass(documentBody, 'reader-media-preview-image')?.getAttribute('src') === 'https://pbs.twimg.com/media/SWITCHB?format=jpg&name=orig',
+  `Active image preview should update the reused viewer image to the second clicked image source, got ${findByClass(documentBody, 'reader-media-preview-image')?.getAttribute('src')}`
+);
+assert(!findByClass(documentBody, 'reader-media-preview')?.classList.contains('is-loading'), 'Active image preview should leave loading state after the clicked image loads');
+const previewCloseButton = findByClass(documentBody, 'reader-media-preview-close');
+assert(previewCloseButton?.tagName === 'BUTTON', 'Media preview should expose a close button');
+previewCloseButton.eventListeners.get('click')?.at(-1)?.({
+  target: previewCloseButton,
+  preventDefault() {},
+  stopPropagation() {}
+});
+assert(!findByClass(documentBody, 'reader-media-preview')?.classList.contains('is-visible'), 'Clicking the close button should close the media preview');
 
 const galleryClickArticle = {
   ...article,
@@ -347,14 +634,22 @@ const galleryClickArticle = {
       type: 'image-gallery',
       aspectRatio: 1.7778,
       items: [
-        { src: 'https://example.com/1.jpg', alt: 'One', href: 'https://x.com/example/media/1' },
+        { src: 'https://pbs.twimg.com/media/GALLERY1?format=jpg&name=medium', alt: 'One', href: 'https://x.com/example/media/1' },
         { src: 'https://example.com/2.jpg', alt: 'Two', href: 'https://x.com/example/media/2' }
       ]
     }
   ]
 };
 const galleryClickRoot = new ElementLike('main');
+imagePreloadRequests.length = 0;
 mountReaderApp(galleryClickRoot, galleryClickArticle);
+assert(
+  findPreloadRequest('https://pbs.twimg.com/media/GALLERY1?format=jpg&name=orig') && findPreloadRequest('https://example.com/2.jpg'),
+  'Reader should preload all high-res image-gallery media when the article mounts'
+);
+findPreloadRequest('https://pbs.twimg.com/media/GALLERY1?format=jpg&name=orig')?.triggerLoad();
+findPreloadRequest('https://example.com/2.jpg')?.triggerLoad();
+await flushAsyncWork();
 const galleryClickListener = galleryClickRoot.eventListeners.get('click')?.at(-1);
 const galleryItemLink = walk(galleryClickRoot).find((element) => element.className.split(/\s+/).includes('reader-image-gallery-item'));
 assert(galleryItemLink?.tagName === 'A', 'linked gallery items should remain anchors');
@@ -369,6 +664,7 @@ galleryClickListener?.({
 assert(preventedGalleryClick, 'Inactive image-gallery link click should be intercepted before navigation');
 assert(findByClass(galleryClickRoot, 'is-active')?.dataset.blockId === 'gallery-click-block', 'Inactive image-gallery link click should first select the gallery');
 let preventedActiveGalleryClick = false;
+const openCountBeforeActiveGalleryClick = openCalls.length;
 galleryClickListener?.({
   target: galleryItemLink,
   preventDefault() {
@@ -376,7 +672,85 @@ galleryClickListener?.({
   },
   stopPropagation() {}
 });
-assert(!preventedActiveGalleryClick, 'Active image-gallery link click should be allowed to navigate');
+assert(preventedActiveGalleryClick, 'Active image-gallery link click should intercept default browser behavior');
+assert(openCalls.length === openCountBeforeActiveGalleryClick, 'Active image-gallery link click should not navigate away');
+assert(findByClass(documentBody, 'reader-media-preview')?.classList.contains('is-visible'), 'Active image-gallery link click should show the media preview in the current page');
+assert(findByClass(documentBody, 'reader-media-preview')?.dataset.href === 'https://x.com/example/media/1', 'Active image-gallery preview should keep the source anchor href');
+assert(findByClass(documentBody, 'reader-media-preview-prev')?.disabled, 'First preview image should not expose an enabled left navigation button');
+assert(
+  findByClass(documentBody, 'reader-media-preview-image')?.getAttribute('src') === 'https://pbs.twimg.com/media/GALLERY1?format=jpg&name=orig',
+  'Active image-gallery preview should upgrade the matched gallery item URL to the original X image'
+);
+assert(runtimeMessages.at(-1)?.type === 'READER_MEDIA_LINK_CLICKED', 'Active image-gallery click should log the media href through runtime messaging');
+assert(runtimeMessages.at(-1)?.href === 'https://x.com/example/media/1', 'Active image-gallery click should log the gallery item anchor href');
+assert(runtimeMessages.at(-1)?.resolvedImageUrl === 'https://pbs.twimg.com/media/GALLERY1?format=jpg&name=orig', 'Active image-gallery click should log the final article-resolved image URL');
+assert(runtimeMessages.at(-1)?.lookupSource === 'article', 'Active image-gallery click should log that the final URL came from article data lookup');
+assert(runtimeMessages.at(-1)?.blockId === 'gallery-click-block', 'Active image-gallery click should log the source block id');
+const secondGalleryItemLink = walk(galleryClickRoot).filter((element) => element.className.split(/\s+/).includes('reader-image-gallery-item')).at(1);
+assert(secondGalleryItemLink?.tagName === 'A', 'Second linked gallery item should remain an anchor');
+let preventedSecondActiveGalleryClick = false;
+galleryClickListener?.({
+  target: secondGalleryItemLink,
+  preventDefault() {
+    preventedSecondActiveGalleryClick = true;
+  },
+  stopPropagation() {}
+});
+assert(preventedSecondActiveGalleryClick, 'Active image-gallery click should intercept the second item without navigation');
+assert(findByClass(documentBody, 'reader-media-preview')?.dataset.href === 'https://x.com/example/media/2', 'Active image-gallery preview should update to the clicked item href');
+assert(findByClass(documentBody, 'reader-media-preview-next')?.disabled, 'Last preview image should not expose an enabled right navigation button');
+assert(
+  findByClass(documentBody, 'reader-media-preview-image')?.getAttribute('src') === 'https://example.com/2.jpg',
+  'Active image-gallery preview should update the reused viewer image to the clicked item source'
+);
+assert(runtimeMessages.at(-1)?.href === 'https://x.com/example/media/2', 'Second active image-gallery click should log the clicked item anchor href');
+assert(runtimeMessages.at(-1)?.resolvedImageUrl === 'https://example.com/2.jpg', 'Second active image-gallery click should log the clicked item final URL');
+let preventedGalleryArrowLeft = false;
+windowListeners.get('keydown')?.at(-1)?.({
+  key: 'ArrowLeft',
+  target: documentBody,
+  preventDefault() {
+    preventedGalleryArrowLeft = true;
+  }
+});
+await flushAsyncWork();
+assert(preventedGalleryArrowLeft, 'ArrowLeft should be intercepted while media preview is open');
+assert(findByClass(documentBody, 'reader-media-preview')?.dataset.href === 'https://x.com/example/media/1', 'ArrowLeft should switch to the previous preview image');
+assert(findByClass(documentBody, 'reader-media-preview')?.classList.contains('is-entering-from-left'), 'ArrowLeft should apply the left-enter preview animation');
+assert(
+  findByClass(documentBody, 'reader-media-preview-image')?.getAttribute('src') === 'https://pbs.twimg.com/media/GALLERY1?format=jpg&name=orig',
+  'ArrowLeft should display the previous preview image source'
+);
+let preventedGalleryArrowRight = false;
+windowListeners.get('keydown')?.at(-1)?.({
+  key: 'ArrowRight',
+  target: documentBody,
+  preventDefault() {
+    preventedGalleryArrowRight = true;
+  }
+});
+await flushAsyncWork();
+assert(preventedGalleryArrowRight, 'ArrowRight should be intercepted while media preview is open');
+assert(findByClass(documentBody, 'reader-media-preview')?.dataset.href === 'https://x.com/example/media/2', 'ArrowRight should switch to the next preview image');
+assert(findByClass(documentBody, 'reader-media-preview')?.classList.contains('is-entering-from-right'), 'ArrowRight should apply the right-enter preview animation');
+let preventedPreviewEscape = false;
+windowListeners.get('keydown')?.at(-1)?.({
+  key: 'Escape',
+  target: documentBody,
+  preventDefault() {
+    preventedPreviewEscape = true;
+  }
+});
+assert(preventedPreviewEscape, 'Escape should be intercepted while media preview is open');
+assert(!findByClass(documentBody, 'reader-media-preview')?.classList.contains('is-visible'), 'Escape should close the media preview');
+const visiblePreview = findByClass(documentBody, 'reader-media-preview');
+galleryClickListener?.({ target: secondGalleryItemLink, preventDefault() {}, stopPropagation() {} });
+visiblePreview.eventListeners.get('click')?.at(-1)?.({
+  target: visiblePreview,
+  preventDefault() {},
+  stopPropagation() {}
+});
+assert(!visiblePreview.classList.contains('is-visible'), 'Clicking the media preview scrim should close the preview');
 
 const savedProgress = JSON.parse(storage.get('linelens:fixture-progress:simple-chinese'));
 assert(savedProgress.unitId === 'p1-u2', 'Focus changes should save progress');
@@ -417,12 +791,27 @@ function dispatchKey(listener, key, target = new ElementLike('body')) {
   return prevented;
 }
 
+function findPreloadRequest(src) {
+  return imagePreloadRequests.find((request) => request.src === src) ?? null;
+}
+
+async function flushAsyncWork() {
+  for (let index = 0; index < 6; index += 1) {
+    await Promise.resolve();
+  }
+}
+
 function textUnit(unitId) {
   return { id: unitId, type: 'reading-text', blockId: unitId.split('-u')[0], unitId, text: unitId, startOffset: 0, endOffset: unitId.length };
 }
 
 function matchesSelector(element, selector) {
   if (selector === 'img') return element.tagName === 'IMG';
+
+  const tagClassMatch = selector.match(/^([a-z]+)\.([A-Za-z0-9_-]+)$/);
+  if (tagClassMatch) {
+    return element.tagName === tagClassMatch[1].toUpperCase() && element.className.split(/\s+/).includes(tagClassMatch[2]);
+  }
 
   const dataMatch = selector.match(/^\[data-([a-z-]+)(?:="([^"]+)")?\]$/);
   if (dataMatch) {
@@ -438,6 +827,12 @@ function matchesSelector(element, selector) {
   const anchorClassHrefMatch = selector.match(/^a\.([A-Za-z0-9_-]+)\[href\]$/);
   if (anchorClassHrefMatch) {
     return element.tagName === 'A' && element.className.split(/\s+/).includes(anchorClassHrefMatch[1]) && element.attributes.has('href');
+  }
+
+  const classVisibleMatch = selector.match(/^\.([A-Za-z0-9_-]+)\.([A-Za-z0-9_-]+)$/);
+  if (classVisibleMatch) {
+    const classes = element.className.split(/\s+/);
+    return classes.includes(classVisibleMatch[1]) && classes.includes(classVisibleMatch[2]);
   }
 
   return false;
@@ -460,4 +855,17 @@ function walk(rootElement) {
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
+}
+
+function resolveFixtureDir(rootDir) {
+  const candidates = [
+    join(rootDir, 'fixtures', 'articles'),
+    resolve(rootDir, '..', '..', 'fixtures', 'articles')
+  ];
+  const fixtureDir = candidates.find((candidate) => existsSync(candidate));
+  if (!fixtureDir) {
+    throw new Error(`Unable to locate reader fixtures from ${rootDir}`);
+  }
+
+  return fixtureDir;
 }

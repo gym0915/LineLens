@@ -1,12 +1,13 @@
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const rootDir = resolve(import.meta.dirname, '..');
-const workspaceRoot = resolve(rootDir, '..');
+const workspaceRoot = findWorkspaceRoot(rootDir);
 
 const articleModelSource = readFileSync(resolve(rootDir, 'src/shared/article.ts'), 'utf8');
 const extractorSource = readFileSync(resolve(rootDir, 'src/content/extractors/x/article-extractor.ts'), 'utf8');
+const simpleTweetSource = readFileSync(resolve(rootDir, 'src/content/extractors/x/simple-tweet.ts'), 'utf8');
 const readerRendererSource = readFileSync(resolve(rootDir, 'src/reader/block-renderer.ts'), 'utf8');
 const readerCss = readReaderCss();
 const packageJson = JSON.parse(readFileSync(resolve(rootDir, 'package.json'), 'utf8'));
@@ -33,17 +34,17 @@ assert.match(
 
 assert.match(
   articleModelSource,
-  /video\?: VideoBlock/,
-  'SimpleTweetBlock should support an embedded video media contract'
+  /export type SimpleTweetVideoItem = \{[\s\S]*?type:\s*'video';[\s\S]*?video: VideoBlock;/,
+  'SimpleTweet content flow should support an embedded video media item contract'
 );
 assert.match(
-  extractorSource,
-  /function extractSimpleTweetVideoCard/,
-  'extractor should have a dedicated simpleTweet video path'
+  articleModelSource,
+  /items: SimpleTweetContentItem\[\]/,
+  'SimpleTweet card data should expose ordered content items'
 );
 assert.match(
-  extractorSource,
-  /extractVideoFromElement\(block, id, capturedVideos\)/,
+  simpleTweetSource,
+  /function extractVideoItem\(element: Element, id: string, capturedVideos: CapturedXVideo\[\]\): SimpleTweetContentItem \| null[\s\S]*?extractVideoFromElement\(element, id, capturedVideos\)/,
   'simpleTweet video extraction should reuse the same videoPlayer extraction helper'
 );
 assert.match(
@@ -63,7 +64,7 @@ assert.match(
 );
 assert.match(
   readerRendererSource,
-  /renderVideoPlayer\(block\.video/,
+  /renderVideoPlayer\(item\.video/,
   'simpleTweet rendering should call the shared video player for embedded tweet videos'
 );
 assert.match(
@@ -94,4 +95,22 @@ function readReaderCss() {
       .sort()
       .map((fileName) => readFileSync(resolve(stylesDir, fileName), 'utf8'))
   ].join('\n');
+}
+
+function findWorkspaceRoot(startDir) {
+  let current = startDir;
+  for (let depth = 0; depth < 8; depth += 1) {
+    if (existsSync(resolve(current, 'assets/x-article-simpletweet-video-tweet-text.html'))) {
+      return current;
+    }
+
+    const parent = resolve(current, '..');
+    if (parent === current) {
+      break;
+    }
+
+    current = parent;
+  }
+
+  throw new Error(`Unable to locate workspace assets directory from ${startDir}`);
 }
