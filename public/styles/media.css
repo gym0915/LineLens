@@ -105,6 +105,12 @@
   transition: filter 300ms ease;
 }
 
+.reader-video-player:fullscreen,
+.reader-video-player:-webkit-full-screen {
+  object-fit: contain;
+  object-position: center;
+}
+
 .reader-gif-overlay {
   position: absolute;
   left: 10px;
