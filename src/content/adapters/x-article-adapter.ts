@@ -19,7 +19,7 @@ export const xArticleAdapter: PlatformAdapter = {
     {
       id: 'normalize-handwritten-ordered-list',
       enabledByDefault: true,
-      description: 'Normalize manually typed ordered-list markers into list blocks.'
+      description: 'Normalize X Draft.js list semantics while preserving manually typed ordered markers as text.'
     },
     {
       id: 'preserve-svg-emoji',

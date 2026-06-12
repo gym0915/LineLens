@@ -9,6 +9,8 @@ function read(path) {
 }
 
 const extractor = read('src/content/extractors/x/article-extractor.ts');
+const articleTypes = read('src/shared/article.ts');
+const simpleTweetExtractor = read('src/content/extractors/x/simple-tweet.ts');
 const bundledContent = read('src/content/index.ts');
 const cleanTreeConverter = read('src/content/preprocess/clean-tree-block-converter.ts');
 const renderer = read('src/reader/block-renderer.ts');
@@ -36,14 +38,19 @@ for (const source of [extractor, bundledContent, cleanTreeConverter]) {
   assert.match(source, /function getDescendantPaddingBottomAspectRatio/, 'gallery aspect ratio should inspect descendant padding-bottom nodes');
   assert.match(source, /querySelectorAll<HTMLElement>\('\[style\*="padding-bottom"\]'\)/, 'gallery aspect ratio should search nested ratio placeholders');
   assert.match(source, /return roundAspectRatio\(100 \/ paddingBottom\)/, 'gallery aspect ratio should convert padding-bottom percent to width divided by height');
+  assert.match(source, /function getImageGalleryAspectRatio\(element: Element\): number \| undefined \{\s*const descendantRatio = getDescendantPaddingBottomAspectRatio\(element\)/, 'gallery aspect ratio should prefer the component-local ratio placeholder before walking ancestors');
 }
 
+assert.match(articleTypes, /displaySrc\?: string/, 'tweetPhoto-backed media types should preserve a visible background-image URL');
+assert.match(simpleTweetExtractor, /const displaySrc = getTweetPhotoBackgroundUrl\(element\)/, 'simpleTweet tweetPhoto extraction should read the X background-image URL separately');
 assert.match(renderer, /function renderImageGalleryLayoutNode/, 'Reader should recursively render image-gallery layout nodes');
 assert.match(renderer, /function renderImageGalleryItem/, 'Reader should render image-gallery items through a shared helper');
 assert.match(renderer, /reader-image-gallery-background/, 'Reader should render tweetPhoto-style background layers');
 assert.match(renderer, /background\.remove\(\)/, 'Reader should remove gallery background on image load error');
 assert.match(renderer, /dataset\.itemIndex = String\(index\)/, 'Reader should expose item indexes for nested gallery layout');
 assert.match(renderer, /function applyImageGalleryFlexMetrics/, 'Reader should apply source flex grow/shrink/basis metrics');
+assert.match(renderer, /item\.displaySrc \?\? item\.src/, 'gallery background should prefer the X visible background-image URL');
+assert.match(renderer, /photo\.displaySrc \?\? photo\.src/, 'simpleTweet photo background should prefer the X visible background-image URL');
 
 assert.match(mediaCss, /\.reader-image-gallery-grid\s*\{[\s\S]*display:\s*flex/, 'gallery grid should use flex layout');
 assert.match(mediaCss, /aspect-ratio:\s*var\(--reader-media-aspect-ratio, 16 \/ 9\)/, 'gallery grid should use extracted aspect ratio');

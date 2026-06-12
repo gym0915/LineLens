@@ -393,6 +393,11 @@ assert.match(backgroundSource, /chrome\.action\.setIcon/);
 assert.match(backgroundSource, /chrome\.webRequest\.onBeforeRequest/);
 assert.match(backgroundSource, /UPSERT_X_VIDEO_POSTERS/);
 assert.match(backgroundSource, /GET_CAPTURED_X_VIDEOS/);
+assert.match(backgroundSource, /READER_MEDIA_LINK_CLICKED/);
+assert.match(backgroundSource, /reader media link clicked/);
+assert.match(backgroundSource, /imageUrl: message\.src/);
+assert.match(backgroundSource, /resolvedImageUrl: message\.resolvedImageUrl/);
+assert.match(backgroundSource, /lookupSource: message\.lookupSource/);
 assert.match(backgroundSource, /tabVideoMap/);
 
 console.log('B10-B15 X Article chain verification passed.');

@@ -801,7 +801,8 @@ function getTextAfterCover(coverRoot: Element, offset: number): string {
 
 export function tweetPhotoElementToPhoto(element: HTMLElement): TweetPhoto | null {
   const image = element.querySelector<HTMLImageElement>('img');
-  const src = image?.currentSrc || image?.src || getTweetPhotoBackgroundUrl(element);
+  const displaySrc = getTweetPhotoBackgroundUrl(element);
+  const src = image?.currentSrc || image?.src || displaySrc;
   if (!src) {
     return null;
   }
@@ -809,6 +810,7 @@ export function tweetPhotoElementToPhoto(element: HTMLElement): TweetPhoto | nul
   const href = element.closest('a[href]')?.getAttribute('href') ?? undefined;
   return {
     src,
+    ...(displaySrc ? { displaySrc } : {}),
     alt: image?.alt || undefined,
     ...(href ? { href: new URL(href, X_CANONICAL_ORIGIN).toString() } : {})
   };

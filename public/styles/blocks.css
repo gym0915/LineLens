@@ -78,6 +78,14 @@
   user-select: none;
 }
 
+.reader-list-item--source-marker {
+  gap: 0;
+}
+
+.reader-list-item--source-marker .reader-list-bullet {
+  display: none;
+}
+
 .reader-list-text {
   min-width: 0;
   white-space: pre-wrap;

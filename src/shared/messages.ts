@@ -40,4 +40,15 @@ export type ExtensionMessage =
     }
   | {
       type: 'GET_CAPTURED_X_VIDEOS';
+    }
+  | {
+      type: 'READER_MEDIA_LINK_CLICKED';
+      articleId: string;
+      blockId?: string;
+      blockType?: string;
+      unitId?: string;
+      href: string;
+      src: string;
+      resolvedImageUrl: string;
+      lookupSource: 'article';
     };

@@ -162,7 +162,7 @@ const modularExtractorSource = readFileSync(
 );
 for (const source of [modularExtractorSource]) {
   assert.match(source, /buildCleanTreePrimaryBlocks/, 'P4.5 should wire clean tree primary blocks into the modular X extractor path');
-  assert.match(source, /legacyBlocks = await extractBlocks/, 'P4.5 should keep legacy extraction as fallback input');
+  assert.doesNotMatch(source, /legacyBlocks = await extractBlocks/, 'P4.5 browser path should not execute legacy extraction as fallback input');
 }
 const liveExtractorSource = readFileSync(resolve(projectRoot, 'src/content/index.ts'), 'utf8');
 assert.doesNotMatch(liveExtractorSource, /^import /m, 'live content script source should remain import-free because manifest content_scripts are not modules');

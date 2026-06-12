@@ -145,7 +145,7 @@ assert(
   'inactive focus units should expose a hover text color'
 );
 assert(
-  /\.focus-unit\.is-active\s*\{[\s\S]*?color: var\(--reader-text-active\);[\s\S]*?cursor: default;/.test(css),
+  /\.focus-unit\.is-active\s*\{[\s\S]*?color: var\(--reader-text-active\) !important;[\s\S]*?cursor: default;/.test(css),
   'active focus units should use full text color and default cursor'
 );
 for (const expected of [
@@ -159,6 +159,12 @@ for (const expected of [
   '--reader-quote-border-active',
   '.focus-unit:hover',
   '.focus-unit.is-muted:hover',
+  '.focus-unit.is-muted *',
+  '.focus-unit.is-muted:hover *',
+  '.focus-unit.is-active *',
+  'color: var(--reader-text-muted) !important',
+  'color: var(--reader-text-hover) !important',
+  'color: var(--reader-text-active) !important',
   '@media (prefers-reduced-motion: reduce)',
   '.reader-media.focus-unit.is-active',
   '.reader-media.focus-unit.is-active img',

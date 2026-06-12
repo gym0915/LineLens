@@ -185,17 +185,23 @@ const modularExtractorSource = readFileSync(
 const liveExtractorSource = readFileSync(resolve(projectRoot, 'src/content/index.ts'), 'utf8');
 const articleModelSource = readFileSync(resolve(projectRoot, 'src/shared/article.ts'), 'utf8');
 const readerRendererSource = readFileSync(resolve(projectRoot, 'src/reader/block-renderer.ts'), 'utf8');
+const cleanTreeBlockConverterSource = readFileSync(resolve(projectRoot, 'src/content/preprocess/clean-tree-block-converter.ts'), 'utf8');
+const platformFixesSource = readFileSync(resolve(projectRoot, 'src/content/preprocess/apply-platform-fixes.ts'), 'utf8');
 for (const source of [modularExtractorSource, liveExtractorSource]) {
   assert.match(source, /X_CANONICAL_ORIGIN/, 'extractor should use a dedicated X canonical origin constant');
   assert.match(source, /function getListKind/, 'extractor should detect Draft.js list items and preserve list kind');
   assert.match(source, /function extractHandwrittenOrderedListItem/, 'extractor should normalize handwritten ordered list markers');
-  assert.match(source, /getHandwrittenOrderedListMarker/, 'extractor should strip handwritten ordered list markers from item text');
+  assert.match(source, /getHandwrittenOrderedListMarker/, 'extractor should detect handwritten ordered list markers');
+  assert.match(source, /annotations: extracted\.annotations/, 'extractor should preserve handwritten ordered list marker annotations');
+  assert.doesNotMatch(source, /slice\(marker\.length\)/, 'extractor should keep handwritten ordered list markers in item text');
+  assert.doesNotMatch(source, /function shiftAnnotations/, 'extractor should not shift annotations after stripping handwritten markers');
   assert.match(source, /\[ivxlcdm\]/, 'extractor should recognize handwritten roman numeral list markers');
   assert.match(source, /[一二三四五六七八九十百千]/, 'extractor should recognize handwritten Chinese numeral list markers');
   assert.match(source, /hasNonTextContent/, 'handwritten list detection should skip media, code, tweets, and link-like rich blocks');
   assert.match(source, /flushPendingList/, 'extractor should group consecutive list items');
   assert.match(source, /function extractCoverImage/, 'extractor should have dedicated cover extraction');
   assert.match(source, /findImageBeforeTitle/, 'cover extraction should be constrained to images before the title');
+  assert.match(source, /image\.closest\('a\[href\]'\)\?\.getAttribute\('href'\)/, 'cover image extraction should preserve the wrapping media href');
   assert.match(source, /function isHeadingBlock/, 'extractor should preserve explicit X heading tags');
   assert.match(source, /function getHeadingLevel/, 'extractor should preserve explicit X heading levels');
   assert.match(source, /function extractTextWithAnnotations/, 'extractor should preserve bold text annotations');
@@ -278,6 +284,11 @@ for (const source of [modularExtractorSource, liveExtractorSource]) {
   assert.doesNotMatch(source, /section\[data-block="true"\]\[contenteditable="false"\]/, 'image detection should not rely on contenteditable=false section blocks');
 }
 assert.match(articleModelSource, /kind\?: 'ordered' \| 'unordered'/, 'list model should include ordered/unordered kind');
+assert.match(cleanTreeBlockConverterSource, /function getOrderedListMarker/, 'clean-tree conversion should extract handwritten ordered-list markers');
+assert.match(cleanTreeBlockConverterSource, /kind === 'ordered' && markerLength > 0 \? rawText/, 'clean-tree conversion should keep handwritten ordered-list markers in item text');
+assert.doesNotMatch(platformFixesSource, /isHandwrittenOrderedListItem/, 'platform fixes should not convert handwritten ordered marker text into list blocks');
+assert.doesNotMatch(platformFixesSource, /querySelectorAll\('\[data-block="true"\]'\)[\s\S]*data-linelens-list-kind', 'ordered'/, 'platform fixes should only mark real Draft.js ordered list items');
+assert.doesNotMatch(modularExtractorSource, /legacyBlocks = await extractBlocks/, 'X article browser path should not execute legacy extraction as fallback input');
 assert.match(articleModelSource, /photos\?: TweetPhoto\[\]/, 'simple tweet model should include optional photo cards');
 assert.match(articleModelSource, /authorName\?: string/, 'simple tweet model should include dynamic author name');
 assert.match(articleModelSource, /metrics\?: TweetMetrics/, 'simple tweet model should include dynamic action metrics');

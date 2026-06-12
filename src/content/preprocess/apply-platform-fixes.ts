@@ -81,14 +81,6 @@ function normalizeOrderedListSemantics(root: Element): number {
     changedNodeCount += 1;
   }
 
-  for (const element of Array.from(root.querySelectorAll('[data-block="true"]'))) {
-    const text = normalizeText(element.textContent ?? '');
-    if (!isHeadingElement(element) && isHandwrittenOrderedListItem(text)) {
-      element.setAttribute('data-linelens-list-kind', 'ordered');
-      changedNodeCount += 1;
-    }
-  }
-
   for (const element of Array.from(root.querySelectorAll('.public-DraftStyleDefault-unorderedListItem'))) {
     element.setAttribute('data-linelens-list-kind', 'unordered');
     changedNodeCount += 1;
@@ -258,10 +250,6 @@ function extractPaddingBottomAspectRatio(style: string): string | null {
   }
 
   return String(Math.round((100 / padding) * 10000) / 10000);
-}
-
-function isHandwrittenOrderedListItem(text: string): boolean {
-  return /^\d+\.\s+\S/.test(text);
 }
 
 function isHeadingElement(element: Element): boolean {

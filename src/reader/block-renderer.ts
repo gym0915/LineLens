@@ -65,7 +65,8 @@ export function renderArticleShell(article: Article): HTMLElement {
         article.coverImage.id,
         article.coverImage.src,
         article.coverImage.alt,
-        article.coverImage.aspectRatio
+        article.coverImage.aspectRatio,
+        article.coverImage.href
       )
     );
   }
@@ -295,8 +296,8 @@ function renderImageBlock(blockId: string, src: string, alt = '', aspectRatio?: 
   return figure;
 }
 
-function renderCoverImageBlock(blockId: string, src: string, alt = '', aspectRatio?: number): HTMLElement {
-  const figure = renderImageBlock(blockId, src, alt, aspectRatio);
+function renderCoverImageBlock(blockId: string, src: string, alt = '', aspectRatio?: number, href?: string): HTMLElement {
+  const figure = renderImageBlock(blockId, src, alt, aspectRatio, href);
   figure.className = 'reader-cover reader-media';
   figure.dataset.blockType = 'cover';
   return figure;
@@ -358,7 +359,7 @@ function renderImageGalleryItem(block: ImageGalleryBlock, index: number): HTMLEl
 
   const background = document.createElement('span');
   background.className = 'reader-image-gallery-background';
-  background.style.backgroundImage = `url("${item.src}")`;
+  background.style.backgroundImage = `url("${item.displaySrc ?? item.src}")`;
   background.style.backgroundSize = item.backgroundSize ?? item.objectFit ?? 'cover';
   background.style.backgroundPosition = item.backgroundPosition ?? item.objectPosition ?? 'center center';
   background.setAttribute('aria-hidden', 'true');
@@ -840,11 +841,14 @@ function renderListBlock(
     const item = document.createElement('li');
     item.className = 'reader-list-item';
     item.dataset.listItemIndex = `${index}`;
+    if (hasSourceOrderedListMarker(text)) {
+      item.classList.add('reader-list-item--source-marker');
+    }
 
     const bullet = document.createElement('span');
     bullet.className = 'reader-list-bullet';
     bullet.setAttribute('aria-hidden', 'true');
-    bullet.textContent = kind === 'ordered' ? `${index + 1}.` : '•';
+    bullet.textContent = kind === 'ordered' ? getOrderedListBullet(text, index) : '•';
 
     const content = document.createElement('span');
     content.className = 'reader-list-text';
@@ -860,6 +864,14 @@ function renderListBlock(
   });
 
   return list;
+}
+
+function getOrderedListBullet(text: string, index: number): string {
+  return hasSourceOrderedListMarker(text) ? '' : `${index + 1}.`;
+}
+
+function hasSourceOrderedListMarker(text: string): boolean {
+  return /^\s*\d+\.\s+/.test(text);
 }
 
 function renderLinkBlock(blockId: string, text: string, href: string, target?: string): HTMLElement {
@@ -1504,7 +1516,7 @@ function renderSimpleTweetPhotoGrid(photos: TweetPhoto[]): HTMLDivElement {
 
     const background = document.createElement('span');
     background.className = 'reader-simple-tweet-photo-background';
-    background.style.backgroundImage = `url("${photo.src}")`;
+    background.style.backgroundImage = `url("${photo.displaySrc ?? photo.src}")`;
     background.setAttribute('aria-hidden', 'true');
 
     const image = document.createElement('img');
@@ -1560,7 +1572,7 @@ function renderSimpleTweetPhotoCell(photo: TweetPhoto, index: number): HTMLDivEl
 
   const background = document.createElement('span');
   background.className = 'reader-simple-tweet-photo-background';
-  background.style.backgroundImage = `url("${photo.src}")`;
+  background.style.backgroundImage = `url("${photo.displaySrc ?? photo.src}")`;
   background.setAttribute('aria-hidden', 'true');
 
   const image = document.createElement('img');

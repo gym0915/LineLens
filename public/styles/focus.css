@@ -20,16 +20,28 @@ p .focus-unit {
 }
 
 .focus-unit.is-muted {
-  color: var(--reader-text-muted);
+  color: var(--reader-text-muted) !important;
+}
+
+.focus-unit.is-muted * {
+  color: var(--reader-text-muted) !important;
 }
 
 .focus-unit.is-muted:hover {
-  color: var(--reader-text-hover);
+  color: var(--reader-text-hover) !important;
+}
+
+.focus-unit.is-muted:hover * {
+  color: var(--reader-text-hover) !important;
 }
 
 .focus-unit.is-active {
-  color: var(--reader-text-active);
+  color: var(--reader-text-active) !important;
   cursor: default;
+}
+
+.focus-unit.is-active * {
+  color: var(--reader-text-active) !important;
 }
 
 .focus-unit strong {

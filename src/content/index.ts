@@ -78,6 +78,7 @@ type ImageBlock = {
 
 type ImageGalleryItem = {
   src: string;
+  displaySrc?: string;
   alt?: string;
   href?: string;
   aspectRatio?: number;
@@ -289,6 +290,7 @@ type SimpleTweetContentItem =
 
 type TweetPhoto = {
   src: string;
+  displaySrc?: string;
   alt?: string;
   href?: string;
 };
@@ -869,29 +871,19 @@ function extractHandwrittenOrderedListItem(block: Element): { text: string; anno
     return null;
   }
 
-  const text = extracted.text.slice(marker.length).trim();
+  const text = extracted.text.trim();
   if (!text) {
     return null;
   }
 
   return {
     text,
-    annotations: shiftAnnotations(extracted.annotations, marker.length, text.length)
+    annotations: extracted.annotations
   };
 }
 
 function getHandwrittenOrderedListMarker(text: string): string | null {
   return text.match(/^\s*(?:(?:\d+|[ivxlcdm]+)\s*[.)、:：]|[一二三四五六七八九十百千]+\s*[、.．:：])\s*/i)?.[0] ?? null;
-}
-
-function shiftAnnotations(annotations: TextAnnotation[], markerLength: number, textLength: number): TextAnnotation[] {
-  return annotations
-    .map((annotation) => ({
-      ...annotation,
-      startOffset: Math.max(0, annotation.startOffset - markerLength),
-      endOffset: Math.min(textLength, annotation.endOffset - markerLength)
-    }))
-    .filter((annotation) => annotation.endOffset > annotation.startOffset);
 }
 
 function hasNonTextContent(block: Element): boolean {
@@ -2314,9 +2306,10 @@ function isRoundedSquarePreview(element: Element): boolean {
   return isCondensedPreview(element) || Math.abs((getImageGalleryAspectRatio(element) ?? 0) - 1) < 0.02;
 }
 
-function tweetPhotoElementToPhoto(element: HTMLElement): { src: string; alt?: string; href?: string } | null {
+function tweetPhotoElementToPhoto(element: HTMLElement): { src: string; displaySrc?: string; alt?: string; href?: string } | null {
   const image = element.querySelector<HTMLImageElement>('img');
-  const src = image?.currentSrc || image?.src || getTweetPhotoBackgroundUrl(element);
+  const displaySrc = getTweetPhotoBackgroundUrl(element);
+  const src = image?.currentSrc || image?.src || displaySrc;
   if (!src) {
     return null;
   }
@@ -2324,6 +2317,7 @@ function tweetPhotoElementToPhoto(element: HTMLElement): { src: string; alt?: st
   const href = element.closest('a[href]')?.getAttribute('href') ?? undefined;
   return {
     src,
+    ...(displaySrc ? { displaySrc } : {}),
     alt: image?.alt || undefined,
     ...(href ? { href: new URL(href, X_CANONICAL_ORIGIN).toString() } : {})
   };
@@ -2569,7 +2563,8 @@ function extractImageGalleryFromElement(element: Element, id: string): ImageGall
 function tweetPhotoElementToGalleryItem(element: HTMLElement): ImageGalleryItem | null {
   const image = element.querySelector<HTMLImageElement>('img');
   const backgroundLayer = getTweetPhotoBackgroundLayer(element);
-  const src = image?.currentSrc || image?.src || getTweetPhotoBackgroundUrl(element);
+  const displaySrc = getTweetPhotoBackgroundUrl(element);
+  const src = image?.currentSrc || image?.src || displaySrc;
   if (!src) {
     return null;
   }
@@ -2585,6 +2580,7 @@ function tweetPhotoElementToGalleryItem(element: HTMLElement): ImageGalleryItem 
   const objectPosition = normalizeCssText(image?.style.objectPosition) ?? backgroundPosition;
   return {
     src,
+    ...(displaySrc ? { displaySrc } : {}),
     alt: image?.alt || undefined,
     ...(href ? { href: new URL(href, X_CANONICAL_ORIGIN).toString() } : {}),
     ...(aspectRatio ? { aspectRatio } : {}),
@@ -2596,16 +2592,16 @@ function tweetPhotoElementToGalleryItem(element: HTMLElement): ImageGalleryItem 
 }
 
 function getImageGalleryAspectRatio(element: Element): number | undefined {
+  const descendantRatio = getDescendantPaddingBottomAspectRatio(element);
+  if (descendantRatio) {
+    return descendantRatio;
+  }
+
   for (let current: Element | null = element; current; current = current.parentElement) {
     const paddingRatio = getPaddingBottomAspectRatio(current);
     if (paddingRatio) {
       return paddingRatio;
     }
-  }
-
-  const descendantRatio = getDescendantPaddingBottomAspectRatio(element);
-  if (descendantRatio) {
-    return descendantRatio;
   }
 
   return undefined;

@@ -69,15 +69,12 @@ export const xArticleExtractor: ArticleExtractor = {
       throw new Error('article_not_ready');
     }
 
-    const capturedVideos = await getCapturedVideos();
-    const legacyBlocks = await extractBlocks(longform, articleId, capturedVideos);
     const adapter = loadSettingsFromLocalStorage().platformAdapters[xArticleAdapter.id] ?? xArticleAdapter;
     const blocks = buildCleanTreePrimaryBlocks({
       sourceRoot: longform,
       adapter,
       sourceUrl: context.url.toString(),
-      debugId: `x.article:${articleId}`,
-      legacyBlocks
+      debugId: `x.article:${articleId}`
     }).blocks;
     const coverImage = extractCoverImage(readView, articleId);
     const articleMeta = extractArticleHeaderMetadata(readView, longform);
@@ -292,29 +289,19 @@ function extractHandwrittenOrderedListItem(block: Element): { text: string; anno
     return null;
   }
 
-  const text = extracted.text.slice(marker.length).trim();
+  const text = extracted.text.trim();
   if (!text) {
     return null;
   }
 
   return {
     text,
-    annotations: shiftAnnotations(extracted.annotations, marker.length, text.length)
+    annotations: extracted.annotations
   };
 }
 
 function getHandwrittenOrderedListMarker(text: string): string | null {
   return text.match(/^\s*(?:(?:\d+|[ivxlcdm]+)\s*[.)、:：]|[一二三四五六七八九十百千]+\s*[、.．:：])\s*/i)?.[0] ?? null;
-}
-
-function shiftAnnotations(annotations: TextAnnotation[], markerLength: number, textLength: number): TextAnnotation[] {
-  return annotations
-    .map((annotation) => ({
-      ...annotation,
-      startOffset: Math.max(0, annotation.startOffset - markerLength),
-      endOffset: Math.min(textLength, annotation.endOffset - markerLength)
-    }))
-    .filter((annotation) => annotation.endOffset > annotation.startOffset);
 }
 
 function hasNonTextContent(block: Element): boolean {
@@ -872,9 +859,10 @@ function isSimpleTweetCard(block: Element): boolean {
   return block.matches('[data-testid="simpleTweet"]') || Boolean(block.querySelector('[data-testid="simpleTweet"]'));
 }
 
-function tweetPhotoElementToPhoto(element: HTMLElement): { src: string; alt?: string; href?: string } | null {
+function tweetPhotoElementToPhoto(element: HTMLElement): { src: string; displaySrc?: string; alt?: string; href?: string } | null {
   const image = element.querySelector<HTMLImageElement>('img');
-  const src = image?.currentSrc || image?.src || getTweetPhotoBackgroundUrl(element);
+  const displaySrc = getTweetPhotoBackgroundUrl(element);
+  const src = image?.currentSrc || image?.src || displaySrc;
   if (!src) {
     return null;
   }
@@ -882,6 +870,7 @@ function tweetPhotoElementToPhoto(element: HTMLElement): { src: string; alt?: st
   const href = element.closest('a[href]')?.getAttribute('href') ?? undefined;
   return {
     src,
+    ...(displaySrc ? { displaySrc } : {}),
     alt: image?.alt || undefined,
     ...(href ? { href: new URL(href, X_CANONICAL_ORIGIN).toString() } : {})
   };
@@ -1108,7 +1097,8 @@ function extractImageGalleryFromElement(element: Element, id: string): ImageGall
 function tweetPhotoElementToGalleryItem(element: HTMLElement): ImageGalleryBlock['items'][number] | null {
   const image = element.querySelector<HTMLImageElement>('img');
   const backgroundLayer = getTweetPhotoBackgroundLayer(element);
-  const src = image?.currentSrc || image?.src || getTweetPhotoBackgroundUrl(element);
+  const displaySrc = getTweetPhotoBackgroundUrl(element);
+  const src = image?.currentSrc || image?.src || displaySrc;
   if (!src) {
     return null;
   }
@@ -1124,6 +1114,7 @@ function tweetPhotoElementToGalleryItem(element: HTMLElement): ImageGalleryBlock
   const objectPosition = normalizeCssText(image?.style.objectPosition) ?? backgroundPosition;
   return {
     src,
+    ...(displaySrc ? { displaySrc } : {}),
     alt: image?.alt || undefined,
     ...(href ? { href: new URL(href, X_CANONICAL_ORIGIN).toString() } : {}),
     ...(aspectRatio ? { aspectRatio } : {}),
@@ -1135,16 +1126,16 @@ function tweetPhotoElementToGalleryItem(element: HTMLElement): ImageGalleryBlock
 }
 
 function getImageGalleryAspectRatio(element: Element): number | undefined {
+  const descendantRatio = getDescendantPaddingBottomAspectRatio(element);
+  if (descendantRatio) {
+    return descendantRatio;
+  }
+
   for (let current: Element | null = element; current; current = current.parentElement) {
     const paddingRatio = getPaddingBottomAspectRatio(current);
     if (paddingRatio) {
       return paddingRatio;
     }
-  }
-
-  const descendantRatio = getDescendantPaddingBottomAspectRatio(element);
-  if (descendantRatio) {
-    return descendantRatio;
   }
 
   return undefined;

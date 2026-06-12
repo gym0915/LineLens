@@ -69,6 +69,7 @@ export type ImageBlock = {
 
 export type ImageGalleryItem = {
   src: string;
+  displaySrc?: string;
   alt?: string;
   href?: string;
   aspectRatio?: number;
@@ -104,6 +105,7 @@ export type ImageGalleryBlock = {
 
 export type TweetPhoto = {
   src: string;
+  displaySrc?: string;
   alt?: string;
   href?: string;
 };

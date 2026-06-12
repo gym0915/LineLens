@@ -32,7 +32,7 @@ export function buildCleanTreePrimaryBlocks(params: {
   adapter: PlatformAdapter;
   sourceUrl: string;
   debugId: string;
-  legacyBlocks: ArticleBlock[];
+  legacyBlocks?: ArticleBlock[];
 }): CleanTreePrimaryBlocksResult {
   const context = createCleanTreeContext({
     adapter: params.adapter,
@@ -44,7 +44,7 @@ export function buildCleanTreePrimaryBlocks(params: {
     enabledBlockTypes: CLEAN_TREE_PRIMARY_BLOCK_TYPES
   });
 
-  const mergeStats = mergeCleanTreePrimaryBlocks(params.legacyBlocks, cleanTreeBlocks);
+  const mergeStats = mergeCleanTreePrimaryBlocks(params.legacyBlocks ?? [], cleanTreeBlocks);
 
   return {
     ...mergeStats,

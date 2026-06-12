@@ -1247,9 +1247,10 @@ function hasConsumedAncestor(element: Element, consumedElements: Set<Element>): 
   return false;
 }
 
-function tweetPhotoElementToPhoto(element: HTMLElement): { src: string; alt?: string; href?: string } | null {
+function tweetPhotoElementToPhoto(element: HTMLElement): { src: string; displaySrc?: string; alt?: string; href?: string } | null {
   const image = element.querySelector<HTMLImageElement>('img');
-  const src = image?.currentSrc || image?.src || getTweetPhotoBackgroundUrl(element);
+  const displaySrc = getTweetPhotoBackgroundUrl(element);
+  const src = image?.currentSrc || image?.src || displaySrc;
   if (!src) {
     return null;
   }
@@ -1257,6 +1258,7 @@ function tweetPhotoElementToPhoto(element: HTMLElement): { src: string; alt?: st
   const href = element.closest('a[href]')?.getAttribute('href') ?? undefined;
   return {
     src,
+    ...(displaySrc ? { displaySrc } : {}),
     alt: image?.alt || undefined,
     ...(href ? { href: toAbsoluteXUrl(href) } : {})
   };
@@ -1271,7 +1273,8 @@ function getTweetPhotoBackgroundUrl(element: Element): string {
 
 function tweetPhotoElementToGalleryItem(element: HTMLElement): ImageGalleryBlock['items'][number] | null {
   const image = element.querySelector<HTMLImageElement>('img');
-  const src = image?.currentSrc || image?.src || getTweetPhotoBackgroundUrl(element);
+  const displaySrc = getTweetPhotoBackgroundUrl(element);
+  const src = image?.currentSrc || image?.src || displaySrc;
   if (!src) {
     return null;
   }
@@ -1280,6 +1283,7 @@ function tweetPhotoElementToGalleryItem(element: HTMLElement): ImageGalleryBlock
   const aspectRatio = image ? getImageAspectRatio(image) : undefined;
   return {
     src,
+    ...(displaySrc ? { displaySrc } : {}),
     alt: image?.alt || undefined,
     ...(href ? { href: toAbsoluteXUrl(href) } : {}),
     ...(aspectRatio ? { aspectRatio } : {})
@@ -1287,16 +1291,16 @@ function tweetPhotoElementToGalleryItem(element: HTMLElement): ImageGalleryBlock
 }
 
 function getImageGalleryAspectRatio(element: Element): number | undefined {
+  const descendantRatio = getDescendantPaddingBottomAspectRatio(element);
+  if (descendantRatio) {
+    return descendantRatio;
+  }
+
   for (let current: Element | null = element; current; current = current.parentElement) {
     const paddingRatio = getPaddingBottomAspectRatio(current);
     if (paddingRatio) {
       return paddingRatio;
     }
-  }
-
-  const descendantRatio = getDescendantPaddingBottomAspectRatio(element);
-  if (descendantRatio) {
-    return descendantRatio;
   }
 
   return undefined;
@@ -1515,13 +1519,13 @@ function normalizeListItem(
   kind: 'ordered' | 'unordered'
 ): { text: string; annotations: TextAnnotation[]; textStyle: TextStyle } {
   const rawText = normalizePreWrapText(getElementDisplayText(element, true));
-  const markerMatch = kind === 'ordered' ? rawText.match(/^\d+\.\s+/) : null;
+  const markerMatch = kind === 'ordered' ? getOrderedListMarker(rawText) : null;
   const markerLength = markerMatch?.[0].length ?? 0;
-  const text = markerLength > 0 ? rawText.slice(markerLength).trim() : rawText;
+  const text = kind === 'ordered' && markerLength > 0 ? rawText : markerLength > 0 ? rawText.slice(markerLength).trim() : rawText;
   const annotations = extractTextAnnotations(element, rawText);
   const textStyle = extractElementTextStyle(element);
 
-  if (markerLength === 0) {
+  if (markerLength === 0 || kind === 'ordered') {
     return { text, annotations, textStyle };
   }
 
@@ -1541,6 +1545,10 @@ function normalizeListItem(
         endOffset: Math.min(annotation.endOffset, text.length)
       }))
   };
+}
+
+function getOrderedListMarker(text: string): RegExpMatchArray | null {
+  return text.match(/^(\d+\.)\s+/);
 }
 
 function getHeadingLevel(element: Element): 1 | 2 | 3 | 4 | 5 | 6 {

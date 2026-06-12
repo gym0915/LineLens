@@ -126,7 +126,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   const tabId = sender.tab?.id ?? getMessageTabId(message);
   console.info(LOG_PREFIX, 'runtime message received', {
     type: message.type,
-    tabId
+    tabId,
+    ...(message.type === 'READER_MEDIA_LINK_CLICKED'
+      ? {
+          href: message.href,
+          imageUrl: message.src,
+          resolvedImageUrl: message.resolvedImageUrl,
+          lookupSource: message.lookupSource,
+          blockId: message.blockId,
+          blockType: message.blockType,
+          unitId: message.unitId
+        }
+      : {})
   });
 
   if (message.type === 'ARTICLE_READY') {
@@ -184,6 +195,22 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     sendResponse({
       videos: typeof tabId === 'number' ? listCapturedVideos(tabId) : []
     });
+    return;
+  }
+
+  if (message.type === 'READER_MEDIA_LINK_CLICKED') {
+    console.info(LOG_PREFIX, 'reader media link clicked', {
+      tabId,
+      articleId: message.articleId,
+      blockId: message.blockId,
+      blockType: message.blockType,
+      unitId: message.unitId,
+      href: message.href,
+      imageUrl: message.src,
+      resolvedImageUrl: message.resolvedImageUrl,
+      lookupSource: message.lookupSource
+    });
+    sendResponse({ ok: true });
     return;
   }
 
