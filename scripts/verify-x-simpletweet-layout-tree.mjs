@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import assert from 'node:assert/strict';
+import { JSDOM } from 'jsdom';
 
 const repoRoot = resolve(import.meta.dirname, '..');
 const workspaceRoot = resolve(repoRoot, '..');
@@ -37,7 +38,7 @@ assert.match(files.parser, /export function extractSimpleTweetLayoutTree/, 'simp
 assert.match(files.parser, /window\.getComputedStyle/, 'layout parser should read computed style from the original DOM');
 assert.match(files.parser, /display.*flexDirection.*gridTemplateColumns.*gapPx/s, 'layout parser should whitelist core layout fields');
 assert.doesNotMatch(files.parser, /className\s*:|classList\s*:/, 'layout parser should not serialize X atomic classes into payload');
-assert.ok(files.parser.includes(':photo:') && files.parser.includes('photoIndex'), 'photo group leaves should reference extracted photo content');
+assert.match(files.parser, /case 'photo-group':[\s\S]*?kind:\s*'leaf',[\s\S]*?role:\s*'photo',[\s\S]*?contentRef/, 'photo groups should stay whole so Reader can reuse photoGroupLayout');
 assert.match(files.parser, /role:\s*'quotedTweet'/, 'layout parser should preserve quoted tweet as a container');
 
 assert.match(files.extractor, /extractSimpleTweetLayoutTree\(tweetRoot, tweet, card\.items\)/, 'module extractor should attach layoutTree from DOM before returning simpleTweet block');
@@ -59,4 +60,52 @@ assert.match(fixtures.multiPhoto, /data-testid="tweetPhoto"[\s\S]*data-testid="t
 assert.match(fixtures.videoTweet, /data-testid="tweetText"[\s\S]*data-testid="videoPlayer"/, 'video tweet fixture should preserve text before video');
 assert.match(fixtures.videoTweetText, /data-testid="videoPlayer"[\s\S]*(role="link"|data-testid="simpleTweet")[\s\S]*data-testid="tweetText"/, 'video+text fixture should include nested quoted text');
 
+const sourceDom = new JSDOM(fixtures.multiPhoto, {
+  url: 'https://x.com/ShishirShelke1/status/2056643158986162589'
+});
+installDomGlobals(sourceDom.window);
+const { extractSimpleTweetBlockFromRoot } = await import('../dist/content/extractors/x/simple-tweet.js');
+const simpleTweet = await extractSimpleTweetBlockFromRoot(
+  sourceDom.window.document.querySelector('[data-testid="simpleTweet"]'),
+  'simpletweet-multi-photo-layout'
+);
+assert.ok(simpleTweet, 'multi-photo fixture should extract a simpleTweet block');
+assert.ok(simpleTweet.layoutTree, 'multi-photo simpleTweet should keep its component layoutTree');
+
+const renderDom = new JSDOM('<!doctype html><main></main>', {
+  url: 'chrome-extension://linelens/reader.html'
+});
+installDomGlobals(renderDom.window);
+const { renderArticleShell } = await import('../dist/reader/block-renderer.js');
+const shell = renderArticleShell({
+  id: 'simpletweet-multi-photo-layout',
+  source: 'x-article',
+  sourceUrl: 'https://x.com/ShishirShelke1/status/2056643158986162589',
+  canonicalUrl: 'https://x.com/ShishirShelke1/status/2056643158986162589',
+  title: 'simpleTweet multi-photo layout',
+  extractedAt: Date.now(),
+  blocks: [simpleTweet]
+});
+
+const photoLayout = shell.querySelector('.reader-simple-tweet-photo-layout-row');
+assert.ok(photoLayout, 'layoutTree rendering should reuse the parsed photoGroupLayout row');
+assert.ok(
+  photoLayout.querySelector('.reader-simple-tweet-photo-layout-column'),
+  'layoutTree rendering should preserve nested photoGroupLayout columns'
+);
+assert.equal(
+  shell.querySelectorAll('.reader-simple-tweet-layout-media .reader-simple-tweet-photo-grid.reader-simple-tweet-photo-count-1').length,
+  0,
+  'layoutTree rendering should not flatten a photo-group into stacked single-photo grids'
+);
+
 console.log('verify:x-simpletweet-layout-tree passed');
+
+function installDomGlobals(window) {
+  globalThis.window = window;
+  globalThis.document = window.document;
+  globalThis.Element = window.Element;
+  globalThis.HTMLElement = window.HTMLElement;
+  globalThis.HTMLMediaElement = window.HTMLMediaElement;
+  globalThis.Node = window.Node;
+}

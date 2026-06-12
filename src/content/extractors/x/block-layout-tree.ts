@@ -70,15 +70,9 @@ function buildSimpleTweetLayoutNodeForItem(
       };
     case 'photo-group':
       return {
-        kind: 'container',
-        role: 'media',
-        display: inferMediaDisplay(item.photos.length),
-        ...extractLayoutProps(findMediaLayoutElement(context.tweet, 'photo')),
-        children: item.photos.map((_, photoIndex) => ({
-          kind: 'leaf',
-          role: 'photo',
-          contentRef: `${contentRef}:photo:${photoIndex}`
-        }))
+        kind: 'leaf',
+        role: 'photo',
+        contentRef
       };
     case 'video':
     case 'video-preview':

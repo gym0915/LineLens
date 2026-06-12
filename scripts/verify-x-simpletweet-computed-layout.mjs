@@ -12,11 +12,11 @@ const sourceFiles = {
 };
 
 const fixturePaths = [
-  '../../../assets/x-article-simpletweet-text.html',
-  '../../../assets/x-article-simpletweet-tweet.html',
-  '../../../assets/x-article-simpletweet-multi-photo.html',
-  '../../../assets/x-article-simpletweet-video-tweet.html',
-  '../../../assets/x-article-simpletweet-video-tweet-text.html'
+  '../assets/x-article-simpletweet-text.html',
+  '../assets/x-article-simpletweet-tweet.html',
+  '../assets/x-article-simpletweet-multi-photo.html',
+  '../assets/x-article-simpletweet-video-tweet.html',
+  '../assets/x-article-simpletweet-video-tweet-text.html'
 ];
 
 for (const fixturePath of fixturePaths) {
