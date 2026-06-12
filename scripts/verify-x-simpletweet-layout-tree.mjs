@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import assert from 'node:assert/strict';
 
 const repoRoot = resolve(import.meta.dirname, '..');
-const workspaceRoot = resolve(repoRoot, '..', '..', '..');
+const workspaceRoot = resolve(repoRoot, '..');
 
 function read(path) {
   return readFileSync(resolve(repoRoot, path), 'utf8');

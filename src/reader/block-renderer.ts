@@ -4,6 +4,7 @@ import type {
   CodeBlock,
   CodeToken,
   GifBlock,
+  ImageBlock,
   ImageGalleryBlock,
   ImageGalleryLayoutNode,
   SimpleTweetBlock,
@@ -60,15 +61,7 @@ export function renderArticleShell(article: Article): HTMLElement {
   header.append(kicker);
 
   if (article.coverImage) {
-    header.append(
-      renderCoverImageBlock(
-        article.coverImage.id,
-        article.coverImage.src,
-        article.coverImage.alt,
-        article.coverImage.aspectRatio,
-        article.coverImage.href
-      )
-    );
+    header.append(renderCoverImageBlock(article.coverImage));
   }
 
   header.append(title);
@@ -211,7 +204,7 @@ function renderBlock(block: ArticleBlock): HTMLElement {
     case 'quote':
       return renderTextBlock('blockquote', block.id, block.type, block.text, block.annotations, block.textStyle);
     case 'image':
-      return renderImageBlock(block.id, block.src, block.alt, block.aspectRatio, block.href);
+      return renderImageBlock(block);
     case 'image-gallery':
       return renderImageGalleryBlock(block);
     case 'list':
@@ -269,35 +262,78 @@ function applyTextStyle(element: HTMLElement, style?: TextStyle): void {
   if (style.fontWeight) element.style.fontWeight = style.fontWeight;
 }
 
-function renderImageBlock(blockId: string, src: string, alt = '', aspectRatio?: number, href?: string): HTMLElement {
-  const figure = href ? document.createElement('a') : document.createElement('figure');
-  figure.className = 'reader-block reader-media';
-  figure.dataset.blockId = blockId;
-  figure.dataset.blockType = 'image';
-  if (href) {
-    figure.setAttribute('href', href);
-  }
-  applyMediaAspectRatio(figure, aspectRatio);
+type MediaFrameOptions = {
+  src: string;
+  displaySrc?: string;
+  alt?: string;
+  backgroundSize?: 'cover' | 'contain' | 'auto';
+  backgroundPosition?: string;
+  objectFit?: 'cover' | 'contain' | 'fill' | 'none' | 'scale-down';
+  objectPosition?: string;
+  imageClassName: string;
+  onError?: () => void;
+};
+
+function renderMediaFrame(options: MediaFrameOptions): HTMLElement {
+  const frame = document.createElement('span');
+  frame.className = 'reader-media-frame';
+
+  const background = document.createElement('span');
+  background.className = 'reader-media-background';
+  background.style.backgroundImage = `url("${options.displaySrc ?? options.src}")`;
+  background.style.backgroundSize = options.backgroundSize ?? options.objectFit ?? 'cover';
+  background.style.backgroundPosition = options.backgroundPosition ?? options.objectPosition ?? 'center center';
+  background.setAttribute('aria-hidden', 'true');
 
   const image = document.createElement('img');
-  image.className = 'reader-media-image';
-  image.src = src;
-  image.alt = alt;
+  image.className = options.imageClassName;
+  image.src = options.src;
+  image.alt = options.alt ?? '';
   image.loading = 'lazy';
-  image.addEventListener('error', () => {
-    figure.classList.add('is-load-error');
-    image.remove();
-    const fallback = document.createElement('figcaption');
-    fallback.textContent = alt ? `图片加载失败：${alt}` : '图片加载失败';
-    figure.append(fallback);
+  image.style.objectFit = options.objectFit ?? options.backgroundSize ?? 'cover';
+  image.style.objectPosition = options.objectPosition ?? options.backgroundPosition ?? 'center center';
+  if (options.onError) {
+    image.addEventListener('error', options.onError);
+  }
+
+  frame.append(background, image);
+  return frame;
+}
+
+function renderImageBlock(block: ImageBlock): HTMLElement {
+  const figure = block.href ? document.createElement('a') : document.createElement('figure');
+  figure.className = 'reader-block reader-media';
+  figure.dataset.blockId = block.id;
+  figure.dataset.blockType = 'image';
+  if (block.href) {
+    figure.setAttribute('href', block.href);
+  }
+  applyMediaAspectRatio(figure, block.aspectRatio);
+
+  const frame = renderMediaFrame({
+    src: block.src,
+    displaySrc: block.displaySrc,
+    alt: block.alt,
+    backgroundSize: block.backgroundSize,
+    backgroundPosition: block.backgroundPosition,
+    objectFit: block.objectFit,
+    objectPosition: block.objectPosition,
+    imageClassName: 'reader-media-image',
+    onError: () => {
+      figure.classList.add('is-load-error');
+      frame.remove();
+      const fallback = document.createElement('figcaption');
+      fallback.textContent = block.alt ? `图片加载失败：${block.alt}` : '图片加载失败';
+      figure.append(fallback);
+    }
   });
 
-  figure.append(image);
+  figure.append(frame);
   return figure;
 }
 
-function renderCoverImageBlock(blockId: string, src: string, alt = '', aspectRatio?: number, href?: string): HTMLElement {
-  const figure = renderImageBlock(blockId, src, alt, aspectRatio, href);
+function renderCoverImageBlock(block: ImageBlock): HTMLElement {
+  const figure = renderImageBlock(block);
   figure.className = 'reader-cover reader-media';
   figure.dataset.blockType = 'cover';
   return figure;
@@ -357,27 +393,22 @@ function renderImageGalleryItem(block: ImageGalleryBlock, index: number): HTMLEl
     itemElement.setAttribute('href', item.href);
   }
 
-  const background = document.createElement('span');
-  background.className = 'reader-image-gallery-background';
-  background.style.backgroundImage = `url("${item.displaySrc ?? item.src}")`;
-  background.style.backgroundSize = item.backgroundSize ?? item.objectFit ?? 'cover';
-  background.style.backgroundPosition = item.backgroundPosition ?? item.objectPosition ?? 'center center';
-  background.setAttribute('aria-hidden', 'true');
-
-  const image = document.createElement('img');
-  image.className = 'reader-image-gallery-image';
-  image.src = item.src;
-  image.alt = item.alt ?? '';
-  image.loading = 'lazy';
-  image.style.objectFit = item.objectFit ?? item.backgroundSize ?? 'cover';
-  image.style.objectPosition = item.objectPosition ?? item.backgroundPosition ?? 'center center';
-  image.addEventListener('error', () => {
-    itemElement.classList.add('is-load-error');
-    background.remove();
-    image.remove();
+  const frame = renderMediaFrame({
+    src: item.src,
+    displaySrc: item.displaySrc,
+    alt: item.alt,
+    backgroundSize: item.backgroundSize,
+    backgroundPosition: item.backgroundPosition,
+    objectFit: item.objectFit,
+    objectPosition: item.objectPosition,
+    imageClassName: 'reader-image-gallery-image',
+    onError: () => {
+      itemElement.classList.add('is-load-error');
+      frame.remove();
+    }
   });
 
-  itemElement.append(background, image);
+  itemElement.append(frame);
   return itemElement;
 }
 
@@ -1514,17 +1545,14 @@ function renderSimpleTweetPhotoGrid(photos: TweetPhoto[]): HTMLDivElement {
       item.dataset.href = photo.href;
     }
 
-    const background = document.createElement('span');
-    background.className = 'reader-simple-tweet-photo-background';
-    background.style.backgroundImage = `url("${photo.displaySrc ?? photo.src}")`;
-    background.setAttribute('aria-hidden', 'true');
-
-    const image = document.createElement('img');
-    image.src = photo.src;
-    image.alt = photo.alt ?? `Tweet image ${index + 1}`;
-    image.loading = 'lazy';
-
-    item.append(background, image);
+    item.append(
+      renderMediaFrame({
+        src: photo.src,
+        displaySrc: photo.displaySrc,
+        alt: photo.alt ?? `Tweet image ${index + 1}`,
+        imageClassName: 'reader-simple-tweet-photo-image'
+      })
+    );
     grid.append(item);
   });
 
@@ -1570,17 +1598,14 @@ function renderSimpleTweetPhotoCell(photo: TweetPhoto, index: number): HTMLDivEl
     item.dataset.href = photo.href;
   }
 
-  const background = document.createElement('span');
-  background.className = 'reader-simple-tweet-photo-background';
-  background.style.backgroundImage = `url("${photo.displaySrc ?? photo.src}")`;
-  background.setAttribute('aria-hidden', 'true');
-
-  const image = document.createElement('img');
-  image.src = photo.src;
-  image.alt = photo.alt ?? `Tweet image ${index + 1}`;
-  image.loading = 'lazy';
-
-  item.append(background, image);
+  item.append(
+    renderMediaFrame({
+      src: photo.src,
+      displaySrc: photo.displaySrc,
+      alt: photo.alt ?? `Tweet image ${index + 1}`,
+      imageClassName: 'reader-simple-tweet-photo-image'
+    })
+  );
   return item;
 }
 

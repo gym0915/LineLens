@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { JSDOM } from 'jsdom';
 
-const workspaceRoot = resolve(new URL('../../../..', import.meta.url).pathname);
+const workspaceRoot = resolve(new URL('../..', import.meta.url).pathname);
 const projectRoot = resolve(new URL('..', import.meta.url).pathname);
 const fixturePath = resolve(workspaceRoot, 'assets2/how i make AI videos (a beginner’s breakdown).html');
 

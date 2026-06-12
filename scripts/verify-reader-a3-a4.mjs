@@ -134,8 +134,9 @@ const cover = findByClass(rendered, 'reader-cover');
 assert(cover?.tagName === 'FIGURE', 'cover image should render as figure');
 assert(cover.dataset.blockId === mediaArticle.coverImage.id, 'cover image should keep its block id');
 assert(cover.dataset.blockType === 'cover', 'cover image should use cover block type');
-assert(cover.children[0]?.tagName === 'IMG', 'cover should contain an image element');
-assert(cover.children[0]?.src === mediaArticle.coverImage.src, 'cover image src should match article cover');
+assert(findByClass(cover, 'reader-media-frame')?.tagName === 'SPAN', 'cover should render through the shared media frame');
+assert(findByClass(cover, 'reader-media-image')?.tagName === 'IMG', 'cover should contain an image element');
+assert(findByClass(cover, 'reader-media-image')?.src === mediaArticle.coverImage.src, 'cover image src should match article cover');
 assert(
   findChildIndex(findByClass(rendered, 'article-header'), cover) < findChildIndex(findByClass(rendered, 'article-header'), title),
   'cover image should render above the title'
@@ -301,8 +302,8 @@ assert(galleryItems.length === 4, 'image-gallery should render every item');
 assert(galleryItems[0].tagName === 'A', 'image-gallery items with href should render as anchors');
 assert(galleryItems[0].attributes.href === 'https://x.com/example/media/1', 'image-gallery item should preserve href');
 assert(findByClass(galleryItems[0], 'reader-image-gallery-image')?.tagName === 'IMG', 'image-gallery item should render an image');
-assert(findByClass(galleryItems[0], 'reader-image-gallery-background')?.style.backgroundImage === 'url("https://example.com/1.jpg")', 'image-gallery should render a tweetPhoto-style background layer');
-assert(findByClass(galleryItems[0], 'reader-image-gallery-background')?.style.backgroundSize === 'cover', 'image-gallery should preserve source crop mode');
+assert(findByClass(galleryItems[0], 'reader-media-background')?.style.backgroundImage === 'url("https://example.com/1.jpg")', 'image-gallery should render a tweetPhoto-style background layer');
+assert(findByClass(galleryItems[0], 'reader-media-background')?.style.backgroundSize === 'cover', 'image-gallery should preserve source crop mode');
 const galleryLayoutNodes = galleryElement.querySelectorAll('.reader-image-gallery-node');
 assert(galleryLayoutNodes.some((node) => node.dataset.layoutType === 'row'), 'image-gallery should render layout rows');
 assert(galleryLayoutNodes.some((node) => node.dataset.layoutType === 'column' && node.style.flexBasis === '0%'), 'image-gallery should render layout columns with flex sizing');
@@ -572,9 +573,9 @@ for (const token of [
 }
 assert(css.includes('aspect-ratio: var(--reader-media-aspect-ratio)'), 'reader image should use extracted aspect ratio');
 assert(css.includes('reader-image-gallery-node'), 'reader image gallery should support recursive layout nodes');
-assert(css.includes('reader-image-gallery-background'), 'reader image gallery should use tweetPhoto-style background rendering');
+assert(css.includes('reader-media-background'), 'reader media should use shared tweetPhoto-style background rendering');
 assert(!css.includes('height: 230px'), 'reader image should not force a fixed media height');
-assert(css.includes('object-fit: contain'), 'reader image should preserve the complete source image');
+assert(!/\.reader-media img\s*\{[^}]*object-fit:\s*contain/.test(css), 'reader image should not render through contain mode');
 assert(css.includes('max-height: 100vh'), 'reader media preview should scale images against the browser height');
 assert(css.includes('max-width: 100vw'), 'reader media preview should allow images to use the full browser width');
 assert(css.includes('padding: 0'), 'reader media preview should not reserve horizontal layout space for nav buttons');

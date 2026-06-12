@@ -111,7 +111,7 @@ p .focus-unit.is-active {
   opacity: 1;
 }
 
-.reader-media.focus-unit.is-active img {
+.reader-media.focus-unit.is-active > img {
   width: 100%;
   max-width: 100%;
   height: auto;

@@ -1065,12 +1065,12 @@ function extractVideoFromElement(element: Element, id: string, capturedVideos: C
 }
 
 function extractImageFromElement(element: Element, id: string): ImageBlock | null {
-  const image = element.querySelector<HTMLImageElement>(X_ARTICLE_SELECTORS.tweetPhotoImage);
-  if (!image) {
+  const tweetPhoto = element.querySelector<HTMLElement>(X_ARTICLE_SELECTORS.tweetPhoto);
+  if (!tweetPhoto) {
     return null;
   }
 
-  return imageElementToBlock(image, id);
+  return tweetPhotoElementToImageBlock(tweetPhoto, id);
 }
 
 function extractImageGalleryFromElement(element: Element, id: string): ImageGalleryBlock | null {
@@ -1399,6 +1399,41 @@ function findImageBeforeTitle(readView: Element, title: Element): HTMLImageEleme
 
 function isBefore(element: Element, target: Element): boolean {
   return Boolean(element.compareDocumentPosition(target) & Node.DOCUMENT_POSITION_FOLLOWING);
+}
+
+function tweetPhotoElementToImageBlock(element: HTMLElement, id: string): ImageBlock | null {
+  const image = element.querySelector<HTMLImageElement>('img');
+  const backgroundLayer = getTweetPhotoBackgroundLayer(element);
+  const displaySrc = getTweetPhotoBackgroundUrl(element);
+  const src = image?.currentSrc || image?.src || displaySrc;
+  if (!src) {
+    return null;
+  }
+
+  const href = element.closest('a[href]')?.getAttribute('href') ?? undefined;
+  const ratioRoot = element.closest('[data-block="true"]') ?? element.closest('a') ?? element;
+  const frameAspectRatio = getImageGalleryAspectRatio(ratioRoot);
+  const aspectRatio = frameAspectRatio ?? (image ? getImageAspectRatio(image) : undefined);
+  const backgroundSize = normalizeGalleryBackgroundSize(
+    backgroundLayer?.style.backgroundSize || (backgroundLayer ? getInlineStyleValue(backgroundLayer, 'background-size') : '')
+  );
+  const backgroundPosition =
+    normalizeCssText(backgroundLayer?.style.backgroundPosition || backgroundLayer?.style.backgroundPositionX || undefined) ?? 'center center';
+  const objectFit = normalizeImageObjectFit(image?.style.objectFit) ?? 'cover';
+  const objectPosition = normalizeCssText(image?.style.objectPosition) ?? backgroundPosition;
+  return {
+    id,
+    type: 'image',
+    src,
+    ...(displaySrc ? { displaySrc } : {}),
+    alt: image?.alt || undefined,
+    ...(href ? { href: new URL(href, X_CANONICAL_ORIGIN).toString() } : {}),
+    ...(aspectRatio ? { aspectRatio } : {}),
+    ...(backgroundSize ? { backgroundSize } : {}),
+    ...(backgroundPosition ? { backgroundPosition } : {}),
+    objectFit,
+    ...(objectPosition ? { objectPosition } : {})
+  };
 }
 
 function imageElementToBlock(image: HTMLImageElement, id: string): ImageBlock | null {

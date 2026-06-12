@@ -163,6 +163,13 @@ function convertListElementGroup(
 }
 
 function convertImageElement(element: Element, context: CleanTreeContext, index: number): ImageBlock | null {
+  const tweetPhoto = element.matches('[data-testid="tweetPhoto"]')
+    ? (element as HTMLElement)
+    : element.closest<HTMLElement>('[data-testid="tweetPhoto"]');
+  if (tweetPhoto) {
+    return tweetPhotoElementToImageBlock(tweetPhoto, context, index);
+  }
+
   const image = element.tagName.toUpperCase() === 'IMG' ? element : element.querySelector('img');
   const src = image?.getAttribute('src') ?? element.getAttribute('src');
   if (!src) {
@@ -175,6 +182,33 @@ function convertImageElement(element: Element, context: CleanTreeContext, index:
     src,
     alt: image?.getAttribute('alt') ?? element.getAttribute('alt') ?? undefined,
     href: element.closest('a')?.getAttribute('href') ?? undefined
+  };
+}
+
+function tweetPhotoElementToImageBlock(element: HTMLElement, context: CleanTreeContext, index: number): ImageBlock | null {
+  const image = element.querySelector<HTMLImageElement>('img');
+  const displaySrc = getTweetPhotoBackgroundUrl(element);
+  const src = image?.currentSrc || image?.src || image?.getAttribute('src') || displaySrc;
+  if (!src) {
+    return null;
+  }
+
+  const ratioRoot = element.closest('[data-block="true"]') ?? element.closest('a') ?? element;
+  const frameAspectRatio = getImageGalleryAspectRatio(ratioRoot);
+  const aspectRatio = frameAspectRatio ?? (image ? getImageAspectRatio(image) : undefined);
+  const href = element.closest('a[href]')?.getAttribute('href') ?? undefined;
+  return {
+    id: cleanTreeBlockId(context, index),
+    type: 'image',
+    src,
+    ...(displaySrc ? { displaySrc } : {}),
+    alt: image?.alt || image?.getAttribute('alt') || undefined,
+    ...(href ? { href: toAbsoluteXUrl(href) } : {}),
+    ...(aspectRatio ? { aspectRatio } : {}),
+    backgroundSize: 'cover',
+    backgroundPosition: 'center center',
+    objectFit: 'cover',
+    objectPosition: 'center center'
   };
 }
 

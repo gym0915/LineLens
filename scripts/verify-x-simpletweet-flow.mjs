@@ -21,7 +21,7 @@ const sourceFiles = {
 };
 
 const articleFixture = readFileSync(resolve(workspaceRoot, 'assets2/我们还要被“AI智障客服”折磨多久？.html'), 'utf8');
-const quotedTweetFixture = readFileSync(resolve(workspaceRoot, '../../../assets/x-article-simpletweet-tweet.html'), 'utf8');
+const quotedTweetFixture = readFileSync(resolve(workspaceRoot, '../assets/x-article-simpletweet-tweet.html'), 'utf8');
 
 assert.match(sourceFiles.types, /type:\s*'quoted-tweet'/, 'simpleTweet types should define quoted-tweet items');
 assert.match(sourceFiles.types, /type:\s*'video-preview'/, 'simpleTweet types should define video-preview items');
@@ -89,10 +89,10 @@ assert.match(sourceFiles.css, /\.reader-simple-tweet-photo-layout-row\s*\{[\s\S]
 assert.match(sourceFiles.css, /\.reader-simple-tweet-photo-layout-column\s*\{[\s\S]*?flex-direction: column;/, 'photo layout trees should render column branches');
 assert.match(sourceFiles.css, /\.reader-simple-tweet-photo-branch > \.reader-simple-tweet-photo-layout\s*\{[\s\S]*?width: 100%;[\s\S]*?height: 100%;/, 'nested photo layout branches should fill their allocated media tile');
 assert.match(sourceFiles.css, /\.reader-simple-tweet-photo-layout \.reader-simple-tweet-photo\s*\{[\s\S]*?width: 100%;[\s\S]*?height: 100%;/, 'photo layout cells should fill row/column branches');
-assert.match(sourceFiles.css, /\.reader-simple-tweet-photo-background\s*\{[\s\S]*?background-position: center center;[\s\S]*?background-size: cover;[\s\S]*?opacity: 1;/, 'tweetPhoto should use the background layer for X-style centered cover cropping');
-assert.match(sourceFiles.css, /\.reader-simple-tweet-photo img\s*\{[\s\S]*?position: absolute;[\s\S]*?opacity: 0;[\s\S]*?pointer-events: none;/, 'tweetPhoto img should not participate in visible layout or top-align the crop');
-assert.match(sourceFiles.css, /\.reader-simple-tweet-photo-layout \.reader-simple-tweet-photo img\s*\{[\s\S]*?object-fit: cover;/, 'photo layout tree cells should fill the source media tiles');
-assert.match(sourceFiles.css, /\.reader-simple-tweet-photo-layout \.reader-simple-tweet-photo img\s*\{[\s\S]*?max-width: none;[\s\S]*?max-height: none;[\s\S]*?object-position: center center;/, 'photo layout tree images should override the generic contain rule and crop from the visual center');
+assert.match(sourceFiles.css, /\.reader-simple-tweet-photo \.reader-media-background\s*\{[\s\S]*?opacity: 1;/, 'tweetPhoto should use the shared background layer for X-style centered cover cropping');
+assert.match(sourceFiles.css, /\.reader-simple-tweet-photo \.reader-media-frame\s*\{[\s\S]*?width: 100%;[\s\S]*?height: 100%;/, 'tweetPhoto shared media frame should fill the allocated tile');
+assert.match(sourceFiles.css, /\.reader-simple-tweet-photo-image\s*\{[\s\S]*?object-fit: cover;/, 'photo layout tree cells should fill the source media tiles');
+assert.match(sourceFiles.css, /\.reader-simple-tweet-photo-image\s*\{[\s\S]*?max-width: none;[\s\S]*?max-height: none;[\s\S]*?object-position: center center;/, 'photo layout tree images should crop from the visual center');
 assert.match(sourceFiles.css, /\.reader-simple-tweet \.reader-video-media\s*\{[\s\S]*?border-radius: var\(--reader-simple-tweet-media-radius\);/, 'simpleTweet videos should use the shared media radius');
 assert.match(sourceFiles.css, /\.reader-simple-tweet-article-meta-author\s*\{[\s\S]*?margin-top: 10px;/, 'article-cover author metadata should sit under the title block');
 assert.match(sourceFiles.css, /\.reader-simple-tweet-article-meta-metrics\s*\{[\s\S]*?border-top: 1px solid/, 'article-cover interaction metrics should render as a separate clickable row');

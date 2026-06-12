@@ -62,9 +62,14 @@ export type ImageBlock = {
   id: string;
   type: 'image';
   src: string;
+  displaySrc?: string;
   alt?: string;
   href?: string;
   aspectRatio?: number;
+  backgroundSize?: 'cover' | 'contain' | 'auto';
+  backgroundPosition?: string;
+  objectFit?: 'cover' | 'contain' | 'fill' | 'none' | 'scale-down';
+  objectPosition?: string;
 };
 
 export type ImageGalleryItem = {

@@ -45,17 +45,19 @@ assert.match(articleTypes, /displaySrc\?: string/, 'tweetPhoto-backed media type
 assert.match(simpleTweetExtractor, /const displaySrc = getTweetPhotoBackgroundUrl\(element\)/, 'simpleTweet tweetPhoto extraction should read the X background-image URL separately');
 assert.match(renderer, /function renderImageGalleryLayoutNode/, 'Reader should recursively render image-gallery layout nodes');
 assert.match(renderer, /function renderImageGalleryItem/, 'Reader should render image-gallery items through a shared helper');
-assert.match(renderer, /reader-image-gallery-background/, 'Reader should render tweetPhoto-style background layers');
-assert.match(renderer, /background\.remove\(\)/, 'Reader should remove gallery background on image load error');
+assert.match(renderer, /reader-media-background/, 'Reader should render tweetPhoto-style background layers through the shared media frame');
+assert.match(renderer, /renderMediaFrame\(\{[\s\S]*imageClassName: 'reader-image-gallery-image'/, 'Reader should render gallery items through the shared media frame');
+assert.match(renderer, /frame\.remove\(\)/, 'Reader should remove gallery media frame on image load error');
 assert.match(renderer, /dataset\.itemIndex = String\(index\)/, 'Reader should expose item indexes for nested gallery layout');
 assert.match(renderer, /function applyImageGalleryFlexMetrics/, 'Reader should apply source flex grow/shrink/basis metrics');
-assert.match(renderer, /item\.displaySrc \?\? item\.src/, 'gallery background should prefer the X visible background-image URL');
-assert.match(renderer, /photo\.displaySrc \?\? photo\.src/, 'simpleTweet photo background should prefer the X visible background-image URL');
+assert.match(renderer, /options\.displaySrc \?\? options\.src/, 'shared media frame background should prefer the X visible background-image URL');
+assert.match(renderer, /displaySrc: item\.displaySrc/, 'gallery items should pass visible background URLs into the shared media frame');
+assert.match(renderer, /displaySrc: photo\.displaySrc/, 'simpleTweet photos should pass visible background URLs into the shared media frame');
 
 assert.match(mediaCss, /\.reader-image-gallery-grid\s*\{[\s\S]*display:\s*flex/, 'gallery grid should use flex layout');
 assert.match(mediaCss, /aspect-ratio:\s*var\(--reader-media-aspect-ratio, 16 \/ 9\)/, 'gallery grid should use extracted aspect ratio');
 assert.match(mediaCss, /\.reader-image-gallery-node\[data-layout-type="column"\]/, 'gallery CSS should support nested column nodes');
-assert.match(mediaCss, /\.reader-image-gallery-background/, 'gallery CSS should include the background layer');
-assert.match(mediaCss, /\.reader-image-gallery-image\s*\{[\s\S]*opacity:\s*0/, 'gallery img should be load/accessibility layer behind the visible background');
+assert.match(mediaCss, /\.reader-media-background/, 'gallery CSS should use the shared background layer');
+assert.match(mediaCss, /\.reader-media-frame > img\s*\{[\s\S]*opacity:\s*0/, 'gallery img should be load/accessibility layer behind the visible background');
 
 console.log('verify:x-article-image-gallery passed');
