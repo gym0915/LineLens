@@ -1,10 +1,10 @@
 .reader-code {
   margin: 28px 0;
   overflow: hidden;
-  border-radius: 8px;
+  border-radius: var(--reader-radius-content);
   background: var(--reader-code-surface);
   color: var(--reader-code-ink);
-  font-family: "DM Mono", "Fira Mono", Menlo, Consolas, monospace;
+  font-family: var(--reader-font-mono);
 }
 
 .reader-code-header {
@@ -13,7 +13,7 @@
   justify-content: space-between;
   min-height: 36px;
   padding: 0 14px;
-  border-bottom: 1px solid rgba(44, 37, 33, 0.08);
+  border-bottom: 1px solid var(--reader-border-faint);
   background: var(--reader-code-header);
 }
 
@@ -49,11 +49,11 @@
   margin: 0;
   padding: 18px 24px 10px;
   overflow-x: auto;
-  background: rgba(255, 255, 255, 0.36);
+  background: var(--reader-code-pre-surface);
   color: var(--reader-code-ink);
   font-family: inherit;
   font-size: 13.5px;
-  line-height: 1.55;
+  line-height: var(--reader-code-line-height);
   tab-size: 2;
   white-space: pre-wrap;
   overflow-wrap: anywhere;

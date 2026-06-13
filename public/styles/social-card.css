@@ -1,10 +1,9 @@
 .reader-simple-tweet {
-  --reader-simple-tweet-media-radius: 16px;
   margin: 28px 0;
   display: block;
-  border-radius: 12px;
-  color: rgb(83, 100, 113);
-  font-family: "DM Sans", system-ui, sans-serif;
+  border-radius: var(--reader-radius-content);
+  color: var(--reader-social-muted);
+  font-family: var(--reader-font-ui);
   text-decoration: none;
 }
 
@@ -14,10 +13,10 @@
   column-gap: 12px;
   align-items: start;
   padding: 14px 16px 12px;
-  border: 1px solid rgb(207, 217, 222);
-  border-radius: 12px;
-  background: rgb(255, 255, 255);
-  box-shadow: 0 2px 8px rgba(15, 20, 25, 0.08);
+  border: 1px solid var(--reader-social-border);
+  border-radius: var(--reader-radius-content);
+  background: var(--reader-social-surface);
+  box-shadow: var(--reader-social-card-shadow);
 }
 
 .reader-simple-tweet-frame-compact {
@@ -111,7 +110,7 @@
 .reader-simple-tweet-author-primary {
   gap: 6px;
   min-width: 0;
-  color: rgb(15, 20, 25);
+  color: var(--reader-social-ink);
   font-size: 17px;
   font-weight: 700;
   line-height: 1.15;
@@ -128,22 +127,22 @@
   flex: 0 0 auto;
   width: 18px;
   height: 18px;
-  fill: rgb(29, 155, 240);
+  fill: var(--reader-social-blue);
 }
 
 .reader-simple-tweet-author-badge {
   flex: 0 0 auto;
   width: 20px;
   height: 20px;
-  border: 1px solid rgb(207, 217, 222);
-  border-radius: 4px;
+  border: 1px solid var(--reader-social-border);
+  border-radius: var(--reader-radius-sm);
   object-fit: cover;
 }
 
 .reader-simple-tweet-author-secondary {
   gap: 6px;
   min-width: 0;
-  color: rgb(83, 100, 113);
+  color: var(--reader-social-muted);
   font-size: 16px;
   line-height: 1.2;
 }
@@ -160,7 +159,7 @@
   margin-top: 2px;
   width: 22px;
   height: 22px;
-  fill: rgb(83, 100, 113);
+  fill: var(--reader-social-muted);
 }
 
 .reader-simple-tweet-shell {
@@ -205,7 +204,7 @@
 }
 
 .reader-simple-tweet-text-container {
-  color: rgb(15, 20, 25);
+  color: var(--reader-social-ink);
   font-size: 16.5px;
   font-weight: 400;
   line-height: 1.5;
@@ -225,7 +224,7 @@
 .reader-simple-tweet-show-more {
   display: inline-block;
   margin-top: 4px;
-  color: rgb(29, 155, 240);
+  color: var(--reader-social-blue);
   font: inherit;
   font-size: 16px;
   font-weight: 700;
@@ -234,8 +233,8 @@
 }
 
 .reader-simple-tweet-show-more:focus-visible {
-  border-radius: 4px;
-  outline: 2px solid rgba(29, 155, 240, 0.45);
+  border-radius: var(--reader-radius-sm);
+  outline: 2px solid var(--reader-social-blue-outline);
   outline-offset: 2px;
 }
 
@@ -253,7 +252,7 @@
 
 .reader-simple-tweet-reply-context,
 .reader-simple-tweet-translation {
-  color: rgb(83, 100, 113);
+  color: var(--reader-social-muted);
   font-size: 16px;
   font-weight: 500;
   line-height: 1.3;
@@ -276,7 +275,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  color: rgb(83, 100, 113);
+  color: var(--reader-social-muted);
   font-size: 14px;
   font-weight: 500;
   line-height: 1.2;
@@ -294,7 +293,7 @@
 }
 
 .reader-simple-tweet-link-text {
-  color: rgb(29, 155, 240);
+  color: var(--reader-social-blue);
 }
 
 .reader-simple-tweet-photo-grid {
@@ -302,9 +301,9 @@
   overflow: hidden;
   min-height: 0;
   gap: 1px;
-  border: 1px solid rgb(207, 217, 222);
-  border-radius: var(--reader-simple-tweet-media-radius);
-  background: rgb(207, 217, 222);
+  border: 1px solid var(--reader-social-media-border);
+  border-radius: var(--reader-radius-content);
+  background: var(--reader-social-media-placeholder);
   aspect-ratio: var(--reader-media-aspect-ratio, 16 / 9);
   box-sizing: border-box;
 }
@@ -314,9 +313,9 @@
   overflow: hidden;
   min-height: 0;
   gap: 1px;
-  border: 1px solid rgb(207, 217, 222);
-  border-radius: var(--reader-simple-tweet-media-radius);
-  background: rgb(207, 217, 222);
+  border: 1px solid var(--reader-social-media-border);
+  border-radius: var(--reader-radius-content);
+  background: var(--reader-social-media-placeholder);
   aspect-ratio: var(--reader-media-aspect-ratio, 16 / 9);
   box-sizing: border-box;
 }
@@ -388,7 +387,7 @@
   overflow: hidden;
   min-width: 0;
   min-height: 0;
-  background: rgb(255, 255, 255);
+  background: var(--reader-social-surface);
 }
 
 .reader-simple-tweet-photo .reader-media-frame {
@@ -414,22 +413,22 @@
   position: relative;
   aspect-ratio: 5 / 2;
   overflow: hidden;
-  border-radius: var(--reader-simple-tweet-media-radius);
+  border-radius: var(--reader-radius-content);
 }
 
 .reader-simple-tweet-video-preview {
-  background: rgb(15, 20, 25);
+  background: var(--reader-inverse-surface);
 }
 
 .reader-simple-tweet .reader-video-media {
-  border-radius: var(--reader-simple-tweet-media-radius);
+  border-radius: var(--reader-radius-content);
 }
 
 .reader-simple-tweet-video-duration {
   position: absolute;
   left: 14px;
   bottom: 12px;
-  color: rgb(255, 255, 255);
+  color: var(--reader-inverse-ink);
   font-size: 15px;
   font-weight: 700;
   line-height: 1;
@@ -453,9 +452,9 @@
   justify-content: center;
   gap: 3px;
   padding: 4px 8px 5px;
-  border-radius: 4px;
-  background: rgba(0, 0, 0, 0.55);
-  color: rgba(255, 255, 255, 0.94);
+  border-radius: var(--reader-radius-sm);
+  background: color-mix(in srgb, var(--reader-inverse-surface) 55%, transparent);
+  color: color-mix(in srgb, var(--reader-inverse-ink) 94%, transparent);
   font-size: 12px;
   font-weight: 700;
   line-height: 1;
@@ -479,8 +478,8 @@
   position: static;
   display: inline-flex;
   margin-bottom: 10px;
-  background: rgba(44, 37, 33, 0.08);
-  color: rgba(44, 37, 33, 0.55);
+  background: var(--reader-border-faint);
+  color: var(--reader-text-subtle);
 }
 
 .reader-simple-tweet-content {
@@ -493,10 +492,10 @@
 
 .reader-simple-tweet-quoted {
   margin-top: 6px;
-  border: 1px solid rgb(207, 217, 222);
-  border-radius: 16px;
+  border: 1px solid var(--reader-social-border);
+  border-radius: var(--reader-radius-content);
   padding: 0;
-  background: rgb(255, 255, 255);
+  background: var(--reader-social-surface);
   overflow: hidden;
 }
 
@@ -520,7 +519,7 @@
   width: 84px;
   min-height: 84px;
   aspect-ratio: 1 / 1;
-  border-radius: var(--reader-simple-tweet-media-radius);
+  border-radius: var(--reader-radius-content);
 }
 
 .reader-simple-tweet-condensed-media .reader-simple-tweet-photo-grid {
@@ -528,7 +527,7 @@
   width: 84px;
   min-height: 84px;
   aspect-ratio: 1 / 1;
-  border-radius: var(--reader-simple-tweet-media-radius);
+  border-radius: var(--reader-radius-content);
 }
 
 .reader-simple-tweet-video-preview-condensed {
@@ -536,7 +535,7 @@
 }
 
 .reader-simple-tweet-video-preview-rounded-square {
-  border-radius: var(--reader-simple-tweet-media-radius);
+  border-radius: var(--reader-radius-content);
 }
 
 .reader-simple-tweet-condensed-media .reader-simple-tweet-cover {
@@ -548,7 +547,7 @@
   bottom: 8px;
   padding: 3px 5px;
   border-radius: 999px;
-  background: rgba(15, 20, 25, 0.72);
+  background: color-mix(in srgb, var(--reader-social-ink) 72%, transparent);
   font-size: 12px;
 }
 
@@ -572,14 +571,14 @@
 
 .reader-simple-tweet-title {
   margin-bottom: 8px;
-  color: rgb(15, 20, 25);
+  color: var(--reader-social-ink);
   font-size: 19px;
   font-weight: 700;
   line-height: 1.35;
 }
 
 .reader-simple-tweet-excerpt {
-  color: rgb(15, 20, 25);
+  color: var(--reader-social-ink);
   font-size: 16.5px;
   line-height: 1.55;
 }
@@ -587,7 +586,7 @@
 .reader-simple-tweet-article-meta {
   display: flex;
   align-items: center;
-  color: rgb(83, 100, 113);
+  color: var(--reader-social-muted);
 }
 
 .reader-simple-tweet-article-meta[data-href] {
@@ -616,7 +615,7 @@
   align-items: center;
   gap: 6px;
   min-width: 0;
-  color: rgb(15, 20, 25);
+  color: var(--reader-social-ink);
   font-size: 17px;
   font-weight: 700;
   line-height: 1.2;
@@ -642,7 +641,7 @@
   gap: 12px;
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid rgba(83, 100, 113, 0.24);
+  border-top: 1px solid color-mix(in srgb, var(--reader-social-muted) 24%, transparent);
   font-size: 14px;
   line-height: 1;
 }
@@ -673,7 +672,7 @@
   justify-content: space-between;
   gap: 10px;
   padding-top: 0;
-  color: rgb(83, 100, 113);
+  color: var(--reader-social-muted);
   font-size: 14px;
   line-height: 1;
 }

@@ -19,7 +19,7 @@
 .reader-block[data-block-type="heading"] {
   margin-top: 40px;
   color: var(--reader-text-title);
-  font-family: "Playfair Display", Georgia, serif;
+  font-family: var(--reader-font-display);
   font-size: 22px;
   font-weight: 600;
   line-height: 1.35;
@@ -32,7 +32,7 @@
   color: var(--reader-text-muted);
   font-size: 17px;
   font-style: italic;
-  line-height: 1.85;
+  line-height: var(--reader-quote-line-height);
 }
 
 .reader-link {
@@ -47,9 +47,9 @@
 
 .reader-embed {
   padding: 16px;
-  border: 1px solid rgba(44, 37, 33, 0.12);
+  border: 1px solid var(--reader-border-subtle);
   color: var(--reader-text-muted);
-  font-family: "Lora", Georgia, serif;
+  font-family: var(--reader-font-body);
   font-size: 14px;
   line-height: 1.7;
 }
@@ -68,7 +68,7 @@
   padding: 3px 2px;
   border-radius: var(--reader-radius-card);
   font-size: 16.5px;
-  line-height: 1.8;
+  line-height: var(--reader-list-line-height);
 }
 
 .reader-list-bullet {
@@ -94,9 +94,9 @@
 .reader-table {
   margin: 28px 0;
   overflow-x: auto;
-  border: 1px solid rgba(44, 37, 33, 0.12);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.42);
+  border: 1px solid var(--reader-border-subtle);
+  border-radius: var(--reader-radius-content);
+  background: var(--reader-surface-translucent);
 }
 
 .reader-table-grid {
@@ -107,10 +107,10 @@
 
 .reader-table-cell {
   padding: 10px 12px;
-  border: 1px solid rgba(44, 37, 33, 0.12);
+  border: 1px solid var(--reader-border-subtle);
   color: inherit;
   font: inherit;
-  line-height: 1.5;
+  line-height: var(--reader-table-line-height);
   text-align: left;
   vertical-align: top;
   white-space: pre-wrap;

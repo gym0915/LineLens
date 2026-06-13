@@ -564,9 +564,9 @@ for (const token of [
   '--reader-body-line-height',
   '--reader-paragraph-gap',
   '--reader-media-gap',
-  'Playfair Display',
-  'Lora',
-  'DM Sans',
+  '--reader-font-display',
+  '--reader-font-body',
+  '--reader-font-ui',
   '.reader-list-item.focus-unit.is-active'
 ]) {
   assert(css.includes(token), `missing visual token ${token}`);

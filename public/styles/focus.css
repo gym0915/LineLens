@@ -40,7 +40,7 @@ p .focus-unit {
   cursor: default;
 }
 
-.focus-unit.is-active * {
+.focus-unit.is-active:not(.reader-code) * {
   color: var(--reader-text-active) !important;
 }
 
@@ -58,13 +58,13 @@ p .focus-unit {
 
 p .focus-unit.is-active {
   display: inline;
+  padding: var(--reader-inline-highlight-padding-block) var(--reader-inline-highlight-padding-inline);
   border-radius: var(--reader-radius-card);
   background: var(--reader-highlight-surface);
-  box-shadow:
-    0 0 0 4px var(--reader-highlight-surface),
-    var(--reader-highlight-shadow);
+  box-shadow: var(--reader-highlight-shadow);
   -webkit-box-decoration-break: clone;
   box-decoration-break: clone;
+  transition: var(--reader-inline-highlight-transition);
 }
 
 .reader-media.focus-unit,
@@ -178,7 +178,7 @@ p .focus-unit.is-active {
 
 .reader-simple-tweet.focus-unit.is-active {
   padding: 6px;
-  border-radius: 10px;
+  border-radius: var(--reader-radius-card);
   opacity: 1;
 }
 

@@ -111,7 +111,8 @@ const sourceFiles = {
   cleanTree: readFileSync(resolve(projectRoot, 'src/content/preprocess/clean-tree-block-converter.ts'), 'utf8'),
   renderer: readFileSync(resolve(projectRoot, 'src/reader/block-renderer.ts'), 'utf8'),
   textRenderer: readFileSync(resolve(projectRoot, 'src/reader/reader-text-renderer.ts'), 'utf8'),
-  css: readFileSync(resolve(projectRoot, 'public/styles/blocks.css'), 'utf8')
+  css: readFileSync(resolve(projectRoot, 'public/styles/blocks.css'), 'utf8'),
+  focusCss: readFileSync(resolve(projectRoot, 'public/styles/focus.css'), 'utf8')
 };
 
 assert.match(sourceFiles.types, /export type CodeBlockStyle = \{[\s\S]*?preBackgroundColor\?: string[\s\S]*?codeColor\?: string/, 'CodeBlock should carry source code block colors');
@@ -142,6 +143,11 @@ assert.match(sourceFiles.renderer, /function renderTableBlock\(block: TableBlock
 assert.match(sourceFiles.renderer, /appendExtractedCodeTokens/, 'Reader should render extracted code tokens instead of forcing local highlighting');
 assert.match(sourceFiles.textRenderer, /annotation\.color \|\| annotation\.fontSize/, 'Reader text metadata should retain style-only annotations');
 assert.match(sourceFiles.textRenderer, /applyInlineTextStyle/, 'Reader text renderer should apply inline DOM text styles');
+assert.doesNotMatch(
+  sourceFiles.focusCss,
+  /\.focus-unit\.is-active \*\s*\{\s*color:\s*var\(--reader-text-active\)\s*!important;/,
+  'Active focus state should not override extracted inline code token colors'
+);
 assert.match(sourceFiles.css, /\.reader-table[\s\S]*overflow-x: auto/, 'Reader CSS should provide a table surface');
 assert.match(sourceFiles.css, /\.reader-table-cell[\s\S]*white-space: pre-wrap/, 'Reader table cells should preserve source line breaks');
 

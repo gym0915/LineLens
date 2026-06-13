@@ -2,7 +2,7 @@
   .reader-simple-tweet-frame {
     grid-template-columns: 40px minmax(0, 1fr);
     padding: 12px;
-    border-radius: 12px;
+    border-radius: var(--reader-radius-content);
   }
 
   .reader-simple-tweet-avatar {
@@ -33,7 +33,7 @@
   }
 
   .reader-simple-tweet-quoted .reader-simple-tweet-shell {
-    border-radius: 16px;
+    border-radius: var(--reader-radius-content);
   }
 
   .reader-simple-tweet-shell-photo {
@@ -55,7 +55,7 @@
   }
 
   .reader-simple-tweet-photo-grid {
-    border-radius: 0;
+    border-radius: var(--reader-radius-content);
   }
 
   .reader-simple-tweet-media {

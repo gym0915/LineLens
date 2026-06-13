@@ -5,7 +5,7 @@
   left: 0;
   padding-bottom: 20px;
   color: var(--reader-text-chrome);
-  font-family: "DM Sans", system-ui, sans-serif;
+  font-family: var(--reader-font-ui);
   font-size: 11px;
   letter-spacing: 0.1em;
   text-align: center;
@@ -23,8 +23,8 @@
   border-radius: 3px;
   background: var(--reader-toast-surface);
   color: var(--reader-toast-ink);
-  box-shadow: 0 8px 24px rgba(44, 37, 33, 0.18);
-  font-family: "DM Sans", system-ui, sans-serif;
+  box-shadow: var(--reader-toast-shadow);
+  font-family: var(--reader-font-ui);
   font-size: 13px;
   font-weight: 500;
   line-height: 1.35;
@@ -47,8 +47,8 @@
   bottom: 64px;
   left: 0;
   margin: 0;
-  color: rgba(44, 37, 33, 0.25);
-  font-family: "DM Sans", system-ui, sans-serif;
+  color: var(--reader-dim-medium);
+  font-family: var(--reader-font-ui);
   font-size: 10px;
   letter-spacing: 0.16em;
   text-align: center;
@@ -127,7 +127,7 @@
     transparent
   );
   color: var(--reader-highlight-surface);
-  font-family: "DM Sans", system-ui, sans-serif;
+  font-family: var(--reader-font-ui);
   font-size: 28px;
   font-weight: 300;
   line-height: 1;
@@ -166,7 +166,7 @@
     transparent
   );
   color: var(--reader-highlight-surface);
-  font-family: "DM Sans", system-ui, sans-serif;
+  font-family: var(--reader-font-ui);
   font-size: 28px;
   font-weight: 300;
   line-height: 1;
@@ -209,7 +209,7 @@
   object-fit: contain;
   object-position: center center;
   background: var(--reader-highlight-surface);
-  box-shadow: 0 18px 60px rgba(44, 37, 33, 0.18);
+  box-shadow: var(--reader-overlay-shadow);
 }
 
 .reader-media-preview.is-entering-from-left .reader-media-preview-image {
@@ -274,7 +274,7 @@
     transparent
   );
   color: var(--reader-highlight-surface);
-  font-family: "DM Sans", system-ui, sans-serif;
+  font-family: var(--reader-font-ui);
   font-size: 14px;
   opacity: 0;
   pointer-events: none;

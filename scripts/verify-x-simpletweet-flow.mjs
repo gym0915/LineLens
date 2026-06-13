@@ -78,12 +78,11 @@ assert.match(sourceFiles.css, /\.reader-simple-tweet-condensed\s*\{[\s\S]*?grid-
 assert.match(sourceFiles.css, /\.reader-simple-tweet-frame-compact \.reader-simple-tweet-shell-compact\s*\{[\s\S]*?padding: 6px 0 0 4px;/, 'compact shell should add top-left inset for the thumbnail');
 assert.match(sourceFiles.css, /\.reader-simple-tweet-condensed-media \.reader-simple-tweet-media\s*\{[\s\S]*?width: 84px;[\s\S]*?min-height: 84px;/, 'desktop condensed thumbnail should have explicit square size');
 assert.match(sourceFiles.css, /\.reader-simple-tweet-condensed\s*\{[\s\S]*?border: 0;/, 'condensed quoted text should not receive an extra gray inner border');
-assert.match(sourceFiles.css, /\.reader-simple-tweet-video-preview-rounded-square\s*\{[\s\S]*?border-radius: var\(--reader-simple-tweet-media-radius\);/, 'condensed preview should render as a rounded square with the shared media radius');
+assert.match(sourceFiles.css, /\.reader-simple-tweet-video-preview-rounded-square\s*\{[\s\S]*?border-radius: var\(--reader-radius-content\);/, 'condensed preview should render as a rounded square with the shared reader media radius');
 assert.match(sourceFiles.css, /\.reader-simple-tweet-actions-secondary\s*\{[\s\S]*?gap: 4px;/, 'bookmark and share actions should stay close together');
 assert.match(sourceFiles.css, /\.reader-simple-tweet-ai-generated\s*\{[\s\S]*?display: inline-flex;/, 'reader CSS should style the AI-generated badge row');
 assert.match(sourceFiles.css, /\.reader-simple-tweet-ai-generated-icon\s*\{[\s\S]*?width: 18px;/, 'reader CSS should size the AI-generated badge icon');
-assert.match(sourceFiles.css, /\.reader-simple-tweet\s*\{[\s\S]*?--reader-simple-tweet-media-radius:\s*16px;/, 'simpleTweet CSS should define one shared media radius token');
-assert.match(sourceFiles.css, /\.reader-simple-tweet-photo-grid\s*\{[\s\S]*?border-radius: var\(--reader-simple-tweet-media-radius\);/, 'simpleTweet photo grids should use the shared media radius');
+assert.match(sourceFiles.css, /\.reader-simple-tweet-photo-grid\s*\{[\s\S]*?border-radius: var\(--reader-radius-content\);/, 'simpleTweet photo grids should use the shared reader media radius');
 assert.match(sourceFiles.css, /\.reader-simple-tweet-photo-count-2,\s*[\s\S]*?grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/, 'two-photo groups should render as a horizontal two-column grid');
 assert.match(sourceFiles.css, /\.reader-simple-tweet-photo-layout-row\s*\{[\s\S]*?flex-direction: row;/, 'photo layout trees should render row branches');
 assert.match(sourceFiles.css, /\.reader-simple-tweet-photo-layout-column\s*\{[\s\S]*?flex-direction: column;/, 'photo layout trees should render column branches');
@@ -93,7 +92,7 @@ assert.match(sourceFiles.css, /\.reader-simple-tweet-photo \.reader-media-backgr
 assert.match(sourceFiles.css, /\.reader-simple-tweet-photo \.reader-media-frame\s*\{[\s\S]*?width: 100%;[\s\S]*?height: 100%;/, 'tweetPhoto shared media frame should fill the allocated tile');
 assert.match(sourceFiles.css, /\.reader-simple-tweet-photo-image\s*\{[\s\S]*?object-fit: cover;/, 'photo layout tree cells should fill the source media tiles');
 assert.match(sourceFiles.css, /\.reader-simple-tweet-photo-image\s*\{[\s\S]*?max-width: none;[\s\S]*?max-height: none;[\s\S]*?object-position: center center;/, 'photo layout tree images should crop from the visual center');
-assert.match(sourceFiles.css, /\.reader-simple-tweet \.reader-video-media\s*\{[\s\S]*?border-radius: var\(--reader-simple-tweet-media-radius\);/, 'simpleTweet videos should use the shared media radius');
+assert.match(sourceFiles.css, /\.reader-simple-tweet \.reader-video-media\s*\{[\s\S]*?border-radius: var\(--reader-radius-content\);/, 'simpleTweet videos should use the shared reader media radius');
 assert.match(sourceFiles.css, /\.reader-simple-tweet-article-meta-author\s*\{[\s\S]*?margin-top: 10px;/, 'article-cover author metadata should sit under the title block');
 assert.match(sourceFiles.css, /\.reader-simple-tweet-article-meta-metrics\s*\{[\s\S]*?border-top: 1px solid/, 'article-cover interaction metrics should render as a separate clickable row');
 assert.match(sourceFiles.css, /\.reader-simple-tweet-video-portrait\s*\{[\s\S]*?width: min\(100%, 360px\);/, 'reader CSS should constrain portrait simpleTweet videos to a narrower in-card width');
