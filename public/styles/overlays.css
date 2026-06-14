@@ -260,19 +260,19 @@
   box-shadow: none;
 }
 
+.reader-media-preview.is-loading .reader-media-preview-image {
+  opacity: 0;
+}
+
 .reader-media-preview-status {
   position: fixed;
   left: 50%;
   top: 50%;
   z-index: 81;
   transform: translate(-50%, -50%);
-  padding: 10px 14px;
-  border-radius: 999px;
-  background: color-mix(
-    in srgb,
-    var(--reader-highlight-surface) 14%,
-    transparent
-  );
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
   color: var(--reader-highlight-surface);
   font-family: var(--reader-font-ui);
   font-size: 14px;

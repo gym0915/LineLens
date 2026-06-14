@@ -177,10 +177,14 @@ assert(findByClass(rendered.querySelector('[data-block-id="tweet1"]'), 'reader-s
 assert(findByClass(rendered.querySelector('[data-block-id="tweet1"]'), 'reader-simple-tweet-cover')?.tagName === 'IMG', 'simple tweet should render cover image');
 const simpleTweetSource = findByClass(rendered.querySelector('[data-block-id="tweet1"]'), 'reader-simple-tweet-source');
 assert(simpleTweetSource?.attributes['aria-label'] === 'X Article', 'simple tweet source should keep an accessible source label');
-assert(simpleTweetSource?.textContent === 'Article', 'simple tweet source should keep the Article text next to the X logo');
+assert(simpleTweetSource?.textContent === '文章', 'simple tweet source should keep the source Article label next to the X logo');
+assert(
+  simpleTweetSource?.attributes.style === '--reader-simple-tweet-source-color: rgb(255, 255, 255);',
+  'simple tweet source should expose the extracted X Article color as a CSS variable'
+);
 const simpleTweetSourceIcon = findByClass(rendered.querySelector('[data-block-id="tweet1"]'), 'reader-simple-tweet-source-icon');
 assert(simpleTweetSourceIcon?.tagName === 'SVG', 'simple tweet source should render the X logo as svg');
-assert(findByClass(rendered.querySelector('[data-block-id="tweet1"]'), 'reader-simple-tweet-source-text')?.textContent === 'Article', 'simple tweet source text should be separately styleable');
+assert(findByClass(rendered.querySelector('[data-block-id="tweet1"]'), 'reader-simple-tweet-source-text')?.textContent === '文章', 'simple tweet source text should be separately styleable');
 assert(
   simpleTweetSourceIcon?.children[0]?.attributes.d ===
     'M21.742 21.75l-7.563-11.179 7.056-8.321h-2.456l-5.691 6.714-4.54-6.714H2.359l7.29 10.776L2.25 21.75h2.456l6.035-7.118 4.818 7.118h6.191-.008zM7.739 3.818L18.81 20.182h-2.447L5.29 3.818h2.447z',
@@ -190,6 +194,30 @@ assert(
   findByClass(rendered.querySelector('[data-block-id="tweet1"]'), 'reader-simple-tweet-title')?.textContent ===
     'The Science of Attention: Why Your Brain Needs Boredom',
   'simple tweet title should render'
+);
+const simpleTweetArticleCard = findByClass(rendered.querySelector('[data-block-id="tweet1"]'), 'reader-simple-tweet-article-card');
+const simpleTweetArticleMedia = findByClass(rendered.querySelector('[data-block-id="tweet1"]'), 'reader-simple-tweet-article-cover-media');
+const simpleTweetTitle = findByClass(rendered.querySelector('[data-block-id="tweet1"]'), 'reader-simple-tweet-title');
+const simpleTweetExcerpt = findByClass(rendered.querySelector('[data-block-id="tweet1"]'), 'reader-simple-tweet-excerpt');
+assert(simpleTweetArticleCard?.tagName === 'DIV', 'simple tweet article cover should render as a full card wrapper');
+assert(simpleTweetArticleMedia?.tagName === 'DIV', 'simple tweet article cover should keep image content in a media frame');
+assert(simpleTweetArticleMedia?.dataset.aspectRatio === '2.5', 'simple tweet article cover should expose the source cover aspect ratio');
+assert(
+  simpleTweetArticleMedia?.attributes.style === '--reader-media-aspect-ratio: 2.5;',
+  'simple tweet article cover should set the source cover aspect ratio style variable'
+);
+assert(simpleTweetTitle?.style.fontSize === '28px', 'simple tweet article title should apply the source font size');
+assert(simpleTweetTitle?.style.lineHeight === '1.3', 'simple tweet article title should apply the source line height');
+assert(simpleTweetTitle?.style.fontWeight === '700', 'simple tweet article title should apply the source font weight');
+assert(simpleTweetExcerpt?.style.fontSize === '24px', 'simple tweet article excerpt should apply the source font size');
+assert(simpleTweetExcerpt?.style.lineHeight === '1.45', 'simple tweet article excerpt should apply the source line height');
+assert(
+  simpleTweetArticleMedia && simpleTweetTitle && !walk(simpleTweetArticleMedia).includes(simpleTweetTitle),
+  'simple tweet article title should render outside the clipped media frame'
+);
+assert(
+  simpleTweetArticleMedia && simpleTweetExcerpt && !walk(simpleTweetArticleMedia).includes(simpleTweetExcerpt),
+  'simple tweet article excerpt should render outside the clipped media frame'
 );
 const multilineSimpleTweetArticle = {
   ...mediaArticle,
@@ -584,6 +612,8 @@ assert(!css.includes('max-width: min(1120px'), 'reader media preview should not 
 assert(!css.includes('max-width: calc(100vw - 176px)'), 'reader media preview nav buttons should not reduce the image viewport width');
 assert(css.includes('.reader-media-preview-status'), 'reader media preview should expose a loading/error status element');
 assert(css.includes('.reader-media-preview.is-loading'), 'reader media preview should style loading state instead of showing the previous image');
+assert(/\.reader-media-preview\.is-loading \.reader-media-preview-image\s*\{[\s\S]*?opacity:\s*0;/.test(css), 'reader media preview should hide the empty image element while loading');
+assert(/\.reader-media-preview-status\s*\{[\s\S]*?background:\s*transparent;/.test(css), 'reader media preview loading status should render as plain text');
 assert(css.includes('.reader-media-preview-close:hover'), 'reader media preview close button should expose hover feedback');
 assert(css.includes('.reader-media-preview-nav:not(:disabled):hover'), 'reader media preview nav buttons should expose hover feedback');
 assert(css.includes('var(--reader-highlight-surface) 16%'), 'reader media preview nav buttons should use the same base color strength as the close button');
@@ -608,6 +638,24 @@ assert(css.includes('.reader-link'), 'reader link block should have explicit hyp
 assert(css.includes('.reader-link.focus-unit.is-active'), 'reader link block should use active highlight styling');
 assert(css.includes('text-decoration: none'), 'simple tweet anchor should not show hyperlink underline');
 assert(css.includes('.reader-simple-tweet-source-icon'), 'simple tweet source should style the X logo icon');
+assert(css.includes('.reader-simple-tweet-article-card'), 'simple tweet article cover should style a full card wrapper');
+assert(css.includes('.reader-simple-tweet-article-cover-content'), 'simple tweet article text should have its own visible content region');
+assert(
+  /\.reader-simple-tweet\.focus-unit\.is-muted\s*\{[\s\S]*?opacity:\s*1;/.test(css),
+  'muted simpleTweet should not dim the whole card because component parts control their own state opacity'
+);
+assert(
+  /\.reader-simple-tweet\.focus-unit\.is-muted \.reader-simple-tweet-source,[\s\S]*?opacity:\s*0\.45;/.test(css),
+  'muted simpleTweet source badge should dim with the rest of the card parts'
+);
+assert(
+  /\.reader-simple-tweet\.focus-unit\.is-muted:hover \.reader-simple-tweet-source,[\s\S]*?opacity:\s*0\.62;/.test(css),
+  'hovered muted simpleTweet source badge should partially restore with the rest of the card parts'
+);
+assert(
+  /\.reader-simple-tweet\.focus-unit\.is-muted \.reader-simple-tweet-source,[\s\S]*?color:\s*var\(--reader-simple-tweet-source-color, var\(--reader-inverse-ink\)\) !important;/.test(css),
+  'muted simpleTweet source badge should keep its extracted source color despite global muted text rules'
+);
 
 console.log('Reader A3/A4 verification passed.');
 

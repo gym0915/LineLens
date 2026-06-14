@@ -411,9 +411,20 @@
 
 .reader-simple-tweet-media {
   position: relative;
-  aspect-ratio: 5 / 2;
+  aspect-ratio: var(--reader-media-aspect-ratio, 5 / 2);
   overflow: hidden;
   border-radius: var(--reader-radius-content);
+}
+
+.reader-simple-tweet-article-card {
+  overflow: hidden;
+  border: 1px solid var(--reader-social-border);
+  border-radius: var(--reader-radius-content);
+  background: var(--reader-social-surface);
+}
+
+.reader-simple-tweet-article-cover-media {
+  border-radius: 0;
 }
 
 .reader-simple-tweet-video-preview {
@@ -454,7 +465,7 @@
   padding: 4px 8px 5px;
   border-radius: var(--reader-radius-sm);
   background: color-mix(in srgb, var(--reader-inverse-surface) 55%, transparent);
-  color: color-mix(in srgb, var(--reader-inverse-ink) 94%, transparent);
+  color: var(--reader-simple-tweet-source-color, color-mix(in srgb, var(--reader-inverse-ink) 94%, transparent));
   font-size: 12px;
   font-weight: 700;
   line-height: 1;
@@ -484,6 +495,10 @@
 
 .reader-simple-tweet-content {
   padding: 0;
+}
+
+.reader-simple-tweet-article-cover-content {
+  padding: 18px 22px 20px;
 }
 
 .reader-simple-tweet-content-compact {

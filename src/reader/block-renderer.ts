@@ -1137,6 +1137,12 @@ function withRenderableItems<T extends SimpleTweetCardData & { metrics?: TweetMe
   const legacy = block as T & {
     coverUrl?: string;
     coverAlt?: string;
+    aspectRatio?: number;
+    sourceLabel?: string;
+    sourceIconPath?: string;
+    sourceColor?: string;
+    titleTextStyle?: TextStyle;
+    excerptTextStyle?: TextStyle;
     photos?: TweetPhoto[];
     video?: VideoBlock;
   };
@@ -1166,8 +1172,14 @@ function withRenderableItems<T extends SimpleTweetCardData & { metrics?: TweetMe
       type: 'article-cover',
       coverUrl: legacy.coverUrl,
       coverAlt: legacy.coverAlt,
+      aspectRatio: legacy.aspectRatio,
+      sourceLabel: legacy.sourceLabel,
+      sourceIconPath: legacy.sourceIconPath,
+      sourceColor: legacy.sourceColor,
       title: legacy.title,
+      titleTextStyle: legacy.titleTextStyle,
       excerpt: legacy.excerpt,
+      excerptTextStyle: legacy.excerptTextStyle,
       href: legacy.href
     });
   }
@@ -1333,33 +1345,43 @@ function renderSimpleTweetVideoPreview(item: Extract<SimpleTweetContentItem, { t
 
 function renderSimpleTweetArticleCover(item: Extract<SimpleTweetContentItem, { type: 'article-cover' }>): HTMLElement {
   const wrapper = document.createElement('div');
-  wrapper.className = 'reader-simple-tweet-media';
+  wrapper.className = 'reader-simple-tweet-article-card';
+
+  const media = document.createElement('div');
+  media.className = 'reader-simple-tweet-media reader-simple-tweet-article-cover-media';
+  applyMediaAspectRatio(media, item.aspectRatio);
 
   const image = document.createElement('img');
   image.className = 'reader-simple-tweet-cover';
   image.src = item.coverUrl;
   image.alt = item.coverAlt ?? '';
   image.loading = 'lazy';
-  wrapper.append(image);
+  media.append(image);
 
   const sourceBadge = document.createElement('span');
   sourceBadge.className = 'reader-simple-tweet-source';
   sourceBadge.setAttribute('aria-label', 'X Article');
-  sourceBadge.append(renderXLogoIcon(), renderSourceLabelText('Article'));
-  wrapper.append(sourceBadge);
+  if (item.sourceColor) {
+    sourceBadge.setAttribute('style', '--reader-simple-tweet-source-color: ' + item.sourceColor + ';');
+  }
+  sourceBadge.append(renderXLogoIcon(item.sourceIconPath), renderSourceLabelText(item.sourceLabel ?? 'Article'));
+  media.append(sourceBadge);
+  wrapper.append(media);
 
   if (item.title || item.excerpt) {
     const text = document.createElement('div');
-    text.className = 'reader-simple-tweet-content';
+    text.className = 'reader-simple-tweet-content reader-simple-tweet-article-cover-content';
     if (item.title) {
       const title = document.createElement('div');
       title.className = 'reader-simple-tweet-title';
+      applyTextStyle(title, item.titleTextStyle);
       title.append(createReaderTextSpan(item.title, [], { role: 'social-title' }));
       text.append(title);
     }
     if (item.excerpt) {
       const excerpt = document.createElement('div');
       excerpt.className = 'reader-simple-tweet-excerpt';
+      applyTextStyle(excerpt, item.excerptTextStyle);
       excerpt.append(createReaderTextSpan(item.excerpt, [], { role: 'social-excerpt' }));
       text.append(excerpt);
     }
@@ -1788,17 +1810,14 @@ function renderSimpleTweetAction(icon: SVGSVGElement, value: string, name: strin
   return action;
 }
 
-function renderXLogoIcon(): SVGSVGElement {
+function renderXLogoIcon(pathData = 'M21.742 21.75l-7.563-11.179 7.056-8.321h-2.456l-5.691 6.714-4.54-6.714H2.359l7.29 10.776L2.25 21.75h2.456l6.035-7.118 4.818 7.118h6.191-.008zM7.739 3.818L18.81 20.182h-2.447L5.29 3.818h2.447z'): SVGSVGElement {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.setAttribute('viewBox', '0 0 24 24');
   svg.setAttribute('aria-hidden', 'true');
   svg.setAttribute('class', 'reader-simple-tweet-source-icon');
 
   const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-  path.setAttribute(
-    'd',
-    'M21.742 21.75l-7.563-11.179 7.056-8.321h-2.456l-5.691 6.714-4.54-6.714H2.359l7.29 10.776L2.25 21.75h2.456l6.035-7.118 4.818 7.118h6.191-.008zM7.739 3.818L18.81 20.182h-2.447L5.29 3.818h2.447z'
-  );
+  path.setAttribute('d', pathData);
 
   svg.append(path);
   return svg;

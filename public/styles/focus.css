@@ -169,11 +169,38 @@ p .focus-unit.is-active {
 }
 
 .reader-simple-tweet.focus-unit.is-muted:hover {
-  opacity: 0.62;
+  opacity: 1;
 }
 
 .reader-simple-tweet.focus-unit.is-muted {
+  opacity: 1;
+}
+
+.reader-simple-tweet.focus-unit.is-muted .reader-simple-tweet-avatar,
+.reader-simple-tweet.focus-unit.is-muted .reader-simple-tweet-header,
+.reader-simple-tweet.focus-unit.is-muted .reader-simple-tweet-cover,
+.reader-simple-tweet.focus-unit.is-muted .reader-simple-tweet-source,
+.reader-simple-tweet.focus-unit.is-muted .reader-simple-tweet-article-cover-content,
+.reader-simple-tweet.focus-unit.is-muted .reader-simple-tweet-actions {
   opacity: 0.45;
+}
+
+.reader-simple-tweet.focus-unit.is-muted:hover .reader-simple-tweet-avatar,
+.reader-simple-tweet.focus-unit.is-muted:hover .reader-simple-tweet-header,
+.reader-simple-tweet.focus-unit.is-muted:hover .reader-simple-tweet-cover,
+.reader-simple-tweet.focus-unit.is-muted:hover .reader-simple-tweet-source,
+.reader-simple-tweet.focus-unit.is-muted:hover .reader-simple-tweet-article-cover-content,
+.reader-simple-tweet.focus-unit.is-muted:hover .reader-simple-tweet-actions {
+  opacity: 0.62;
+}
+
+.reader-simple-tweet.focus-unit.is-muted .reader-simple-tweet-source,
+.reader-simple-tweet.focus-unit.is-muted .reader-simple-tweet-source *,
+.reader-simple-tweet.focus-unit.is-muted:hover .reader-simple-tweet-source,
+.reader-simple-tweet.focus-unit.is-muted:hover .reader-simple-tweet-source *,
+.reader-simple-tweet.focus-unit.is-active .reader-simple-tweet-source,
+.reader-simple-tweet.focus-unit.is-active .reader-simple-tweet-source * {
+  color: var(--reader-simple-tweet-source-color, var(--reader-inverse-ink)) !important;
 }
 
 .reader-simple-tweet.focus-unit.is-active {

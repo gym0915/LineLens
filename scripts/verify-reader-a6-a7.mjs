@@ -608,6 +608,14 @@ assert(
   !findByClass(documentBody, 'reader-media-preview-image')?.getAttribute('src'),
   'Active image preview should clear the previous image while the clicked image is loading'
 );
+assert(
+  !findByClass(documentBody, 'reader-media-preview-image')?.getAttribute('alt'),
+  'Active image preview should not expose broken image alt text while loading'
+);
+assert(
+  findByClass(documentBody, 'reader-media-preview-status')?.textContent === 'Loading...',
+  'Active image preview should show plain English loading text'
+);
 findPreloadRequest('https://pbs.twimg.com/media/SWITCHB?format=jpg&name=orig')?.triggerLoad();
 await flushAsyncWork();
 assert(

@@ -3,6 +3,7 @@ import type {
   SimpleTweetCardData,
   SimpleTweetContentItem,
   SimpleTweetPhotoLayout,
+  TextStyle,
   TweetMetrics,
   TweetPhoto,
   VideoBlock
@@ -475,17 +476,52 @@ function extractArticleCoverItem(coverRoot: Element): SimpleTweetContentItem | n
   const cardRoot = getArticleCoverCardRoot(coverRoot);
   const authorProfile = extractArticleCoverAuthorProfile(cardRoot);
   const metrics = extractMetricsFromGroup(cardRoot.querySelector('[role="group"][aria-label]'));
+  const titleElement = getTextElementAfterCover(coverRoot, 0);
+  const excerptElement = getTextElementAfterCover(coverRoot, 1);
+  const sourceBadge = extractArticleCoverSourceBadge(coverRoot);
 
   return {
     type: 'article-cover',
     coverUrl,
     coverAlt: coverImage?.alt || undefined,
-    title: normalizeText(getTextAfterCover(coverRoot, 0)),
-    excerpt: normalizeText(getTextAfterCover(coverRoot, 1)),
+    ...(getArticleCoverAspectRatio(coverRoot) ? { aspectRatio: getArticleCoverAspectRatio(coverRoot) } : {}),
+    ...sourceBadge,
+    title: normalizeText(titleElement?.textContent ?? ''),
+    ...(titleElement ? { titleTextStyle: extractElementTextStyle(titleElement) } : {}),
+    excerpt: normalizeText(excerptElement?.textContent ?? ''),
+    ...(excerptElement ? { excerptTextStyle: extractElementTextStyle(excerptElement) } : {}),
     href: getSimpleTweetHref(coverRoot.closest('[data-testid="simpleTweet"], [data-testid="tweet"]') ?? coverRoot),
     ...authorProfile,
     ...(hasTweetMetrics(metrics) ? { metrics } : {})
   };
+}
+
+function extractArticleCoverSourceBadge(coverRoot: Element): { sourceLabel?: string; sourceIconPath?: string; sourceColor?: string } {
+  const badge = Array.from(coverRoot.querySelectorAll<HTMLElement>('[role="img"][aria-label]')).find((element) =>
+    /^(文章|article)$/i.test(normalizeText(element.getAttribute('aria-label') ?? ''))
+  );
+  if (!badge) {
+    return {};
+  }
+
+  const sourceLabel = normalizeText(badge.textContent ?? badge.getAttribute('aria-label') ?? '') || normalizeText(badge.getAttribute('aria-label') ?? '');
+  const sourceIconPath = badge.querySelector('svg path')?.getAttribute('d') ?? undefined;
+  const sourceColor = getStyleValue(badge.closest('div[dir="ltr"]') ?? badge, 'color');
+  return {
+    ...(sourceLabel ? { sourceLabel } : {}),
+    ...(sourceIconPath ? { sourceIconPath } : {}),
+    ...(sourceColor ? { sourceColor } : {})
+  };
+}
+
+function getArticleCoverAspectRatio(coverRoot: Element): number | undefined {
+  for (const element of Array.from(coverRoot.querySelectorAll<HTMLElement>('[style*="padding-bottom"]'))) {
+    const ratio = getPaddingBottomAspectRatio(element);
+    if (ratio) {
+      return ratio;
+    }
+  }
+  return undefined;
 }
 
 function getArticleCoverCardRoot(coverRoot: Element): Element {
@@ -792,11 +828,43 @@ export function getSimpleTweetHref(block: Element): string | undefined {
   return href ? new URL(href, X_CANONICAL_ORIGIN).toString() : undefined;
 }
 
-function getTextAfterCover(coverRoot: Element, offset: number): string {
+function getTextElementAfterCover(coverRoot: Element, offset: number): HTMLElement | undefined {
   const textBlocks = Array.from(coverRoot.parentElement?.querySelectorAll<HTMLElement>('div[dir="auto"]') ?? []);
   const coverIndex = textBlocks.findIndex((element) => coverRoot.contains(element));
   const candidates = coverIndex >= 0 ? textBlocks.slice(coverIndex + 1) : textBlocks;
-  return candidates[offset]?.textContent ?? '';
+  return candidates[offset];
+}
+
+function extractElementTextStyle(element: Element | null): TextStyle {
+  return compactStyle({
+    color: getStyleValue(element, 'color'),
+    fontSize: getStyleValue(element, 'fontSize'),
+    lineHeight: getStyleValue(element, 'lineHeight'),
+    textAlign: getStyleValue(element, 'textAlign'),
+    fontStyle: getStyleValue(element, 'fontStyle'),
+    fontWeight: getStyleValue(element, 'fontWeight')
+  });
+}
+
+function getStyleValue(element: Element | null | undefined, property: keyof CSSStyleDeclaration): string | undefined {
+  if (!element || !(element instanceof HTMLElement)) {
+    return undefined;
+  }
+
+  const inlineValue = element.style[property];
+  const computedValue =
+    typeof window !== 'undefined' && typeof window.getComputedStyle === 'function'
+      ? window.getComputedStyle(element)[property]
+      : '';
+  const value = String(inlineValue || computedValue || '').trim();
+  if (!value || value === 'normal' || value === 'auto' || value === 'none' || value === 'rgba(0, 0, 0, 0)') {
+    return undefined;
+  }
+  return value;
+}
+
+function compactStyle<T extends Record<string, string | number | boolean | undefined>>(style: T): T {
+  return Object.fromEntries(Object.entries(style).filter(([, value]) => value !== undefined && value !== '')) as T;
 }
 
 export function tweetPhotoElementToPhoto(element: HTMLElement): TweetPhoto | null {

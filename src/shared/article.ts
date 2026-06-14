@@ -292,8 +292,14 @@ export type SimpleTweetArticleCoverItem = {
   type: 'article-cover';
   coverUrl: string;
   coverAlt?: string;
+  aspectRatio?: number;
+  sourceLabel?: string;
+  sourceIconPath?: string;
+  sourceColor?: string;
   title?: string;
+  titleTextStyle?: TextStyle;
   excerpt?: string;
+  excerptTextStyle?: TextStyle;
   href?: string;
   authorName?: string;
   authorHandle?: string;

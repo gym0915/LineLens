@@ -28,6 +28,8 @@ assert.match(sourceFiles.types, /type:\s*'video-preview'/, 'simpleTweet types sh
 assert.match(sourceFiles.types, /export type Article = \{[\s\S]*?authorName\?:\s*string[\s\S]*?metrics\?:\s*TweetMetrics/, 'article model should preserve header author and interaction metadata');
 assert.match(sourceFiles.types, /aiGeneratedText\?:\s*string/, 'simpleTweet card data should preserve the AI-generated badge text');
 assert.match(sourceFiles.types, /type:\s*'article-cover'[\s\S]*authorName\?:\s*string[\s\S]*metrics\?:\s*TweetMetrics/, 'article-cover items should preserve author and interaction metadata');
+assert.match(sourceFiles.types, /type:\s*'article-cover'[\s\S]*sourceLabel\?:\s*string[\s\S]*sourceColor\?:\s*string[\s\S]*titleTextStyle\?:\s*TextStyle[\s\S]*excerptTextStyle\?:\s*TextStyle/, 'article-cover items should preserve source badge and text style metadata');
+assert.match(sourceFiles.types, /type:\s*'article-cover'[\s\S]*aspectRatio\?:\s*number/, 'article-cover items should preserve the source cover aspect ratio');
 assert.match(sourceFiles.types, /layout\?:\s*'condensed'/, 'video-preview items should expose condensed layout parsed from DOM');
 assert.match(sourceFiles.types, /shape\?:\s*'rounded-square'/, 'video-preview items should expose rounded-square shape parsed from DOM');
 assert.match(sourceFiles.types, /export type SimpleTweetPhotoLayout =[\s\S]*kind:\s*'row' \| 'column'/, 'photo-group should expose a layout tree instead of only a flat photo array');
@@ -36,6 +38,13 @@ assert.match(sourceFiles.types, /heightRatio\?:\s*number/, 'photo layout nodes s
 assert.match(sourceFiles.types, /aspectRatio\?:\s*number/, 'photo-group should preserve the source media container aspect ratio');
 assert.match(sourceFiles.article, /extractSimpleTweetBlockFromRoot/, 'article extractor should route simpleTweet parsing through the content-flow helper');
 assert.match(sourceFiles.simpleTweet, /getSimpleTweetPhotoLayoutRoot/, 'simpleTweet extractor should derive photo grouping from shared wrapper containers');
+assert.match(sourceFiles.simpleTweet, /extractArticleCoverSourceBadge/, 'simpleTweet extractor should detect the X Article badge from the source cover DOM');
+assert.match(sourceFiles.simpleTweet, /\[role="img"\]\[aria-label\]/, 'simpleTweet extractor should use the source badge role and aria-label as the Article signal');
+assert.match(sourceFiles.simpleTweet, /sourceIconPath[\s\S]*svg path/, 'simpleTweet extractor should preserve the X logo svg path from the Article badge');
+assert.match(sourceFiles.simpleTweet, /sourceColor = getStyleValue\(badge\.closest\('div\[dir="ltr"\]'\) \?\? badge, 'color'\)/, 'simpleTweet extractor should preserve the X Article badge source color');
+assert.match(sourceFiles.simpleTweet, /titleTextStyle:\s*extractElementTextStyle\(titleElement\)/, 'simpleTweet extractor should preserve article-cover title text style');
+assert.match(sourceFiles.simpleTweet, /excerptTextStyle:\s*extractElementTextStyle\(excerptElement\)/, 'simpleTweet extractor should preserve article-cover excerpt text style');
+assert.match(sourceFiles.simpleTweet, /getArticleCoverAspectRatio/, 'simpleTweet extractor should derive the article-cover image aspect ratio from source DOM');
 assert.match(sourceFiles.article, /extractArticleHeaderMetadata/, 'article extractor should extract title-area author and interaction metadata');
 assert.match(sourceFiles.article, /findHeaderElementAfterTitle\(readView, longform, '\[itemprop="author"\]'/, 'article metadata extraction should use the title-to-longform boundary');
 assert.match(sourceFiles.cleanTree, /extractSimpleTweetItemsSync/, 'clean-tree should emit ordered simpleTweet items');
@@ -63,6 +72,12 @@ assert.match(sourceFiles.renderer, /renderArticleHeaderMetrics/, 'reader should 
 assert.match(sourceFiles.renderer, /renderSimpleTweetAiGeneratedBadge/, 'reader should render the AI-generated badge row above actions');
 assert.match(sourceFiles.renderer, /renderSimpleTweetArticleCoverAuthorMeta/, 'reader should render article-cover author metadata under the title');
 assert.match(sourceFiles.renderer, /renderSimpleTweetArticleCoverMetrics/, 'reader should render article-cover interaction metrics under the title');
+assert.match(sourceFiles.renderer, /renderXLogoIcon\(item\.sourceIconPath\)/, 'reader should render the extracted X Article svg path when present');
+assert.match(sourceFiles.renderer, /renderSourceLabelText\(item\.sourceLabel \?\? 'Article'\)/, 'reader should render the extracted Article label when present');
+assert.match(sourceFiles.renderer, /--reader-simple-tweet-source-color: ' \+ item\.sourceColor/, 'reader should render X Article badge text with the extracted source color');
+assert.match(sourceFiles.renderer, /applyTextStyle\(title, item\.titleTextStyle\)/, 'reader should apply extracted article-cover title text style');
+assert.match(sourceFiles.renderer, /applyTextStyle\(excerpt, item\.excerptTextStyle\)/, 'reader should apply extracted article-cover excerpt text style');
+assert.match(sourceFiles.renderer, /applyMediaAspectRatio\(media, item\.aspectRatio\)/, 'reader should apply extracted article-cover image aspect ratio');
 assert.match(sourceFiles.renderer, /M12\.998 1\.94c\.18 3\.015/, 'reader should embed the AI-generated badge SVG path');
 assert.match(sourceFiles.renderer, /reader-simple-tweet-video-portrait/, 'reader should tag portrait simpleTweet videos for narrower in-card rendering');
 assert.match(sourceFiles.renderer, /video\.defaultMuted = true;/, 'reader should default simpleTweet video elements to muted playback');
@@ -94,6 +109,8 @@ assert.match(sourceFiles.css, /\.reader-simple-tweet-photo-image\s*\{[\s\S]*?obj
 assert.match(sourceFiles.css, /\.reader-simple-tweet-photo-image\s*\{[\s\S]*?max-width: none;[\s\S]*?max-height: none;[\s\S]*?object-position: center center;/, 'photo layout tree images should crop from the visual center');
 assert.match(sourceFiles.css, /\.reader-simple-tweet \.reader-video-media\s*\{[\s\S]*?border-radius: var\(--reader-radius-content\);/, 'simpleTweet videos should use the shared reader media radius');
 assert.match(sourceFiles.css, /\.reader-simple-tweet-article-meta-author\s*\{[\s\S]*?margin-top: 10px;/, 'article-cover author metadata should sit under the title block');
+assert.match(sourceFiles.css, /\.reader-simple-tweet-media\s*\{[\s\S]*?aspect-ratio:\s*var\(--reader-media-aspect-ratio, 5 \/ 2\);/, 'simpleTweet media should use extracted source aspect ratio with the existing fallback');
+assert.match(sourceFiles.css, /\.reader-simple-tweet-source\s*\{[\s\S]*?color:\s*var\(--reader-simple-tweet-source-color,/, 'simpleTweet source badge should read the extracted source color variable');
 assert.match(sourceFiles.css, /\.reader-simple-tweet-article-meta-metrics\s*\{[\s\S]*?border-top: 1px solid/, 'article-cover interaction metrics should render as a separate clickable row');
 assert.match(sourceFiles.css, /\.reader-simple-tweet-video-portrait\s*\{[\s\S]*?width: min\(100%, 360px\);/, 'reader CSS should constrain portrait simpleTweet videos to a narrower in-card width');
 assert.match(sourceFiles.css, /\.reader-simple-tweet-video-portrait\s*\{[\s\S]*?margin-left: 0;[\s\S]*?margin-right: auto;/, 'portrait simpleTweet videos should stay left-aligned instead of centered');

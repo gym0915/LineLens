@@ -580,11 +580,11 @@ function renderMediaPreviewImage(viewer: HTMLElement, mediaPreviewState: MediaPr
 
   viewer.classList.add('is-loading');
   viewer.classList.remove('is-load-error');
-  if (status) status.textContent = '图片加载中...';
+  if (status) status.textContent = 'Loading...';
   if (image) {
     image.removeAttribute('src');
-    image.alt = media.alt;
-    image.setAttribute('alt', media.alt);
+    image.alt = '';
+    image.removeAttribute('alt');
   }
 
   entry.promise
