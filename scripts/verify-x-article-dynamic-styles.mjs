@@ -148,6 +148,21 @@ assert.doesNotMatch(
   /\.focus-unit\.is-active \*\s*\{\s*color:\s*var\(--reader-text-active\)\s*!important;/,
   'Active focus state should not override extracted inline code token colors'
 );
+assert.doesNotMatch(
+  sourceFiles.focusCss,
+  /\.focus-unit\.is-muted \*\s*\{\s*color:\s*var\(--reader-text-muted\)\s*!important;/,
+  'Muted focus state should not override extracted inline code token colors'
+);
+assert.match(
+  sourceFiles.focusCss,
+  /\.focus-unit\.is-muted:not\(\.reader-code\) \*\s*\{\s*color:\s*var\(--reader-text-muted\)\s*!important;/,
+  'Muted focus state should exempt code blocks so extracted token colors keep rendering'
+);
+assert.match(
+  sourceFiles.focusCss,
+  /\.focus-unit\.is-muted:hover:not\(\.reader-code\) \*\s*\{\s*color:\s*var\(--reader-text-hover\)\s*!important;/,
+  'Muted hover state should exempt code blocks so extracted token colors keep rendering'
+);
 assert.match(sourceFiles.css, /\.reader-table[\s\S]*overflow-x: auto/, 'Reader CSS should provide a table surface');
 assert.match(sourceFiles.css, /\.reader-table-cell[\s\S]*white-space: pre-wrap/, 'Reader table cells should preserve source line breaks');
 

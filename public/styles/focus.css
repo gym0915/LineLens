@@ -23,7 +23,7 @@ p .focus-unit {
   color: var(--reader-text-muted) !important;
 }
 
-.focus-unit.is-muted * {
+.focus-unit.is-muted:not(.reader-code) * {
   color: var(--reader-text-muted) !important;
 }
 
@@ -31,7 +31,7 @@ p .focus-unit {
   color: var(--reader-text-hover) !important;
 }
 
-.focus-unit.is-muted:hover * {
+.focus-unit.is-muted:hover:not(.reader-code) * {
   color: var(--reader-text-hover) !important;
 }
 
