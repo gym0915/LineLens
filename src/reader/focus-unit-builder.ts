@@ -110,13 +110,15 @@ function createParagraphSplitOptions(blockElement: HTMLElement): ReadingUnitSpli
     return {};
   }
 
+  const style = window.getComputedStyle(blockElement);
+  const reservedInlinePadding = resolveParagraphReservedInlinePadding(style);
+  const availableLineWidth = Math.max(0, maxLineWidth - reservedInlinePadding * 2);
   const canvas = document.createElement('canvas');
   const context = canvas.getContext?.('2d');
   if (!context) {
-    return { maxLineWidth };
+    return { maxLineWidth: availableLineWidth };
   }
 
-  const style = window.getComputedStyle(blockElement);
   context.font = style.font || [
     style.fontStyle,
     style.fontVariant,
@@ -128,7 +130,7 @@ function createParagraphSplitOptions(blockElement: HTMLElement): ReadingUnitSpli
   const letterSpacing = Number.parseFloat(style.letterSpacing);
 
   return {
-    maxLineWidth,
+    maxLineWidth: Math.max(0, maxLineWidth - reservedInlinePadding * 2),
     measureText: (text) => {
       const baseWidth = context.measureText(text).width;
       if (!Number.isFinite(letterSpacing) || letterSpacing === 0) {
@@ -137,4 +139,19 @@ function createParagraphSplitOptions(blockElement: HTMLElement): ReadingUnitSpli
       return baseWidth + Math.max(0, Array.from(text).length - 1) * letterSpacing;
     }
   };
+}
+
+function resolveParagraphReservedInlinePadding(style: CSSStyleDeclaration): number {
+  const tokenValue = style.getPropertyValue('--reader-inline-highlight-padding-inline');
+  const tokenPadding = Number.parseFloat(tokenValue);
+  if (Number.isFinite(tokenPadding)) {
+    return tokenPadding;
+  }
+
+  const paddingInlineStart = Number.parseFloat(style.paddingInlineStart);
+  if (Number.isFinite(paddingInlineStart)) {
+    return paddingInlineStart;
+  }
+
+  return 0;
 }

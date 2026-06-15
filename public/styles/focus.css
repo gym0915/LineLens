@@ -17,6 +17,10 @@
 
 p .focus-unit {
   display: inline;
+  padding: var(--reader-inline-highlight-padding-block) var(--reader-inline-highlight-padding-inline);
+  border-radius: var(--reader-radius-card);
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
 }
 
 .focus-unit.is-muted {
@@ -73,12 +77,8 @@ p .focus-unit {
 
 p .focus-unit.is-active {
   display: inline;
-  padding: var(--reader-inline-highlight-padding-block) var(--reader-inline-highlight-padding-inline);
-  border-radius: var(--reader-radius-card);
   background: var(--reader-highlight-surface);
   box-shadow: var(--reader-highlight-shadow);
-  -webkit-box-decoration-break: clone;
-  box-decoration-break: clone;
   transition: var(--reader-inline-highlight-transition);
 }
 
