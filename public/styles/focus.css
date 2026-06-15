@@ -80,6 +80,8 @@ p .focus-unit.is-active {
   border-radius: var(--reader-radius-card);
   background: var(--reader-highlight-surface);
   box-shadow: var(--reader-highlight-shadow);
+  -webkit-backdrop-filter: var(--reader-highlight-backdrop-filter);
+  backdrop-filter: var(--reader-highlight-backdrop-filter);
   transition: var(--reader-inline-highlight-transition);
 }
 
