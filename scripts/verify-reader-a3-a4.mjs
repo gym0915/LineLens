@@ -510,6 +510,42 @@ assert(
     protectedDotUnits.some((unit) => unit.text.includes('5.76 倍')),
   'semantic splitter should keep version numbers and decimal metrics intact'
 );
+const compactChineseUnits = splitIntoReadingUnits('一个下午。代码不到40行。');
+assert(
+  JSON.stringify(compactChineseUnits.map((unit) => unit.text)) === JSON.stringify(['一个下午。代码不到40行。']),
+  'short adjacent Chinese sentences should merge when they form a natural one-line FocusUnit'
+);
+const measuredCompactChineseUnits = splitIntoReadingUnits('一个下午。代码不到40行。', {
+  maxLineWidth: 80,
+  measureText: (value) => (value.includes('代码不到40行') ? 120 : 32)
+});
+assert(
+  JSON.stringify(measuredCompactChineseUnits.map((unit) => unit.text)) === JSON.stringify(['一个下午。', '代码不到40行。']),
+  'measured Reader line width should prevent merging adjacent semantic candidates that would wrap'
+);
+const hiddenPathUnits = splitIntoReadingUnits('在 .claude/skills/ 目录下创建你的第一个 Skill。也可以放在 ~/.claude/skills/ 里。');
+assert(
+  hiddenPathUnits.some((unit) => unit.text.includes('.claude/skills/')) &&
+    hiddenPathUnits.some((unit) => unit.text.includes('~/.claude/skills/')) &&
+    !hiddenPathUnits.some((unit) => unit.text === '在 .' || unit.text === '~/.'),
+  'hidden directory paths should be protected from dot-based sentence splitting'
+);
+const extensionUnits = splitIntoReadingUnits(
+  '支持 .txt .pdf .docx .doc .xlsx .xls .pptx .ppt .html .htm .css .js .json .xml .yaml .yml .csv .log 文件。'
+);
+assert(
+  extensionUnits.length === 1 &&
+    ['.txt', '.pdf', '.docx', '.doc', '.xlsx', '.xls', '.pptx', '.ppt', '.html', '.htm', '.css', '.js', '.json', '.xml', '.yaml', '.yml', '.csv', '.log'].every((extension) =>
+      extensionUnits[0]?.text.includes(extension)
+    ),
+  'standalone file extensions should be protected from dot-based sentence splitting'
+);
+const ipUnits = splitIntoReadingUnits('连接 192.168.1.1、10.0.0.1:8080 和 192.168.0.0/24 后继续。');
+assert(
+  ipUnits.length === 1 &&
+    ['192.168.1.1', '10.0.0.1:8080', '192.168.0.0/24'].every((ip) => ipUnits[0]?.text.includes(ip)),
+  'IPv4 addresses with optional port or CIDR suffix should be protected from dot-based sentence splitting'
+);
 const emojiUnits = splitIntoReadingUnits('由此，现在你已经走完了一半啦，马上就完成了✅，再坚持一下。 。 😊');
 assert(
   emojiUnits.some((unit) => unit.text.includes('。 。 😊')),

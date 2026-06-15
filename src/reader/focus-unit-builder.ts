@@ -1,4 +1,5 @@
 import type { Article, FocusUnit } from '../shared/article-schema.js';
+import type { ReadingUnitSplitOptions } from './semantic-splitter.js';
 import { splitIntoReadingUnits } from './semantic-splitter.js';
 import { createReaderTextMetadata, createReaderTextSpan } from './reader-text-renderer.js';
 
@@ -27,7 +28,7 @@ export function buildFocusUnits(article: Article, root: HTMLElement): FocusUnitB
               endOffset: block.text.length
             }
           ]
-        : splitIntoReadingUnits(block.text);
+        : splitIntoReadingUnits(block.text, createParagraphSplitOptions(blockElement));
 
       readingUnits.forEach((readingUnit, index) => {
         const unitId = `${block.id}-u${index + 1}`;
@@ -101,4 +102,39 @@ export function buildFocusUnits(article: Article, root: HTMLElement): FocusUnitB
   }
 
   return { units, elements };
+}
+
+function createParagraphSplitOptions(blockElement: HTMLElement): ReadingUnitSplitOptions {
+  const maxLineWidth = blockElement.clientWidth;
+  if (!maxLineWidth || maxLineWidth <= 0 || typeof window === 'undefined') {
+    return {};
+  }
+
+  const canvas = document.createElement('canvas');
+  const context = canvas.getContext?.('2d');
+  if (!context) {
+    return { maxLineWidth };
+  }
+
+  const style = window.getComputedStyle(blockElement);
+  context.font = style.font || [
+    style.fontStyle,
+    style.fontVariant,
+    style.fontWeight,
+    style.fontSize,
+    style.fontFamily
+  ].filter(Boolean).join(' ');
+
+  const letterSpacing = Number.parseFloat(style.letterSpacing);
+
+  return {
+    maxLineWidth,
+    measureText: (text) => {
+      const baseWidth = context.measureText(text).width;
+      if (!Number.isFinite(letterSpacing) || letterSpacing === 0) {
+        return baseWidth;
+      }
+      return baseWidth + Math.max(0, Array.from(text).length - 1) * letterSpacing;
+    }
+  };
 }

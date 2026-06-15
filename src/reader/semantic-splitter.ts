@@ -4,14 +4,40 @@ export type ReadingUnit = {
   endOffset: number;
 };
 
+export type ReadingUnitSplitOptions = {
+  maxLineWidth?: number;
+  measureText?: (text: string) => number;
+};
+
 const MIN_UNIT_LENGTH = 18;
 const TARGET_UNIT_LENGTH = 62;
+const FALLBACK_READING_LINE_WIDTH = 64;
 const STRONG_BREAKS = new Set(['。', '！', '？', '!', '?', '.']);
 const MEDIUM_BREAKS = new Set(['；', ';']);
 const WEAK_BREAKS = new Set(['，', ',', '、', '：', ':']);
 const CLOSING_PUNCTUATION = new Set(['”', '’', '"', "'", '）', ')', '】', ']', '》']);
+const PROTECTED_FILE_EXTENSIONS = [
+  'txt',
+  'pdf',
+  'docx',
+  'doc',
+  'xlsx',
+  'xls',
+  'pptx',
+  'ppt',
+  'html',
+  'htm',
+  'css',
+  'js',
+  'json',
+  'xml',
+  'yaml',
+  'yml',
+  'csv',
+  'log'
+] as const;
 
-export function splitIntoReadingUnits(text: string): ReadingUnit[] {
+export function splitIntoReadingUnits(text: string, options: ReadingUnitSplitOptions = {}): ReadingUnit[] {
   const normalized = normalizeWhitespace(text);
   if (!normalized) {
     return [];
@@ -25,7 +51,7 @@ export function splitIntoReadingUnits(text: string): ReadingUnit[] {
     units.push(...splitLongSegment(segment));
   }
 
-  return units;
+  return mergeLineFitUnits(units, options);
 }
 
 function splitLongSegment(segment: ReadingUnit): ReadingUnit[] {
@@ -128,6 +154,68 @@ function mergeShortUnitsForward(units: ReadingUnit[]): ReadingUnit[] {
   }
 
   return result;
+}
+
+function mergeLineFitUnits(units: ReadingUnit[], options: ReadingUnitSplitOptions): ReadingUnit[] {
+  const result: ReadingUnit[] = [];
+  let pending: ReadingUnit | null = null;
+
+  for (const unit of units) {
+    if (!pending) {
+      pending = unit;
+      continue;
+    }
+
+    const mergedText = mergeText(pending, unit);
+    if (fitsReadingLine(mergedText, options)) {
+      pending = {
+        text: mergedText,
+        startOffset: pending.startOffset,
+        endOffset: unit.endOffset
+      };
+      continue;
+    }
+
+    result.push(pending);
+    pending = unit;
+  }
+
+  if (pending) {
+    result.push(pending);
+  }
+
+  return result;
+}
+
+function fitsReadingLine(text: string, options: ReadingUnitSplitOptions): boolean {
+  if (options.measureText && options.maxLineWidth && options.maxLineWidth > 0) {
+    return options.measureText(text) <= options.maxLineWidth;
+  }
+  return fitsFallbackReadingLine(text);
+}
+
+function fitsFallbackReadingLine(text: string): boolean {
+  return estimateFallbackTextWidth(text) <= FALLBACK_READING_LINE_WIDTH;
+}
+
+function estimateFallbackTextWidth(text: string): number {
+  let width = 0;
+  for (const char of Array.from(text)) {
+    if (/\s/.test(char)) {
+      width += 0.5;
+    } else if (isAsciiWordChar(char)) {
+      width += 1;
+    } else if (/[,.;:!?]/.test(char)) {
+      width += 0.5;
+    } else if (/[，。；：！？、]/.test(char)) {
+      width += 1;
+    } else if (/\p{Script=Han}|\p{Script=Hiragana}|\p{Script=Katakana}|\p{Script=Hangul}/u.test(char)) {
+      width += 2;
+    } else {
+      width += 1.5;
+    }
+  }
+  return width;
 }
 
 function mergeText(left: ReadingUnit, right: ReadingUnit): string {
@@ -321,7 +409,13 @@ type Range = {
 };
 
 function findProtectedRanges(text: string): Range[] {
-  return [...findUrlRanges(text), ...findBracketRanges(text)];
+  return [
+    ...findUrlRanges(text),
+    ...findIpAddressRanges(text),
+    ...findHiddenPathRanges(text),
+    ...findFileExtensionRanges(text),
+    ...findBracketRanges(text)
+  ];
 }
 
 function findUrlRanges(text: string): Range[] {
@@ -334,6 +428,50 @@ function findUrlRanges(text: string): Range[] {
   }
 
   return ranges;
+}
+
+function findIpAddressRanges(text: string): Range[] {
+  const ranges: Range[] = [];
+  const octet = '(?:25[0-5]|2[0-4]\\d|1?\\d?\\d)';
+  const ipPattern = new RegExp(`\\b${octet}(?:\\.${octet}){3}(?::\\d{1,5})?(?:\\/(?:3[0-2]|[12]?\\d))?\\b`, 'g');
+  let match: RegExpExecArray | null;
+
+  while ((match = ipPattern.exec(text)) !== null) {
+    ranges.push({ start: match.index, end: match.index + match[0].length });
+  }
+
+  return ranges;
+}
+
+function findHiddenPathRanges(text: string): Range[] {
+  const ranges: Range[] = [];
+  const hiddenPathPattern = /~?\/?(?:\.[A-Za-z0-9_-]+\/)+(?:[A-Za-z0-9._~:/?#@!$&'()*+,;=%-]+)?/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = hiddenPathPattern.exec(text)) !== null) {
+    ranges.push({ start: match.index, end: match.index + match[0].length });
+  }
+
+  return ranges;
+}
+
+function findFileExtensionRanges(text: string): Range[] {
+  const ranges: Range[] = [];
+  const extensionPattern = new RegExp(`(?:^|[\\s([{（【])(?:[A-Za-z0-9_-]+)?\\.(?:${PROTECTED_FILE_EXTENSIONS.join('|')})(?=$|[\\s,，。；;、)）\\]}】])`, 'gi');
+  let match: RegExpExecArray | null;
+
+  while ((match = extensionPattern.exec(text)) !== null) {
+    const matchedText = match[0];
+    const protectedStart = match.index + consumeLeadingBoundary(matchedText);
+    ranges.push({ start: protectedStart, end: match.index + matchedText.length });
+  }
+
+  return ranges;
+}
+
+function consumeLeadingBoundary(text: string): number {
+  const first = text[0] ?? '';
+  return first && /[\s([{（【]/.test(first) ? 1 : 0;
 }
 
 function findBracketRanges(text: string): Range[] {
