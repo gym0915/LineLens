@@ -97,9 +97,9 @@
     --reader-code-muted: rgba(44, 37, 33, 0.45);
     --reader-toast-surface: rgba(44, 37, 33, 0.9);
     --reader-toast-ink: #f7f2ea;
-    --reader-font-body: "EB Garamond", Georgia, serif;
-    --reader-font-display: "Playfair Display", Georgia, serif;
-    --reader-font-ui: "DM Sans", system-ui, sans-serif;
+    --reader-font-body: "Atkinson Hyperlegible", "LXGW WenKai TC", system-ui, sans-serif;
+    --reader-font-display: "Atkinson Hyperlegible", "LXGW WenKai TC", system-ui, sans-serif;
+    --reader-font-ui: "Atkinson Hyperlegible", "LXGW WenKai TC", system-ui, sans-serif;
     --reader-font-mono: "DM Mono", "Fira Mono", Menlo, Consolas, monospace;
     --reader-social-ink: rgb(15, 20, 25);
     --reader-social-muted: rgb(83, 100, 113);

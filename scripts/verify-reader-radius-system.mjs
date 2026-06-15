@@ -10,6 +10,7 @@ function read(path) {
 
 const tokensCss = read('public/styles/tokens.css');
 const readerCss = read('public/reader.css');
+const fontsCss = read('public/styles/fonts.css');
 const layoutCss = read('public/styles/layout.css');
 const focusCss = read('public/styles/focus.css');
 const mediaCss = read('public/styles/media.css');
@@ -56,9 +57,9 @@ for (const [token, value] of [
   ['--reader-code-line-height', '1.55'],
   ['--reader-table-line-height', '1.5'],
   ['--reader-card-shadow', '0 2px 14px rgba(44, 37, 33, 0.11)'],
-  ['--reader-font-body', '"EB Garamond", Georgia, serif'],
-  ['--reader-font-display', '"Playfair Display", Georgia, serif'],
-  ['--reader-font-ui', '"DM Sans", system-ui, sans-serif'],
+  ['--reader-font-body', '"Atkinson Hyperlegible", "LXGW WenKai TC", system-ui, sans-serif'],
+  ['--reader-font-display', '"Atkinson Hyperlegible", "LXGW WenKai TC", system-ui, sans-serif'],
+  ['--reader-font-ui', '"Atkinson Hyperlegible", "LXGW WenKai TC", system-ui, sans-serif'],
   ['--reader-font-mono', '"DM Mono", "Fira Mono", Menlo, Consolas, monospace'],
   ['--reader-social-ink', 'rgb(15, 20, 25)'],
   ['--reader-social-muted', 'rgb(83, 100, 113)'],
@@ -74,8 +75,19 @@ for (const [token, value] of [
 
 assert.doesNotMatch(tokensCss, /--reader-code-token-/, 'code highlight colors should follow the phase4 worktree CSS path, not design tokens');
 
-assert.match(readerCss, /family=DM\+Mono/, 'reader should import the mono font used by the design system');
-assert.match(readerCss, /family=EB\+Garamond/, 'reader should import the Clean Reading Page body font');
+assert.doesNotMatch(readerCss, /fonts\.googleapis\.com/, 'reader should not depend on remote Google font CSS');
+assert.match(readerCss, /@import "\.\/styles\/fonts\.css";/, 'reader should import local font faces');
+for (const fontFile of [
+  'AtkinsonHyperlegible-Regular.woff2',
+  'AtkinsonHyperlegible-Bold.woff2',
+  'AtkinsonHyperlegible-Italic.woff2',
+  'AtkinsonHyperlegible-BoldItalic.woff2',
+  'lxgw-wenkai-tc-v10-latin-regular.woff2',
+  'lxgw-wenkai-tc-v10-latin-300.woff2',
+  'lxgw-wenkai-tc-v10-latin-700.woff2'
+]) {
+  assert(fontsCss.includes(`../fonts/${fontFile}`), `local font face should reference ${fontFile}`);
+}
 assert.match(tokensCss, /--reader-radius-card:\s*var\(--reader-radius-content\);/, 'card radius should resolve through the content radius token');
 assert.match(tokensCss, /--reader-radius-media:\s*var\(--reader-radius-content\);/, 'media radius should resolve through the content radius token');
 
