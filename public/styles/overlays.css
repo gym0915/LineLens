@@ -1,14 +1,24 @@
-.reader-status {
+.reader-progress {
   position: fixed;
-  right: 0;
-  bottom: 0;
   left: 0;
-  padding-bottom: 20px;
-  color: var(--reader-text-chrome);
-  font-family: var(--reader-font-ui);
-  font-size: 11px;
-  letter-spacing: 0.1em;
-  text-align: center;
+  top: 0;
+  right: 0;
+  z-index: 40;
+  height: var(--reader-progress-height);
+  pointer-events: none;
+}
+
+.reader-progress-track {
+  width: 100%;
+  height: var(--reader-progress-height);
+  background: var(--reader-progress-track);
+}
+
+.reader-progress-bar {
+  width: var(--reader-progress-value, 0%);
+  height: var(--reader-progress-height);
+  background: var(--reader-progress-fill);
+  transition: width 350ms ease;
 }
 
 .reader-toast {

@@ -52,6 +52,9 @@
     --reader-quote-border-active: rgba(44, 37, 33, 0.55);
     --reader-border-subtle: rgba(44, 37, 33, 0.12);
     --reader-border-faint: rgba(44, 37, 33, 0.08);
+    --reader-progress-track: var(--reader-border-faint);
+    --reader-progress-fill: var(--reader-dim-low);
+    --reader-progress-height: 2px;
     --reader-surface-translucent: rgba(255, 255, 255, 0.42);
     --reader-code-pre-surface: rgba(255, 255, 255, 0.36);
     --reader-media-placeholder: rgba(44, 37, 33, 0.06);

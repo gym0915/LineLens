@@ -10,8 +10,7 @@ export function mountReaderApp(root: HTMLElement, article: Article): void {
   root.textContent = '';
 
   const articleElement = renderArticleShell(article);
-  const status = document.createElement('footer');
-  status.className = 'reader-status';
+  const progress = createReaderProgress();
   const toast = document.createElement('div');
   toast.className = 'reader-toast';
   toast.setAttribute('role', 'status');
@@ -20,7 +19,7 @@ export function mountReaderApp(root: HTMLElement, article: Article): void {
   hint.className = 'reader-hint';
   hint.textContent = '使用 ← → 逐步阅读，Home / End 跳到首尾';
 
-  root.append(articleElement, hint, status, toast);
+  root.append(progress.element, articleElement, hint, toast);
 
   const { units, elements } = buildFocusUnits(article, articleElement);
   const highlightLayer = new HighlightLayer();
@@ -47,7 +46,7 @@ export function mountReaderApp(root: HTMLElement, article: Article): void {
       focusIndex: index,
       updatedAt: Date.now()
     });
-    status.textContent = formatReadingStatus(units, index);
+    updateReaderProgress(progress, units, index);
   });
   engine.setAnchorMode('free');
 
@@ -818,17 +817,36 @@ function hideHint(hint: HTMLElement): void {
   hint.classList.add('is-hidden');
 }
 
-function formatReadingStatus(units: FocusUnit[], activeIndex: number): string {
-  const progress = Math.round(((activeIndex + 1) / units.length) * 100);
-  const remainingWords = units
-    .slice(activeIndex + 1)
-    .reduce((count, unit) => count + ('text' in unit ? countWords(unit.text) : 0), 0);
-  const minutesLeft = Math.max(1, Math.ceil(remainingWords / 200));
-  return `${progress}% · ${minutesLeft} min remaining`;
+type ReaderProgressElements = {
+  element: HTMLElement;
+  bar: HTMLElement;
+};
+
+function createReaderProgress(): ReaderProgressElements {
+  const element = document.createElement('div');
+  element.className = 'reader-progress';
+  element.setAttribute('data-ui', 'true');
+  element.setAttribute('role', 'progressbar');
+  element.setAttribute('aria-label', '阅读进度');
+  element.setAttribute('aria-valuemin', '0');
+  element.setAttribute('aria-valuemax', '100');
+  element.setAttribute('aria-valuenow', '0');
+
+  const track = document.createElement('div');
+  track.className = 'reader-progress-track';
+
+  const bar = document.createElement('div');
+  bar.className = 'reader-progress-bar';
+
+  track.append(bar);
+  element.append(track);
+
+  return { element, bar };
 }
 
-function countWords(text: string): number {
-  const latinWords = text.match(/[A-Za-z0-9]+(?:[-'][A-Za-z0-9]+)*/g)?.length ?? 0;
-  const cjkChars = text.match(/[\u3400-\u9fff]/g)?.length ?? 0;
-  return latinWords + Math.ceil(cjkChars / 2);
+function updateReaderProgress(progress: ReaderProgressElements, units: FocusUnit[], activeIndex: number): void {
+  const total = Math.max(1, units.length);
+  const percent = Math.round(((activeIndex + 1) / total) * 100);
+  progress.element.style.setProperty('--reader-progress-value', `${percent}%`);
+  progress.element.setAttribute('aria-valuenow', String(percent));
 }

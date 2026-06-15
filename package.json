@@ -11,6 +11,7 @@
     "verify:reader-a6-a7": "npm run build && node scripts/verify-reader-a6-a7.mjs",
     "verify:reader-a8-a9": "npm run build && node scripts/verify-reader-a8-a9.mjs",
     "verify:reader-shared-media": "npm run build && node scripts/verify-reader-shared-media.mjs",
+    "verify:reader-progress-ui": "node scripts/verify-reader-progress-ui.mjs",
     "verify:reader-radius-system": "node scripts/verify-reader-radius-system.mjs",
     "verify:reader-inline-highlight-clean-style": "node scripts/verify-reader-inline-highlight-clean-style.mjs",
     "verify:reader-m1-m2": "npm run build && node scripts/verify-reader-m1-m2.mjs",
