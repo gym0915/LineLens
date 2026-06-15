@@ -94,8 +94,15 @@ p .focus-unit.is-active {
   display: block;
 }
 
+.reader-block[data-block-type="quote"].focus-unit {
+  padding: 10px 14px 10px 18px;
+  border-radius: 0 var(--reader-radius-card) var(--reader-radius-card) 0;
+}
+
 .reader-list-item.focus-unit {
   display: flex;
+  padding: 7px 10px;
+  border-radius: var(--reader-radius-card);
 }
 
 .reader-media.focus-unit.is-muted {
@@ -147,9 +154,7 @@ p .focus-unit.is-active {
 }
 
 .reader-block[data-block-type="quote"].focus-unit.is-active {
-  padding: 10px 14px 10px 18px;
   border-left-color: var(--reader-quote-border-active);
-  border-radius: 0 var(--reader-radius-card) var(--reader-radius-card) 0;
   background: var(--reader-highlight-surface);
   box-shadow: var(--reader-card-shadow);
 }
@@ -158,10 +163,14 @@ p .focus-unit.is-active {
 .reader-code.focus-unit.is-active,
 .reader-table.focus-unit.is-active,
 .reader-link.focus-unit.is-active,
-.reader-simple-tweet.focus-unit.is-active,
-.reader-list-item.focus-unit.is-active {
+.reader-simple-tweet.focus-unit.is-active {
   padding: 7px 10px;
   border-radius: var(--reader-radius-card);
+  background: var(--reader-highlight-surface);
+  box-shadow: var(--reader-card-shadow);
+}
+
+.reader-list-item.focus-unit.is-active {
   background: var(--reader-highlight-surface);
   box-shadow: var(--reader-card-shadow);
 }

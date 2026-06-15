@@ -2,7 +2,7 @@
 
 关联方案：[2026-06-15-focus-padding-reserved-layout.md](./2026-06-15-focus-padding-reserved-layout.md)
 
-目标：让普通段落 FocusUnit 在未 focus 时就预留 active 高亮边距，避免 focus 前后一行变两行的视觉跳动。
+目标：让普通段落、列表项和引用 FocusUnit 在未 focus 时就预留 active 高亮边距，避免 focus 前后一行变两行的视觉跳动。
 
 ## 执行任务
 
@@ -17,11 +17,17 @@
 - [x] 验证 `p .focus-unit` 默认态预留 inline highlight padding。
 - [x] 验证 `p .focus-unit.is-active` 不再引入额外 layout padding delta。
 - [x] 复用 `scripts/verify-reader-a3-a4.mjs` 的测量宽度回归，覆盖 reserved padding width 会阻止临界合并。
+- [x] 验证 `.reader-list-item.focus-unit` 默认态预留 active padding。
+- [x] 验证 `.reader-list-item.focus-unit.is-active` 不再引入额外 layout padding delta。
+- [x] 验证 `.reader-block[data-block-type="quote"].focus-unit` 默认态预留 active padding。
+- [x] 验证 `.reader-block[data-block-type="quote"].focus-unit.is-active` 不再引入额外 layout padding delta。
 
 ### 3. CSS 实现
 
 - [x] 修改 `public/styles/focus.css`。
 - [x] 将 paragraph inline highlight padding 移到 `p .focus-unit` 默认态。
+- [x] 将 list item active padding 移到 `.reader-list-item.focus-unit` 默认态。
+- [x] 将 quote active padding 移到 `.reader-block[data-block-type="quote"].focus-unit` 默认态。
 - [x] active 状态只保留背景、阴影、颜色等视觉变化。
 - [x] 继续使用 `--reader-inline-highlight-padding-*` 和 `--reader-radius-card`，不写死值。
 

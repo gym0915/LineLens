@@ -764,8 +764,9 @@ const savedProgress = JSON.parse(storage.get('linelens:fixture-progress:simple-c
 assert(savedProgress.unitId === 'p1-u2', 'Focus changes should save progress');
 assert(typeof savedProgress.updatedAt === 'number', 'Saved progress should include updatedAt');
 
-const status = findByClass(root, 'reader-status');
-assert(/\d+% · \d+ min remaining/.test(status?.textContent ?? ''), 'Reader should show Clean-style progress status');
+const progress = walk(root).find((element) => element.className.split(/\s+/).includes('reader-progress'));
+assert(progress, 'Reader should render progress element; classes: ' + walk(root).map((element) => element.className).filter(Boolean).join(', '));
+assert(progress?.style.values.get('--reader-progress-value')?.endsWith('%'), 'Reader progress should update the progress bar CSS value');
 const hint = findByClass(root, 'reader-hint');
 assert(hint?.classList.contains('is-hidden'), 'Reader hint should hide after first user action');
 

@@ -19,6 +19,14 @@ const activeRule = getRule(focusCss, 'p .focus-unit.is-active');
 assert(activeRule, 'p .focus-unit.is-active rule should exist');
 const defaultParagraphRule = getRule(focusCss, 'p .focus-unit');
 assert(defaultParagraphRule, 'p .focus-unit rule should exist');
+const defaultListItemRule = getRule(focusCss, '.reader-list-item.focus-unit');
+assert(defaultListItemRule, '.reader-list-item.focus-unit rule should exist');
+const activeListItemRule = getRule(focusCss, '.reader-list-item.focus-unit.is-active');
+assert(activeListItemRule, '.reader-list-item.focus-unit.is-active rule should exist');
+const defaultQuoteRule = getRule(focusCss, '.reader-block[data-block-type="quote"].focus-unit');
+assert(defaultQuoteRule, '.reader-block[data-block-type="quote"].focus-unit rule should exist');
+const activeQuoteRule = getRule(focusCss, '.reader-block[data-block-type="quote"].focus-unit.is-active');
+assert(activeQuoteRule, '.reader-block[data-block-type="quote"].focus-unit.is-active rule should exist');
 
 for (const expected of [
   'padding: var(--reader-inline-highlight-padding-block) var(--reader-inline-highlight-padding-inline);',
@@ -37,6 +45,35 @@ for (const expected of [
 }
 
 assert(!activeRule.includes('padding:'), 'paragraph active highlight should not introduce a focus-only padding delta');
+for (const expected of [
+  'display: flex;',
+  'padding: 7px 10px;',
+  'border-radius: var(--reader-radius-card);'
+]) {
+  assert(defaultListItemRule.includes(expected), 'list item focus default state should reserve active layout: ' + expected);
+}
+for (const expected of [
+  'background: var(--reader-highlight-surface);',
+  'box-shadow: var(--reader-card-shadow);'
+]) {
+  assert(activeListItemRule.includes(expected), 'list item active focus should include visual styling: ' + expected);
+}
+assert(!activeListItemRule.includes('padding:'), 'list item active highlight should not introduce a focus-only padding delta');
+for (const expected of [
+  'display: block;',
+  'padding: 10px 14px 10px 18px;',
+  'border-radius: 0 var(--reader-radius-card) var(--reader-radius-card) 0;'
+]) {
+  assert(defaultQuoteRule.includes(expected), 'quote focus default state should reserve active layout: ' + expected);
+}
+for (const expected of [
+  'border-left-color: var(--reader-quote-border-active);',
+  'background: var(--reader-highlight-surface);',
+  'box-shadow: var(--reader-card-shadow);'
+]) {
+  assert(activeQuoteRule.includes(expected), 'quote active focus should include visual styling: ' + expected);
+}
+assert(!activeQuoteRule.includes('padding:'), 'quote active highlight should not introduce a focus-only padding delta');
 assert(!activeRule.includes('0 0 0 4px var(--reader-highlight-surface)'), 'paragraph inline highlight should not use the old white spread shadow');
 assert(!tokensCss.includes('--reader-inline-highlight-animation'), 'inline highlight animation token should be removed');
 assert(!activeRule.includes('animation:'), 'paragraph inline highlight should not animate on selection');
@@ -50,9 +87,10 @@ assert(
 console.log('verify:reader-inline-highlight-clean-style passed');
 
 function getRule(css, selector) {
+  const bodies = [];
   for (const match of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
     const selectors = match[1].split(',').map((item) => item.trim());
-    if (selectors.includes(selector)) return match[2];
+    if (selectors.includes(selector)) bodies.push(match[2]);
   }
-  return '';
+  return bodies.join('\n');
 }
