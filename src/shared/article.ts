@@ -242,6 +242,7 @@ export type VideoBlock = {
 export type SimpleTweetTextItem = {
   type: 'text';
   text: string;
+  annotations?: TextAnnotation[];
 };
 
 export type SimpleTweetVideoItem = {

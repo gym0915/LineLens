@@ -651,7 +651,8 @@ async function extractTweetSummaryBlock(tweet: Element, id: string, fallbackBloc
   const profile = simpleTweetModel.extractTweetProfile(tweet);
   const metrics = simpleTweetModel.extractTweetMetrics(tweet);
   const authorLine = simpleTweetModel.buildTweetAuthorLine(profile);
-  const body = await simpleTweetModel.extractTweetBodyText(tweet);
+  const richText = await simpleTweetModel.extractTweetBodyRichText(tweet);
+  const body = richText.text;
   const fallbackText = normalizeText(tweet.querySelector('[data-testid="User-Name"]') ? '' : (tweet.textContent ?? fallbackBlock?.textContent ?? ''));
   const title = authorLine || (body ? 'X Tweet' : fallbackText || 'X Tweet');
   const excerpt = body || (authorLine ? '' : fallbackText);
@@ -664,7 +665,15 @@ async function extractTweetSummaryBlock(tweet: Element, id: string, fallbackBloc
     title,
     excerpt,
     href,
-    items: body ? [{ type: 'text', text: body }] : [],
+    items: body
+      ? [
+          {
+            type: 'text',
+            text: body,
+            ...(richText.annotations.length > 0 ? { annotations: richText.annotations } : {})
+          }
+        ]
+      : [],
     ...profile,
     ...(simpleTweetModel.hasTweetMetrics(metrics) ? { metrics } : {})
   };

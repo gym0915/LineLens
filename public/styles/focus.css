@@ -44,6 +44,21 @@ p .focus-unit {
   color: var(--reader-text-active) !important;
 }
 
+.focus-unit:not(.is-active):not(.reader-code) .reader-x-emoji,
+.focus-unit.is-muted:not(.reader-code) .reader-x-emoji {
+  filter: grayscale(1) opacity(0.28);
+  transition: filter 250ms ease;
+}
+
+.focus-unit:not(.is-active):hover:not(.reader-code) .reader-x-emoji,
+.focus-unit.is-muted:hover:not(.reader-code) .reader-x-emoji {
+  filter: grayscale(1) opacity(0.48);
+}
+
+.focus-unit.is-active:not(.reader-code) .reader-x-emoji {
+  filter: none;
+}
+
 .focus-unit strong {
   color: inherit;
   font-weight: 700;
@@ -179,7 +194,11 @@ p .focus-unit.is-active {
 .reader-simple-tweet.focus-unit.is-muted .reader-simple-tweet-avatar,
 .reader-simple-tweet.focus-unit.is-muted .reader-simple-tweet-header,
 .reader-simple-tweet.focus-unit.is-muted .reader-simple-tweet-cover,
+.reader-simple-tweet.focus-unit.is-muted .reader-simple-tweet-photo-grid,
+.reader-simple-tweet.focus-unit.is-muted .reader-simple-tweet-photo-layout,
 .reader-simple-tweet.focus-unit.is-muted .reader-simple-tweet-source,
+.reader-simple-tweet.focus-unit.is-muted .reader-simple-tweet-video,
+.reader-simple-tweet.focus-unit.is-muted .reader-simple-tweet-video-preview,
 .reader-simple-tweet.focus-unit.is-muted .reader-simple-tweet-article-cover-content,
 .reader-simple-tweet.focus-unit.is-muted .reader-simple-tweet-actions {
   opacity: 0.45;
@@ -188,7 +207,11 @@ p .focus-unit.is-active {
 .reader-simple-tweet.focus-unit.is-muted:hover .reader-simple-tweet-avatar,
 .reader-simple-tweet.focus-unit.is-muted:hover .reader-simple-tweet-header,
 .reader-simple-tweet.focus-unit.is-muted:hover .reader-simple-tweet-cover,
+.reader-simple-tweet.focus-unit.is-muted:hover .reader-simple-tweet-photo-grid,
+.reader-simple-tweet.focus-unit.is-muted:hover .reader-simple-tweet-photo-layout,
 .reader-simple-tweet.focus-unit.is-muted:hover .reader-simple-tweet-source,
+.reader-simple-tweet.focus-unit.is-muted:hover .reader-simple-tweet-video,
+.reader-simple-tweet.focus-unit.is-muted:hover .reader-simple-tweet-video-preview,
 .reader-simple-tweet.focus-unit.is-muted:hover .reader-simple-tweet-article-cover-content,
 .reader-simple-tweet.focus-unit.is-muted:hover .reader-simple-tweet-actions {
   opacity: 0.62;

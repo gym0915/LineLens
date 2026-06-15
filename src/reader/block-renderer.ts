@@ -1283,7 +1283,7 @@ function renderCondensedSimpleTweetItems(items: SimpleTweetContentItem[]): HTMLE
 function renderSimpleTweetContentItem(item: SimpleTweetContentItem): HTMLElement {
   switch (item.type) {
     case 'text':
-      return renderExpandableSimpleTweetText(item.text);
+      return renderExpandableSimpleTweetText(item.text, item.annotations);
     case 'photo':
       return renderSimpleTweetPhotoGrid([item.photo]);
     case 'photo-group':
@@ -1507,7 +1507,7 @@ function renderSimpleTweetArticleMetric(icon: SVGSVGElement, value?: string): HT
   return item;
 }
 
-function renderExpandableSimpleTweetText(tweetText: string): HTMLDivElement {
+function renderExpandableSimpleTweetText(tweetText: string, annotations: TextAnnotation[] = []): HTMLDivElement {
   const container = document.createElement('div');
   container.setAttribute('class', 'reader-simple-tweet-text-container is-collapsed');
 
@@ -1515,7 +1515,7 @@ function renderExpandableSimpleTweetText(tweetText: string): HTMLDivElement {
   text.className = 'reader-simple-tweet-text';
   text.setAttribute('data-testid', 'tweetText');
   text.append(
-    createReaderTextSpan(tweetText, [], {
+    createReaderTextSpan(tweetText, annotations, {
       role: 'social-body'
     })
   );

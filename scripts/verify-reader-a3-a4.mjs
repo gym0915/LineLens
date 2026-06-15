@@ -649,6 +649,14 @@ assert(
   'muted simpleTweet source badge should dim with the rest of the card parts'
 );
 assert(
+  /\.reader-simple-tweet\.focus-unit\.is-muted \.reader-simple-tweet-photo-grid,[\s\S]*?\.reader-simple-tweet\.focus-unit\.is-muted \.reader-simple-tweet-photo-layout[\s\S]*?opacity:\s*0\.45;/.test(css),
+  'muted simpleTweet photos should dim with the rest of the card parts'
+);
+assert(
+  /\.reader-simple-tweet\.focus-unit\.is-muted \.reader-simple-tweet-video,[\s\S]*?opacity:\s*0\.45;/.test(css),
+  'muted simpleTweet videos should dim with the rest of the card parts'
+);
+assert(
   /\.reader-simple-tweet\.focus-unit\.is-muted:hover \.reader-simple-tweet-source,[\s\S]*?opacity:\s*0\.62;/.test(css),
   'hovered muted simpleTweet source badge should partially restore with the rest of the card parts'
 );

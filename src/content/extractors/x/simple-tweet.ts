@@ -3,6 +3,7 @@ import type {
   SimpleTweetCardData,
   SimpleTweetContentItem,
   SimpleTweetPhotoLayout,
+  TextAnnotation,
   TextStyle,
   TweetMetrics,
   TweetPhoto,
@@ -98,10 +99,15 @@ async function extractSimpleTweetItems(
   const consumedMediaRoots = new Set<Element>();
   const candidates = new Map<Element, SimpleTweetContentItem | null>();
 
-  const text = await extractTweetBodyText(tweet);
+  const richText = await extractTweetBodyRichText(tweet);
+  const text = richText.text;
   const textElement = tweet.querySelector('[data-testid="tweetText"]');
   if (textElement && text) {
-    candidates.set(textElement, { type: 'text', text });
+    candidates.set(textElement, {
+      type: 'text',
+      text,
+      ...(richText.annotations.length > 0 ? { annotations: richText.annotations } : {})
+    });
   }
 
   const articleCover = tweetRoot.querySelector('[data-testid="article-cover-image"]');
@@ -753,10 +759,17 @@ async function expandTweetTextIfNeeded(tweet: Element): Promise<void> {
 }
 
 export async function extractTweetBodyText(tweet: Element): Promise<string> {
+  return (await extractTweetBodyRichText(tweet)).text;
+}
+
+export async function extractTweetBodyRichText(tweet: Element): Promise<{ text: string; annotations: TextAnnotation[] }> {
   await expandTweetTextIfNeeded(tweet);
-  const explicitTweetText = normalizePreWrapText(tweet.querySelector('[data-testid="tweetText"]')?.textContent ?? '');
+  const explicitTweetText = tweet.querySelector('[data-testid="tweetText"]');
   if (explicitTweetText) {
-    return explicitTweetText;
+    const richText = extractTweetTextWithInlineEmoji(explicitTweetText);
+    if (richText.text) {
+      return richText;
+    }
   }
 
   const authorRoot = tweet.querySelector('[data-testid="User-Name"]');
@@ -765,7 +778,96 @@ export async function extractTweetBodyText(tweet: Element): Promise<string> {
     .map((element) => normalizePreWrapText(element.textContent ?? ''))
     .filter((text) => text && !isTweetMetricText(text) && !isTweetDateText(text));
 
-  return candidates[0] ?? '';
+  return { text: candidates[0] ?? '', annotations: [] };
+}
+
+function extractTweetTextWithInlineEmoji(element: Element): { text: string; annotations: TextAnnotation[] } {
+  let rawText = '';
+  const annotations: TextAnnotation[] = [];
+
+  const appendNode = (node: Node): void => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      rawText += node.textContent ?? '';
+      return;
+    }
+
+    if (!(node instanceof HTMLElement)) {
+      for (const child of Array.from(node.childNodes)) {
+        appendNode(child);
+      }
+      return;
+    }
+
+    const emojiImageUrl = getXEmojiImageUrl(node);
+    if (emojiImageUrl) {
+      const emojiText = node.tagName.toUpperCase() === 'IMG' ? (node as HTMLImageElement).alt : normalizeText(node.textContent ?? '');
+      if (emojiText) {
+        const startOffset = rawText.length;
+        rawText += emojiText;
+        annotations.push({
+          startOffset,
+          endOffset: rawText.length,
+          emojiImageUrl
+        });
+      }
+      return;
+    }
+
+    for (const child of Array.from(node.childNodes)) {
+      appendNode(child);
+    }
+  };
+
+  for (const child of Array.from(element.childNodes)) {
+    appendNode(child);
+  }
+
+  const text = normalizePreWrapText(rawText);
+  return { text, annotations: alignAnnotationsToNormalizedText(rawText, text, annotations) };
+}
+
+function getXEmojiImageUrl(element: HTMLElement): string | undefined {
+  if (element.tagName.toUpperCase() === 'IMG') {
+    const image = element as HTMLImageElement;
+    if (image.src && isXEmojiImageUrl(image.src)) {
+      return image.currentSrc || image.src;
+    }
+  }
+
+  const preservedUrl = element.getAttribute('data-linelens-emoji-image-url');
+  if (preservedUrl && isXEmojiImageUrl(preservedUrl)) {
+    return preservedUrl;
+  }
+
+  const backgroundImage = element.style.backgroundImage;
+  const match = backgroundImage.match(/url\((['"]?)(.*?)\1\)/i);
+  const backgroundUrl = match?.[2];
+  return backgroundUrl && isXEmojiImageUrl(backgroundUrl) ? backgroundUrl : undefined;
+}
+
+function isXEmojiImageUrl(url: string): boolean {
+  return /(?:^|\/)emoji\/v2\/svg\//.test(url);
+}
+
+function alignAnnotationsToNormalizedText(rawText: string, normalizedText: string, annotations: TextAnnotation[]): TextAnnotation[] {
+  if (rawText === normalizedText) {
+    return annotations;
+  }
+
+  let searchCursor = 0;
+  return annotations.flatMap((annotation) => {
+    const segment = normalizePreWrapText(rawText.slice(annotation.startOffset, annotation.endOffset));
+    if (!segment) {
+      return [];
+    }
+    const startOffset = normalizedText.indexOf(segment, searchCursor);
+    if (startOffset === -1) {
+      return [];
+    }
+    const endOffset = startOffset + segment.length;
+    searchCursor = endOffset;
+    return [{ ...annotation, startOffset, endOffset }];
+  });
 }
 
 function wait(ms: number): Promise<void> {

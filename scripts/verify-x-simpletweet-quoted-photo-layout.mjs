@@ -28,6 +28,11 @@ assert.ok(quotedPhoto, 'quoted role=link tweet should extract its thumbnail phot
 assert.ok(quotedText, 'quoted role=link tweet should extract its text');
 assert.equal(quotedPhoto.layout, 'condensed', 'quoted role=link thumbnail photo should preserve condensed layout metadata');
 assert.equal(quotedPhoto.shape, 'rounded-square', 'quoted role=link thumbnail photo should preserve rounded-square shape metadata');
+assert.equal(quotedText.text, 'hey 👋🏻', 'quoted role=link tweet text should include inline X emoji alt text');
+assert.ok(
+  quotedText.annotations?.some((annotation) => annotation.emojiImageUrl?.includes('abs.twimg.com/emoji/v2/svg/1f44b-1f3fb.svg')),
+  'quoted role=link tweet text should preserve inline X emoji image metadata'
+);
 
 const renderDom = new JSDOM('<!doctype html><main></main>', {
   url: 'chrome-extension://linelens/reader.html'
@@ -54,8 +59,12 @@ assert.ok(
   'condensed media slot should contain the quoted photo thumbnail'
 );
 assert.ok(
-  condensed.querySelector(':scope > .reader-simple-tweet-condensed-text [data-testid="tweetText"]')?.textContent?.includes('hey'),
-  'condensed text slot should contain the quoted tweet text'
+  condensed.querySelector(':scope > .reader-simple-tweet-condensed-text [data-testid="tweetText"]')?.textContent?.includes('hey 👋🏻'),
+  'condensed text slot should contain the quoted tweet text with inline emoji alt text'
+);
+assert.ok(
+  condensed.querySelector(':scope > .reader-simple-tweet-condensed-text .reader-x-emoji')?.style.backgroundImage.includes('/emoji/v2/svg/1f44b-1f3fb.svg'),
+  'condensed text slot should render inline X emoji as an emoji image span'
 );
 
 const css = readFileSync(resolve(projectRoot, 'public/styles/social-card.css'), 'utf8');

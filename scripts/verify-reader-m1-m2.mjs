@@ -139,6 +139,7 @@ globalThis.document = {
 const sourceRoot = resolve(import.meta.dirname, '..', 'src', 'reader');
 const rendererSource = readFileSync(resolve(sourceRoot, 'block-renderer.ts'), 'utf8');
 const focusBuilderSource = readFileSync(resolve(sourceRoot, 'focus-unit-builder.ts'), 'utf8');
+const focusCss = readFileSync(resolve(import.meta.dirname, '..', 'public', 'styles', 'focus.css'), 'utf8');
 
 assert.match(rendererSource, /from '\.\/reader-text-renderer\.js'/, 'block renderer should import the unified text renderer');
 assert.match(focusBuilderSource, /from '\.\/reader-text-renderer\.js'/, 'focus-unit builder should import the unified text renderer');
@@ -161,6 +162,21 @@ assert(sampleSpan.dataset.readerTextEnd === '9', 'unified text renderer should e
 assert(sampleSpan.querySelector('.reader-x-emoji'), 'unified text renderer should still render X emoji nodes');
 assert(sampleSpan.querySelector('a'), 'unified text renderer should still render anchor annotations');
 assert(sampleSpan.querySelector('strong'), 'unified text renderer should still render strong annotations');
+assert.match(
+  focusCss,
+  /\.focus-unit\.is-muted:not\(\.reader-code\) \.reader-x-emoji\s*\{[\s\S]*?filter:\s*grayscale\(1\) opacity\(0\.28\)/,
+  'Muted focus state should visually fade X emoji background images with the surrounding text'
+);
+assert.match(
+  focusCss,
+  /\.focus-unit\.is-muted:hover:not\(\.reader-code\) \.reader-x-emoji\s*\{[\s\S]*?filter:\s*grayscale\(1\) opacity\(0\.48\)/,
+  'Muted hover state should keep X emoji subdued instead of restoring full-color artwork'
+);
+assert.match(
+  focusCss,
+  /\.focus-unit\.is-active:not\(\.reader-code\) \.reader-x-emoji\s*\{[\s\S]*?filter:\s*none/,
+  'Active focus state should restore X emoji background images to their real colors'
+);
 
 const article = {
   id: 'm1m2-fixture',

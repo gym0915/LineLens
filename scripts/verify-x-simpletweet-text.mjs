@@ -67,7 +67,7 @@ assertTextExtractorContract(mirroredExtractorSource, 'mirrored content extractor
 
 assert.match(
   readerRendererSource,
-  /case 'text':\s*return renderExpandableSimpleTweetText\(item\.text\);/,
+  /case 'text':\s*return renderExpandableSimpleTweetText\(item\.text, item\.annotations\);/,
   'reader should render text-only simpleTweets through ordered text items'
 );
 assert.match(
@@ -131,8 +131,13 @@ function assertTextExtractorContract(source, label) {
   );
   assert.match(
     source,
-    /const textElement = tweet\.querySelector\('\[data-testid="tweetText"\]'\);[\s\S]*?candidates\.set\(textElement, \{ type: 'text', text \}\);/,
-    `${label} should emit tweetText as an ordered text item`
+    /const richText = await (?:simpleTweetModel\.)?extractTweetBodyRichText\(tweet\);[\s\S]*?(?:candidates\.set\(textElement, \{|items: body[\s\S]*?\[[\s\S]*?\{)[\s\S]*?type: 'text',[\s\S]*?text(?:: body)?,[\s\S]*?annotations: richText\.annotations/,
+    `${label} should emit tweetText as an ordered rich text item`
+  );
+  assert.match(
+    source,
+    /emojiImageUrl/,
+    `${label} should preserve inline X emoji metadata from tweetText`
   );
   assert.match(
     source,
