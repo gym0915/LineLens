@@ -332,15 +332,36 @@ type CodeBlockStyle = {
   preColor?: string;
   codeBackgroundColor?: string;
   codeColor?: string;
+  themeColors?: CodeBlockThemeColors;
   fontFamily?: string;
   fontSize?: string;
   lineHeight?: string;
   tabSize?: string;
 };
 
+type CodeThemeColorPair = {
+  light?: string;
+  dark?: string;
+};
+
+type CodeBlockThemeColors = {
+  headerBackgroundColor?: CodeThemeColorPair;
+  headerColor?: CodeThemeColorPair;
+  copyColor?: CodeThemeColorPair;
+  preBackgroundColor?: CodeThemeColorPair;
+  preColor?: CodeThemeColorPair;
+  codeBackgroundColor?: CodeThemeColorPair;
+  codeColor?: CodeThemeColorPair;
+};
+
+type CodeTokenThemeColors = {
+  color?: CodeThemeColorPair;
+};
+
 type CodeToken = {
   text: string;
   color?: string;
+  themeColors?: CodeTokenThemeColors;
   fontStyle?: string;
   fontWeight?: string;
 };
@@ -457,6 +478,20 @@ const MAX_READY_CHECKS = 40;
 const READY_CHECK_INTERVAL_MS = 250;
 const LOG_PREFIX = '[LineLens Content]';
 const AMPLIFY_VIDEO_ID_PATTERN = /amplify_video(?:_thumb)?\/(\d+)/;
+const X_CODE_COLOR_THEME_PAIRS: Array<{ light: string; dark: string }> = [
+  { light: 'rgb(247, 249, 249)', dark: 'rgb(22, 24, 28)' },
+  { light: 'rgb(250, 250, 250)', dark: 'rgb(22, 24, 28)' },
+  { light: 'rgb(229, 234, 236)', dark: 'rgb(22, 24, 28)' },
+  { light: 'rgb(15, 20, 25)', dark: 'rgb(231, 233, 234)' },
+  { light: 'rgb(15, 20, 25)', dark: 'rgb(239, 243, 244)' },
+  { light: 'rgb(56, 58, 66)', dark: 'rgb(212, 212, 212)' },
+  { light: 'rgb(166, 38, 164)', dark: 'rgb(86, 156, 214)' },
+  { light: 'rgb(64, 120, 242)', dark: 'rgb(220, 220, 170)' },
+  { light: 'rgb(64, 120, 242)', dark: 'rgb(212, 212, 212)' },
+  { light: 'rgb(80, 161, 79)', dark: 'rgb(206, 145, 120)' },
+  { light: 'rgb(160, 161, 167)', dark: 'rgb(106, 153, 85)' },
+  { light: 'rgb(56, 58, 66)', dark: 'rgb(156, 220, 254)' }
+];
 let activeReadinessCleanup: (() => void) | undefined;
 let activePosterCleanup: (() => void) | undefined;
 
@@ -1076,14 +1111,30 @@ function normalizeCodeLanguage(language: string): string {
 function extractCodeBlockStyle(codeRoot: Element, pre: Element | null, code: Element | null): CodeBlockStyle {
   const header = codeRoot.querySelector(':scope > div:first-child');
   const copyIcon = codeRoot.querySelector('button svg, button [style*="color"]');
+  const headerBackgroundColor = getStyleValue(header, 'backgroundColor');
+  const headerColor = getStyleValue(header, 'color');
+  const copyColor = getStyleValue(copyIcon, 'color');
+  const preBackgroundColor = getStyleValue(pre, 'backgroundColor');
+  const preColor = getStyleValue(pre, 'color');
+  const codeBackgroundColor = getStyleValue(code, 'backgroundColor');
+  const codeColor = getStyleValue(code, 'color');
   return compactStyle({
-    headerBackgroundColor: getStyleValue(header, 'backgroundColor'),
-    headerColor: getStyleValue(header, 'color'),
-    copyColor: getStyleValue(copyIcon, 'color'),
-    preBackgroundColor: getStyleValue(pre, 'backgroundColor'),
-    preColor: getStyleValue(pre, 'color'),
-    codeBackgroundColor: getStyleValue(code, 'backgroundColor'),
-    codeColor: getStyleValue(code, 'color'),
+    headerBackgroundColor,
+    headerColor,
+    copyColor,
+    preBackgroundColor,
+    preColor,
+    codeBackgroundColor,
+    codeColor,
+    themeColors: createCodeBlockThemeColors({
+      headerBackgroundColor,
+      headerColor,
+      copyColor,
+      preBackgroundColor,
+      preColor,
+      codeBackgroundColor,
+      codeColor
+    }),
     fontFamily: getStyleValue(code, 'fontFamily') || getStyleValue(pre, 'fontFamily'),
     fontSize: getStyleValue(code, 'fontSize') || getStyleValue(pre, 'fontSize'),
     lineHeight: getStyleValue(code, 'lineHeight') || getStyleValue(pre, 'lineHeight'),
@@ -1121,11 +1172,51 @@ function collectCodeTokens(node: Node, tokens: CodeToken[], inheritedStyle: Omit
 }
 
 function extractCodeTokenStyle(element: Element | null): Omit<CodeToken, 'text'> {
+  const color = getStyleValue(element, 'color');
   return compactStyle({
-    color: getStyleValue(element, 'color'),
+    color,
+    themeColors: createCodeTokenThemeColors(color, element?.textContent ?? ''),
     fontStyle: getStyleValue(element, 'fontStyle'),
     fontWeight: getStyleValue(element, 'fontWeight')
   });
+}
+
+function createCodeBlockThemeColors(colors: Pick<CodeBlockStyle, 'headerBackgroundColor' | 'headerColor' | 'copyColor' | 'preBackgroundColor' | 'preColor' | 'codeBackgroundColor' | 'codeColor'>): CodeBlockStyle['themeColors'] {
+  return compactStyle({
+    headerBackgroundColor: createCodeThemeColorPair(colors.headerBackgroundColor),
+    headerColor: createCodeThemeColorPair(colors.headerColor, [{ light: 'rgb(15, 20, 25)', dark: 'rgb(231, 233, 234)' }]),
+    copyColor: createCodeThemeColorPair(colors.copyColor, [{ light: 'rgb(15, 20, 25)', dark: 'rgb(239, 243, 244)' }]),
+    preBackgroundColor: createCodeThemeColorPair(colors.preBackgroundColor),
+    preColor: createCodeThemeColorPair(colors.preColor),
+    codeBackgroundColor: createCodeThemeColorPair(colors.codeBackgroundColor),
+    codeColor: createCodeThemeColorPair(colors.codeColor)
+  });
+}
+
+function createCodeTokenThemeColors(color: string | undefined, text = ''): CodeToken['themeColors'] {
+  return compactStyle({
+    color: createCodeThemeColorPair(color, getCodeTokenPreferredThemePairs(text))
+  });
+}
+
+function createCodeThemeColorPair(color: string | undefined, preferredPairs: Array<{ light: string; dark: string }> = []): CodeThemeColorPair | undefined {
+  if (!color) {
+    return undefined;
+  }
+  const normalized = normalizeCodeColor(color);
+  const pair = [...preferredPairs, ...X_CODE_COLOR_THEME_PAIRS].find((candidate) => normalizeCodeColor(candidate.light) === normalized || normalizeCodeColor(candidate.dark) === normalized);
+  return pair ?? { light: color, dark: color };
+}
+
+function getCodeTokenPreferredThemePairs(text: string): Array<{ light: string; dark: string }> {
+  if (/^[=+\-*/%<>!&|^~?:.,()[\]{}]+$/.test(text.trim())) {
+    return [{ light: 'rgb(64, 120, 242)', dark: 'rgb(212, 212, 212)' }];
+  }
+  return [];
+}
+
+function normalizeCodeColor(color: string): string {
+  return color.replace(/\s+/g, '').toLowerCase();
 }
 
 function findTableRoot(block: Element): Element | null {
@@ -1221,8 +1312,12 @@ function getStyleValue(element: Element | null | undefined, property: keyof CSSS
   return value;
 }
 
-function compactStyle<T extends Record<string, string | number | boolean | undefined>>(style: T): T {
-  return Object.fromEntries(Object.entries(style).filter(([, value]) => value !== undefined && value !== '')) as T;
+function compactStyle<T extends Record<string, unknown>>(style: T): T {
+  return Object.fromEntries(Object.entries(style).filter(([, value]) => value !== undefined && value !== '' && !isEmptyObject(value))) as T;
+}
+
+function isEmptyObject(value: unknown): boolean {
+  return typeof value === 'object' && value !== null && !Array.isArray(value) && Object.keys(value).length === 0;
 }
 
 async function extractTweetRefBlock(block: Element, id: string, capturedVideos: CapturedXVideo[]): Promise<ArticleBlock | null> {

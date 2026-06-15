@@ -157,15 +157,36 @@ export type CodeBlockStyle = {
   preColor?: string;
   codeBackgroundColor?: string;
   codeColor?: string;
+  themeColors?: CodeBlockThemeColors;
   fontFamily?: string;
   fontSize?: string;
   lineHeight?: string;
   tabSize?: string;
 };
 
+export type CodeThemeColorPair = {
+  light?: string;
+  dark?: string;
+};
+
+export type CodeBlockThemeColors = {
+  headerBackgroundColor?: CodeThemeColorPair;
+  headerColor?: CodeThemeColorPair;
+  copyColor?: CodeThemeColorPair;
+  preBackgroundColor?: CodeThemeColorPair;
+  preColor?: CodeThemeColorPair;
+  codeBackgroundColor?: CodeThemeColorPair;
+  codeColor?: CodeThemeColorPair;
+};
+
+export type CodeTokenThemeColors = {
+  color?: CodeThemeColorPair;
+};
+
 export type CodeToken = {
   text: string;
   color?: string;
+  themeColors?: CodeTokenThemeColors;
   fontStyle?: string;
   fontWeight?: string;
 };

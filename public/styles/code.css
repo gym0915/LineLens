@@ -8,23 +8,27 @@
 }
 
 .reader-code-header {
+  --reader-active-code-header-background: var(--reader-code-header-light-background, var(--reader-code-header));
+  --reader-active-code-header-color: var(--reader-code-header-light-color, var(--reader-ink));
   display: flex;
   align-items: center;
   justify-content: space-between;
   min-height: 36px;
   padding: 0 14px;
   border-bottom: 1px solid var(--reader-border-faint);
-  background: var(--reader-code-header);
+  background: var(--reader-active-code-header-background);
+  color: var(--reader-active-code-header-color);
 }
 
 .reader-code-language {
-  color: var(--reader-ink);
+  color: var(--reader-active-code-header-color, var(--reader-ink));
   font-size: var(--reader-code-ui-size);
   line-height: 1;
   letter-spacing: 0;
 }
 
 .reader-code-copy {
+  --reader-active-code-copy-color: var(--reader-code-copy-light-color, var(--reader-active-code-header-color, var(--reader-ink)));
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -33,7 +37,7 @@
   padding: 0;
   border: 0;
   background: transparent;
-  color: var(--reader-ink);
+  color: var(--reader-active-code-copy-color);
   cursor: pointer;
 }
 
@@ -44,13 +48,15 @@
 }
 
 .reader-code-pre {
+  --reader-active-code-pre-background: var(--reader-code-pre-light-background, var(--reader-code-pre-surface));
+  --reader-active-code-pre-color: var(--reader-code-pre-light-color, var(--reader-code-ink));
   box-sizing: border-box;
   width: 100%;
   margin: 0;
   padding: 18px 24px 10px;
   overflow-x: auto;
-  background: var(--reader-code-pre-surface);
-  color: var(--reader-code-ink);
+  background: var(--reader-active-code-pre-background);
+  color: var(--reader-active-code-pre-color);
   font-family: inherit;
   font-size: var(--reader-code-body-size);
   line-height: var(--reader-code-line-height);
@@ -60,7 +66,41 @@
 }
 
 .reader-code-pre code {
+  --reader-active-code-background: var(--reader-code-light-background, transparent);
+  --reader-active-code-color: var(--reader-code-light-color, inherit);
+  background: var(--reader-active-code-background);
+  color: var(--reader-active-code-color);
   font-family: inherit;
+}
+
+.reader-code-token-themed {
+  --reader-active-code-token-color: var(--reader-code-token-light-color);
+  color: var(--reader-active-code-token-color);
+}
+
+@media (prefers-color-scheme: dark) {
+  .reader-code-header {
+    --reader-active-code-header-background: var(--reader-code-header-dark-background, var(--reader-code-header-light-background, var(--reader-code-header)));
+    --reader-active-code-header-color: var(--reader-code-header-dark-color, var(--reader-code-header-light-color, var(--reader-ink)));
+  }
+
+  .reader-code-copy {
+    --reader-active-code-copy-color: var(--reader-code-copy-dark-color, var(--reader-code-copy-light-color, var(--reader-active-code-header-color, var(--reader-ink))));
+  }
+
+  .reader-code-pre {
+    --reader-active-code-pre-background: var(--reader-code-pre-dark-background, var(--reader-code-pre-light-background, var(--reader-code-pre-surface)));
+    --reader-active-code-pre-color: var(--reader-code-pre-dark-color, var(--reader-code-pre-light-color, var(--reader-code-ink)));
+  }
+
+  .reader-code-pre code {
+    --reader-active-code-background: var(--reader-code-dark-background, var(--reader-code-light-background, transparent));
+    --reader-active-code-color: var(--reader-code-dark-color, var(--reader-code-light-color, inherit));
+  }
+
+  .reader-code-token-themed {
+    --reader-active-code-token-color: var(--reader-code-token-dark-color, var(--reader-code-token-light-color));
+  }
 }
 
 .reader-code-token-keyword {

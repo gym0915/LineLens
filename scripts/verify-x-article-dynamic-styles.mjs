@@ -112,11 +112,15 @@ const sourceFiles = {
   renderer: readFileSync(resolve(projectRoot, 'src/reader/block-renderer.ts'), 'utf8'),
   textRenderer: readFileSync(resolve(projectRoot, 'src/reader/reader-text-renderer.ts'), 'utf8'),
   css: readFileSync(resolve(projectRoot, 'public/styles/blocks.css'), 'utf8'),
+  codeCss: readFileSync(resolve(projectRoot, 'public/styles/code.css'), 'utf8'),
   focusCss: readFileSync(resolve(projectRoot, 'public/styles/focus.css'), 'utf8')
 };
 
 assert.match(sourceFiles.types, /export type CodeBlockStyle = \{[\s\S]*?preBackgroundColor\?: string[\s\S]*?codeColor\?: string/, 'CodeBlock should carry source code block colors');
 assert.match(sourceFiles.types, /export type CodeToken = \{[\s\S]*?color\?: string[\s\S]*?fontStyle\?: string/, 'CodeBlock should carry source token colors');
+assert.match(sourceFiles.types, /export type CodeThemeColorPair = \{[\s\S]*?light\?: string[\s\S]*?dark\?: string/, 'CodeBlock should carry paired day/night code colors');
+assert.match(sourceFiles.types, /export type CodeBlockThemeColors = \{[\s\S]*?preBackgroundColor\?: CodeThemeColorPair[\s\S]*?codeColor\?: CodeThemeColorPair/, 'CodeBlock should expose day/night block color theme pairs');
+assert.match(sourceFiles.types, /export type CodeToken = \{[\s\S]*?themeColors\?: CodeTokenThemeColors/, 'CodeToken should expose day/night token color theme pairs');
 assert.match(sourceFiles.types, /export type TableBlock = \{[\s\S]*?columnCount\?: number[\s\S]*?tableStyle\?: TableStyle/, 'Article model should include dynamic table blocks');
 assert.match(sourceFiles.types, /export type TextAnnotation = \{[\s\S]*?color\?: string[\s\S]*?fontSize\?: string/, 'Text annotations should carry inline text color and size');
 assert.match(sourceFiles.types, /export type TextStyle = \{[\s\S]*?textAlign\?: string[\s\S]*?fontWeight\?: string/, 'Block and table text styles should carry alignment and weight');
@@ -127,7 +131,9 @@ for (const [name, source] of [
   ['clean-tree converter', sourceFiles.cleanTree]
 ]) {
   assert.match(source, /extractCodeBlockStyle/, `${name} should extract code block surface styles`);
+  assert.match(source, /createCodeBlockThemeColors/, `${name} should derive day/night code block color themes`);
   assert.match(source, /extractCodeTokens/, `${name} should extract per-token code styles`);
+  assert.match(source, /createCodeTokenThemeColors/, `${name} should derive day/night code token color themes`);
   assert.match(source, /extractTextAnnotationStyle/, `${name} should extract inline text styles`);
   assert.match(source, /hasTextAnnotationSignal/, `${name} should keep style-only text annotations`);
   assert.match(source, /extractTableBlock|convertTableElement/, `${name} should convert table DOM into table blocks`);
@@ -141,6 +147,10 @@ assert.match(sourceFiles.renderer, /function renderArticleHeaderAuthorMeta[\s\S]
 assert.match(sourceFiles.renderer, /const authorMeta = renderArticleHeaderAuthorMeta\(article\)[\s\S]*const metrics = renderArticleHeaderMetrics\(article\)/, 'Reader should render interaction row independently from author row');
 assert.match(sourceFiles.renderer, /function renderTableBlock\(block: TableBlock\)/, 'Reader should render table blocks');
 assert.match(sourceFiles.renderer, /appendExtractedCodeTokens/, 'Reader should render extracted code tokens instead of forcing local highlighting');
+assert.match(sourceFiles.renderer, /applyCodeThemeColorPair/, 'Reader should render extracted code colors through theme-aware CSS variables');
+assert.match(sourceFiles.renderer, /--reader-code-token-light-color/, 'Reader should write light token color variables instead of fixed source colors only');
+assert.match(sourceFiles.renderer, /--reader-code-token-dark-color/, 'Reader should write dark token color variables instead of fixed source colors only');
+assert.match(sourceFiles.codeCss, /@media\s*\(prefers-color-scheme:\s*dark\)[\s\S]*--reader-active-code-token-color:\s*var\(--reader-code-token-dark-color/, 'Reader CSS should switch extracted token colors through system dark mode');
 assert.doesNotMatch(sourceFiles.textRenderer, /if \(style\.fontSize\) element\.style\.fontSize = style\.fontSize;/, 'Reader inline text should not apply source font-size');
 assert.doesNotMatch(sourceFiles.textRenderer, /if \(style\.lineHeight\) element\.style\.lineHeight = style\.lineHeight;/, 'Reader inline text should not apply source line-height');
 assert.doesNotMatch(sourceFiles.textRenderer, /if \(style\.textAlign\) element\.style\.textAlign = style\.textAlign;/, 'Reader inline text should not apply source text-align');
@@ -262,15 +272,23 @@ const article = {
         preBackgroundColor: 'rgb(247, 249, 249)',
         codeBackgroundColor: 'rgb(250, 250, 250)',
         codeColor: 'rgb(56, 58, 66)',
+        themeColors: {
+          headerBackgroundColor: { light: 'rgb(229, 234, 236)', dark: 'rgb(22, 24, 28)' },
+          headerColor: { light: 'rgb(15, 20, 25)', dark: 'rgb(231, 233, 234)' },
+          copyColor: { light: 'rgb(15, 20, 25)', dark: 'rgb(239, 243, 244)' },
+          preBackgroundColor: { light: 'rgb(247, 249, 249)', dark: 'rgb(22, 24, 28)' },
+          codeBackgroundColor: { light: 'rgb(250, 250, 250)', dark: 'rgb(22, 24, 28)' },
+          codeColor: { light: 'rgb(56, 58, 66)', dark: 'rgb(212, 212, 212)' }
+        },
         fontSize: '13px',
         lineHeight: '1.5'
       },
       tokens: [
-        { text: 'from', color: 'rgb(166, 38, 164)' },
+        { text: 'from', color: 'rgb(166, 38, 164)', themeColors: { color: { light: 'rgb(166, 38, 164)', dark: 'rgb(86, 156, 214)' } } },
         { text: ' smolagents import tool\n' },
-        { text: '# comment', color: 'rgb(160, 161, 167)', fontStyle: 'italic' },
+        { text: '# comment', color: 'rgb(160, 161, 167)', themeColors: { color: { light: 'rgb(160, 161, 167)', dark: 'rgb(106, 153, 85)' } }, fontStyle: 'italic' },
         { text: '\nprint(' },
-        { text: '"ok"', color: 'rgb(80, 161, 79)' },
+        { text: '"ok"', color: 'rgb(80, 161, 79)', themeColors: { color: { light: 'rgb(80, 161, 79)', dark: 'rgb(206, 145, 120)' } } },
         { text: ')' }
       ]
     },
@@ -313,12 +331,18 @@ assert.equal(paragraphLink.attributes.href, '//watch.sh', 'Inline link should pr
 assert.equal(paragraphLink.attributes.style, undefined, 'Inline link should inherit Reader typography instead of source inline text style');
 
 const code = rendered.querySelector('[data-block-id="code1"]');
-assert.equal(code.querySelector('.reader-code-header').style.background, 'rgb(229, 234, 236)', 'Code header should apply source background');
-assert.equal(code.querySelector('.reader-code-pre').style.background, 'rgb(247, 249, 249)', 'Code pre should apply source background');
-assert.equal(code.querySelector('code').style.color, 'rgb(56, 58, 66)', 'Code element should apply default source color');
+assert.equal(code.querySelector('.reader-code-header').style['--reader-code-header-light-background'], 'rgb(229, 234, 236)', 'Code header should expose light source background');
+assert.equal(code.querySelector('.reader-code-header').style['--reader-code-header-dark-background'], 'rgb(22, 24, 28)', 'Code header should expose dark source background');
+assert.equal(code.querySelector('.reader-code-header').style.background, undefined, 'Code header should not freeze one source background inline when a theme pair exists');
+assert.equal(code.querySelector('.reader-code-pre').style['--reader-code-pre-light-background'], 'rgb(247, 249, 249)', 'Code pre should expose light source background');
+assert.equal(code.querySelector('.reader-code-pre').style['--reader-code-pre-dark-background'], 'rgb(22, 24, 28)', 'Code pre should expose dark source background');
+assert.equal(code.querySelector('.reader-code-pre').style.background, undefined, 'Code pre should not freeze one source background inline when a theme pair exists');
+assert.equal(code.querySelector('code').style['--reader-code-light-color'], 'rgb(56, 58, 66)', 'Code element should expose light default source color');
+assert.equal(code.querySelector('code').style['--reader-code-dark-color'], 'rgb(212, 212, 212)', 'Code element should expose dark default source color');
+assert.equal(code.querySelector('code').style.color, undefined, 'Code element should not freeze one source color inline when a theme pair exists');
 const codeTokenSpans = code.querySelector('code').children.filter((child) => child.tagName === 'SPAN');
-assert(codeTokenSpans.some((span) => span.textContent === 'from' && span.style.color === 'rgb(166, 38, 164)'), 'Code keyword token should keep source color');
-assert(codeTokenSpans.some((span) => span.textContent === '# comment' && span.style.color === 'rgb(160, 161, 167)' && span.style.fontStyle === 'italic'), 'Code comment token should keep source color and italic style');
+assert(codeTokenSpans.some((span) => span.textContent === 'from' && span.style['--reader-code-token-light-color'] === 'rgb(166, 38, 164)' && span.style['--reader-code-token-dark-color'] === 'rgb(86, 156, 214)' && span.style.color === undefined), 'Code keyword token should expose source day/night colors without freezing inline color');
+assert(codeTokenSpans.some((span) => span.textContent === '# comment' && span.style['--reader-code-token-light-color'] === 'rgb(160, 161, 167)' && span.style['--reader-code-token-dark-color'] === 'rgb(106, 153, 85)' && span.style.fontStyle === 'italic'), 'Code comment token should expose source day/night colors and keep italic style');
 
 const table = rendered.querySelector('[data-block-id="table1"]');
 assert.equal(table.dataset.blockType, 'table', 'Table block should render with table block type');
