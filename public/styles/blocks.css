@@ -20,9 +20,9 @@
   margin-top: 40px;
   color: var(--reader-text-title);
   font-family: var(--reader-font-display);
-  font-size: 22px;
-  font-weight: 600;
-  line-height: 1.35;
+  font-size: var(--reader-heading-size);
+  font-weight: var(--reader-heading-weight);
+  line-height: var(--reader-heading-line-height);
 }
 
 .reader-block[data-block-type="quote"] {
@@ -30,7 +30,7 @@
   padding: 2px 0 2px 18px;
   border-left: 3px solid var(--reader-quote-border-muted);
   color: var(--reader-text-muted);
-  font-size: 17px;
+  font-size: var(--reader-quote-size);
   font-style: italic;
   line-height: var(--reader-quote-line-height);
 }
@@ -50,8 +50,8 @@
   border: 1px solid var(--reader-border-subtle);
   color: var(--reader-text-muted);
   font-family: var(--reader-font-body);
-  font-size: 14px;
-  line-height: 1.7;
+  font-size: var(--reader-embed-size);
+  line-height: var(--reader-embed-line-height);
 }
 
 .reader-list {
@@ -67,7 +67,7 @@
   margin-bottom: 4px;
   padding: 3px 2px;
   border-radius: var(--reader-radius-card);
-  font-size: 16.5px;
+  font-size: var(--reader-list-size);
   line-height: var(--reader-list-line-height);
 }
 

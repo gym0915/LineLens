@@ -19,7 +19,7 @@
 
 .reader-code-language {
   color: var(--reader-ink);
-  font-size: 13px;
+  font-size: var(--reader-code-ui-size);
   line-height: 1;
   letter-spacing: 0;
 }
@@ -52,7 +52,7 @@
   background: var(--reader-code-pre-surface);
   color: var(--reader-code-ink);
   font-family: inherit;
-  font-size: 13.5px;
+  font-size: var(--reader-code-body-size);
   line-height: var(--reader-code-line-height);
   tab-size: 2;
   white-space: pre-wrap;

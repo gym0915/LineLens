@@ -238,7 +238,6 @@ function renderTextBlock(
   element.className = 'reader-block';
   element.dataset.blockId = blockId;
   element.dataset.blockType = blockType;
-  applyTextStyle(element, textStyle);
   applyReaderTextMetadata(
     element,
     appendReaderText(element, text, annotations, {
@@ -883,7 +882,6 @@ function renderListBlock(
 
     const content = document.createElement('span');
     content.className = 'reader-list-text';
-    applyTextStyle(content, itemTextStyles[index]);
     content.append(
       createReaderTextSpan(text, itemAnnotations[index] ?? [], {
         role: 'list-item'

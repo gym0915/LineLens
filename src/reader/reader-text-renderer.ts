@@ -175,10 +175,6 @@ function createAnnotatedNode(
 }
 
 function applyInlineTextStyle(element: HTMLElement, style: Pick<TextAnnotation, 'color' | 'fontSize' | 'lineHeight' | 'textAlign' | 'fontStyle'>): void {
-  if (style.color) element.style.color = style.color;
-  if (style.fontSize) element.style.fontSize = style.fontSize;
-  if (style.lineHeight) element.style.lineHeight = style.lineHeight;
-  if (style.textAlign) element.style.textAlign = style.textAlign;
   if (style.fontStyle) element.style.fontStyle = style.fontStyle;
 }
 

@@ -18,6 +18,8 @@ const codeCss = read('public/styles/code.css');
 const blocksCss = read('public/styles/blocks.css');
 const responsiveCss = read('public/styles/responsive.css');
 const overlaysCss = read('public/styles/overlays.css');
+const rendererSource = read('src/reader/block-renderer.ts');
+const textRendererSource = read('src/reader/reader-text-renderer.ts');
 
 for (const [token, value] of [
   ['--reader-system-background', '#faf9f5'],
@@ -34,9 +36,23 @@ for (const [token, value] of [
   ['--reader-theme-soft-peach-bg', '#fde5d6'],
   ['--reader-theme-cool-gray-bg', '#e0e2e6'],
   ['--reader-radius-content', '8px'],
+  ['--reader-title-size', 'clamp(2rem, 5vw, 2.75rem)'],
+  ['--reader-title-line-height', '1.18'],
+  ['--reader-title-weight', '600'],
+  ['--reader-body-size', '16.5px'],
+  ['--reader-body-weight', '400'],
   ['--reader-body-line-height', '1.9'],
+  ['--reader-heading-size', '22px'],
+  ['--reader-heading-line-height', '1.35'],
+  ['--reader-heading-weight', '600'],
+  ['--reader-quote-size', '17px'],
   ['--reader-quote-line-height', '1.85'],
+  ['--reader-list-size', 'var(--reader-body-size)'],
   ['--reader-list-line-height', '1.8'],
+  ['--reader-embed-size', '14px'],
+  ['--reader-embed-line-height', '1.7'],
+  ['--reader-code-ui-size', '13px'],
+  ['--reader-code-body-size', '13.5px'],
   ['--reader-code-line-height', '1.55'],
   ['--reader-table-line-height', '1.5'],
   ['--reader-card-shadow', '0 2px 14px rgba(44, 37, 33, 0.11)'],
@@ -133,12 +149,30 @@ for (const hardCodedValue of [
 }
 
 assert.match(layoutCss, /font-family:\s*var\(--reader-font-body\);/, 'reader shell should use body font token');
+assert.match(layoutCss, /font-size:\s*var\(--reader-title-size\);/, 'article title should use the title size token');
+assert.match(layoutCss, /font-weight:\s*var\(--reader-title-weight\);/, 'article title should use the title weight token');
+assert.match(layoutCss, /line-height:\s*var\(--reader-title-line-height\);/, 'article title should use the title line-height token');
+assert.match(layoutCss, /font-size:\s*var\(--reader-body-size\);/, 'article body should use the body size token');
+assert.match(layoutCss, /font-weight:\s*var\(--reader-body-weight\);/, 'article body should use the body weight token');
 assert.match(layoutCss, /line-height:\s*var\(--reader-body-line-height\);/, 'article body should use the body line-height token');
+assert.match(blocksCss, /\.reader-block\[data-block-type="heading"\]\s*\{[\s\S]*?font-size:\s*var\(--reader-heading-size\);/, 'heading blocks should use the heading size token');
+assert.match(blocksCss, /\.reader-block\[data-block-type="heading"\]\s*\{[\s\S]*?font-weight:\s*var\(--reader-heading-weight\);/, 'heading blocks should use the heading weight token');
+assert.match(blocksCss, /\.reader-block\[data-block-type="heading"\]\s*\{[\s\S]*?line-height:\s*var\(--reader-heading-line-height\);/, 'heading blocks should use the heading line-height token');
+assert.match(blocksCss, /\.reader-block\[data-block-type="quote"\]\s*\{[\s\S]*?font-size:\s*var\(--reader-quote-size\);/, 'quote blocks should use the quote size token');
 assert.match(blocksCss, /\.reader-block\[data-block-type="quote"\]\s*\{[\s\S]*?line-height:\s*var\(--reader-quote-line-height\);/, 'quote blocks should use the quote line-height token');
+assert.match(blocksCss, /\.reader-embed\s*\{[\s\S]*?font-size:\s*var\(--reader-embed-size\);/, 'embed blocks should use the embed size token');
+assert.match(blocksCss, /\.reader-embed\s*\{[\s\S]*?line-height:\s*var\(--reader-embed-line-height\);/, 'embed blocks should use the embed line-height token');
+assert.match(blocksCss, /\.reader-list-item\s*\{[\s\S]*?font-size:\s*var\(--reader-list-size\);/, 'list items should use the list size token');
 assert.match(blocksCss, /\.reader-list-item\s*\{[\s\S]*?line-height:\s*var\(--reader-list-line-height\);/, 'list items should use the list line-height token');
 assert.match(blocksCss, /\.reader-table-cell\s*\{[\s\S]*?line-height:\s*var\(--reader-table-line-height\);/, 'table cells should use the table line-height token');
 assert.match(codeCss, /font-family:\s*var\(--reader-font-mono\);/, 'code blocks should use mono font token');
+assert.match(codeCss, /\.reader-code-language\s*\{[\s\S]*?font-size:\s*var\(--reader-code-ui-size\);/, 'code language label should use the code UI size token');
+assert.match(codeCss, /\.reader-code-pre\s*\{[\s\S]*?font-size:\s*var\(--reader-code-body-size\);/, 'code pre should use the code body size token');
 assert.match(codeCss, /line-height:\s*var\(--reader-code-line-height\);/, 'code blocks should use the code line-height token');
+assert.doesNotMatch(rendererSource, /function renderTextBlock[\s\S]*?applyTextStyle\(element, textStyle\);[\s\S]*?function getHeadingTagName/, 'ordinary Reader text blocks should not apply source textStyle inline');
+assert.doesNotMatch(textRendererSource, /if \(style\.fontSize\) element\.style\.fontSize = style\.fontSize;/, 'inline Reader text should not apply source font-size');
+assert.doesNotMatch(textRendererSource, /if \(style\.lineHeight\) element\.style\.lineHeight = style\.lineHeight;/, 'inline Reader text should not apply source line-height');
+assert.doesNotMatch(textRendererSource, /if \(style\.textAlign\) element\.style\.textAlign = style\.textAlign;/, 'inline Reader text should not apply source text-align');
 for (const [selector, color] of [
   ['.reader-code-token-keyword', '#b724b7'],
   ['.reader-code-token-tag', '#bd6500'],

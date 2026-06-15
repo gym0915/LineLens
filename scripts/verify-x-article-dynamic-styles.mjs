@@ -141,8 +141,9 @@ assert.match(sourceFiles.renderer, /function renderArticleHeaderAuthorMeta[\s\S]
 assert.match(sourceFiles.renderer, /const authorMeta = renderArticleHeaderAuthorMeta\(article\)[\s\S]*const metrics = renderArticleHeaderMetrics\(article\)/, 'Reader should render interaction row independently from author row');
 assert.match(sourceFiles.renderer, /function renderTableBlock\(block: TableBlock\)/, 'Reader should render table blocks');
 assert.match(sourceFiles.renderer, /appendExtractedCodeTokens/, 'Reader should render extracted code tokens instead of forcing local highlighting');
-assert.match(sourceFiles.textRenderer, /annotation\.color \|\| annotation\.fontSize/, 'Reader text metadata should retain style-only annotations');
-assert.match(sourceFiles.textRenderer, /applyInlineTextStyle/, 'Reader text renderer should apply inline DOM text styles');
+assert.doesNotMatch(sourceFiles.textRenderer, /if \(style\.fontSize\) element\.style\.fontSize = style\.fontSize;/, 'Reader inline text should not apply source font-size');
+assert.doesNotMatch(sourceFiles.textRenderer, /if \(style\.lineHeight\) element\.style\.lineHeight = style\.lineHeight;/, 'Reader inline text should not apply source line-height');
+assert.doesNotMatch(sourceFiles.textRenderer, /if \(style\.textAlign\) element\.style\.textAlign = style\.textAlign;/, 'Reader inline text should not apply source text-align');
 assert.doesNotMatch(
   sourceFiles.focusCss,
   /\.focus-unit\.is-active \*\s*\{\s*color:\s*var\(--reader-text-active\)\s*!important;/,
@@ -306,12 +307,10 @@ assert.equal(metricsRow.href, article.canonicalUrl, 'Interaction row should use 
 assert.equal(metricsRow.querySelectorAll('.article-meta-metric').length, 6, 'Interaction row should render four primary icons plus bookmark/share');
 
 const paragraph = rendered.querySelector('[data-block-id="p1"]');
-assert.equal(paragraph.style.color, 'rgb(15, 20, 25)', 'Paragraph should apply source text color');
-assert.equal(paragraph.style.fontSize, '17px', 'Paragraph should apply source font size');
+assert.equal(paragraph.attributes.style, undefined, 'Paragraph should use Reader design-system typography instead of source inline text style');
 const paragraphLink = paragraph.querySelector('a');
 assert.equal(paragraphLink.attributes.href, '//watch.sh', 'Inline link should preserve source href');
-assert.equal(paragraphLink.style.color, 'rgb(15, 20, 25)', 'Inline link should apply source text color');
-assert.equal(paragraphLink.style.fontSize, '17px', 'Inline link should apply source font size');
+assert.equal(paragraphLink.attributes.style, undefined, 'Inline link should inherit Reader typography instead of source inline text style');
 
 const code = rendered.querySelector('[data-block-id="code1"]');
 assert.equal(code.querySelector('.reader-code-header').style.background, 'rgb(229, 234, 236)', 'Code header should apply source background');

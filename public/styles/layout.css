@@ -28,9 +28,9 @@
   margin: 0 0 28px;
   color: var(--reader-text-title);
   font-family: var(--reader-font-display);
-  font-size: clamp(2rem, 5vw, 2.75rem);
-  font-weight: 600;
-  line-height: 1.18;
+  font-size: var(--reader-title-size);
+  font-weight: var(--reader-title-weight);
+  line-height: var(--reader-title-line-height);
 }
 
 .article-meta {
@@ -149,6 +149,7 @@
 }
 
 .article-body {
-  font-size: 16.5px;
+  font-size: var(--reader-body-size);
+  font-weight: var(--reader-body-weight);
   line-height: var(--reader-body-line-height);
 }

@@ -77,6 +77,7 @@ p .focus-unit {
 
 p .focus-unit.is-active {
   display: inline;
+  border-radius: var(--reader-radius-card);
   background: var(--reader-highlight-surface);
   box-shadow: var(--reader-highlight-shadow);
   transition: var(--reader-inline-highlight-transition);
