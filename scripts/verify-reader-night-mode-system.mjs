@@ -52,17 +52,6 @@ for (const [token, value] of [
   ['--reader-theme-night-code-header', '#222a3d'],
   ['--reader-theme-night-code-pre-surface', 'rgba(255, 255, 255, 0.08)'],
   ['--reader-theme-night-media-placeholder', 'rgba(255, 255, 255, 0.08)'],
-  ['--reader-theme-night-column-width', '680px'],
-  ['--reader-theme-night-page-padding-x', '24px'],
-  ['--reader-theme-night-title-size', 'clamp(2rem, 5vw, 3rem)'],
-  ['--reader-theme-night-title-line-height', '1.17'],
-  ['--reader-theme-night-title-weight', '700'],
-  ['--reader-theme-night-body-size', '20px'],
-  ['--reader-theme-night-body-line-height', '1.8'],
-  ['--reader-theme-night-radius-content', '16px'],
-  ['--reader-theme-night-radius-sm', '8px'],
-  ['--reader-theme-night-radius-xl', '48px'],
-  ['--reader-theme-night-font', 'Inter, "Atkinson Hyperlegible", "LXGW WenKai TC", system-ui, sans-serif']
 ]) {
   assert(hasTokenDeclaration(tokensCss, token, value), token + ' should expose DESIGN.md night mode value ' + value);
 }
@@ -80,18 +69,6 @@ for (const [token, value] of [
   ['--reader-highlight-surface', 'var(--reader-theme-night-highlight-surface)'],
   ['--reader-highlight-shadow', 'var(--reader-theme-night-highlight-shadow)'],
   ['--reader-highlight-backdrop-filter', 'var(--reader-theme-night-highlight-backdrop-filter)'],
-  ['--reader-column-width', 'var(--reader-theme-night-column-width)'],
-  ['--reader-page-padding-x', 'var(--reader-theme-night-page-padding-x)'],
-  ['--reader-title-size', 'var(--reader-theme-night-title-size)'],
-  ['--reader-title-line-height', 'var(--reader-theme-night-title-line-height)'],
-  ['--reader-title-weight', 'var(--reader-theme-night-title-weight)'],
-  ['--reader-body-size', 'var(--reader-theme-night-body-size)'],
-  ['--reader-body-line-height', 'var(--reader-theme-night-body-line-height)'],
-  ['--reader-radius-content', 'var(--reader-theme-night-radius-content)'],
-  ['--reader-radius-sm', 'var(--reader-theme-night-radius-sm)'],
-  ['--reader-font-body', 'var(--reader-theme-night-font)'],
-  ['--reader-font-display', 'var(--reader-theme-night-font)'],
-  ['--reader-font-ui', 'var(--reader-theme-night-font)'],
   ['--reader-social-ink', 'var(--reader-theme-night-foreground)'],
   ['--reader-social-muted', 'var(--reader-theme-night-subtle)'],
   ['--reader-social-blue', 'var(--reader-theme-night-secondary)'],
@@ -105,6 +82,29 @@ for (const [token, value] of [
 }
 
 assert.doesNotMatch(allStyleCss, /matchMedia|localStorage|dataset\.readerTheme|applyReaderTheme|createReaderThemeSwitch/, 'system theme switching should not add Reader runtime theme logic');
+
+// Layout, font, and typography tokens must be shared between day and night modes.
+// Only color tokens should differ between themes.
+const sharedTokens = [
+  '--reader-column-width', '--reader-page-padding-x',
+  '--reader-title-size', '--reader-title-line-height', '--reader-title-weight',
+  '--reader-body-size', '--reader-body-weight', '--reader-body-line-height',
+  '--reader-radius-content', '--reader-radius-sm',
+  '--reader-font-body', '--reader-font-display', '--reader-font-ui',
+  '--reader-heading-size', '--reader-heading-weight', '--reader-heading-line-height',
+  '--reader-quote-size', '--reader-quote-line-height',
+  '--reader-list-size', '--reader-list-line-height',
+  '--reader-embed-size', '--reader-embed-line-height',
+  '--reader-code-ui-size', '--reader-code-body-size', '--reader-code-line-height',
+  '--reader-table-line-height',
+  '--reader-paragraph-gap', '--reader-media-gap'
+];
+const darkMediaBlock = tokensCss.match(/@media\s*\(prefers-color-scheme:\s*dark\)\s*\{\s*:root\s*\{([\s\S]*?)\n\s*\}\s*\}/);
+assert(darkMediaBlock, 'tokens.css should contain one :root dark media block');
+for (const token of sharedTokens) {
+  assert(!new RegExp(escapeRegExp(token) + '\\s*:').test(darkMediaBlock[1]),
+    token + ' must not be overridden in dark mode — layout/font/typography is shared between themes');
+}
 assert.match(read('public/styles/focus.css'), /backdrop-filter:\s*var\(--reader-highlight-backdrop-filter\);/, 'active focus surface should consume the tokenized spotlight backdrop filter');
 
 console.log('verify:reader-night-mode-system passed');

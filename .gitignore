@@ -2,3 +2,4 @@ node_modules/
 dist/
 fixtures/
 .worktrees/
+.DS_Store

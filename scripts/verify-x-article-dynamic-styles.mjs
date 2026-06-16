@@ -149,8 +149,8 @@ assert.match(sourceFiles.renderer, /const authorMeta = renderArticleHeaderAuthor
 assert.match(sourceFiles.renderer, /function renderTableBlock\(block: TableBlock\)/, 'Reader should render table blocks');
 assert.match(sourceFiles.renderer, /appendExtractedCodeTokens/, 'Reader should render extracted code tokens instead of forcing local highlighting');
 assert.match(sourceFiles.renderer, /applyCodeThemeColorPair/, 'Reader should render extracted code colors through theme-aware CSS variables');
-assert.match(sourceFiles.renderer, /--reader-code-language-light-color/, 'Reader should write light language label color variables instead of relying on stale inline colors');
-assert.match(sourceFiles.renderer, /--reader-code-copy-dark-color/, 'Reader should write dark copy button color variables instead of relying on stale inline colors');
+assert.doesNotMatch(sourceFiles.renderer, /--reader-code-language-light-color/, 'Reader should NOT bake language label surface colors — they are owned by reader design tokens');
+assert.doesNotMatch(sourceFiles.renderer, /--reader-code-copy-dark-color/, 'Reader should NOT bake copy button surface colors — they are owned by reader design tokens');
 assert.match(sourceFiles.renderer, /--reader-code-token-light-color/, 'Reader should write light token color variables instead of fixed source colors only');
 assert.match(sourceFiles.renderer, /--reader-code-token-dark-color/, 'Reader should write dark token color variables instead of fixed source colors only');
 assert.doesNotMatch(sourceFiles.codeCss, /\)\)\)\)\s*;/, 'Reader code CSS variable fallbacks should not contain invalid extra closing parentheses');
@@ -338,22 +338,32 @@ const paragraphLink = paragraph.querySelector('a');
 assert.equal(paragraphLink.attributes.href, '//watch.sh', 'Inline link should preserve source href');
 assert.equal(paragraphLink.attributes.style, undefined, 'Inline link should inherit Reader typography instead of source inline text style');
 
+// Surface colors (header background/color, language label, copy button, pre/code
+// background/color) must NOT be written from the extracted source. The reader's own
+// design tokens (--reader-code-header / --reader-code-ink / --reader-code-pre-surface)
+// own these surfaces so they stay correct under both light and dark themes. Only the
+// per-token syntax highlight colors keep the extracted day/night pairing.
 const code = rendered.querySelector('[data-block-id="code1"]');
-assert.equal(code.querySelector('.reader-code-header').style['--reader-code-header-light-background'], 'rgb(229, 234, 236)', 'Code header should expose light source background');
-assert.equal(code.querySelector('.reader-code-header').style['--reader-code-header-dark-background'], 'rgb(22, 24, 28)', 'Code header should expose dark source background');
-assert.equal(code.querySelector('.reader-code-header').style.background, undefined, 'Code header should not freeze one source background inline when a theme pair exists');
-assert.equal(code.querySelector('.reader-code-language').style['--reader-code-language-light-color'], 'rgb(15, 20, 25)', 'Code language label should expose light source color');
-assert.equal(code.querySelector('.reader-code-language').style['--reader-code-language-dark-color'], 'rgb(231, 233, 234)', 'Code language label should expose dark source color');
-assert.equal(code.querySelector('.reader-code-language').style.color, undefined, 'Code language label should not freeze one source color inline when a theme pair exists');
-assert.equal(code.querySelector('.reader-code-copy').style['--reader-code-copy-light-color'], 'rgb(15, 20, 25)', 'Code copy button should expose light source color');
-assert.equal(code.querySelector('.reader-code-copy').style['--reader-code-copy-dark-color'], 'rgb(239, 243, 244)', 'Code copy button should expose dark source color');
-assert.equal(code.querySelector('.reader-code-copy').style.color, undefined, 'Code copy button should not freeze one source color inline when a theme pair exists');
-assert.equal(code.querySelector('.reader-code-pre').style['--reader-code-pre-light-background'], 'rgb(247, 249, 249)', 'Code pre should expose light source background');
-assert.equal(code.querySelector('.reader-code-pre').style['--reader-code-pre-dark-background'], 'rgb(22, 24, 28)', 'Code pre should expose dark source background');
-assert.equal(code.querySelector('.reader-code-pre').style.background, undefined, 'Code pre should not freeze one source background inline when a theme pair exists');
-assert.equal(code.querySelector('code').style['--reader-code-light-color'], 'rgb(56, 58, 66)', 'Code element should expose light default source color');
-assert.equal(code.querySelector('code').style['--reader-code-dark-color'], 'rgb(212, 212, 212)', 'Code element should expose dark default source color');
-assert.equal(code.querySelector('code').style.color, undefined, 'Code element should not freeze one source color inline when a theme pair exists');
+assert.equal(code.querySelector('.reader-code-header').style['--reader-code-header-light-background'], undefined, 'Code header background should fall back to the reader token, not the extracted source color');
+assert.equal(code.querySelector('.reader-code-header').style['--reader-code-header-dark-background'], undefined, 'Code header background should not carry an extracted dark color');
+assert.equal(code.querySelector('.reader-code-header').style.background, undefined, 'Code header should not freeze an extracted background inline');
+assert.equal(code.querySelector('.reader-code-header').style.color, undefined, 'Code header text color should fall back to the reader token');
+assert.equal(code.querySelector('.reader-code-language').style['--reader-code-language-light-color'], undefined, 'Code language label color should fall back to the reader token');
+assert.equal(code.querySelector('.reader-code-language').style['--reader-code-language-dark-color'], undefined, 'Code language label color should not carry an extracted dark color');
+assert.equal(code.querySelector('.reader-code-language').style.color, undefined, 'Code language label should not freeze an extracted color inline');
+assert.equal(code.querySelector('.reader-code-copy').style['--reader-code-copy-light-color'], undefined, 'Code copy button color should fall back to the reader token');
+assert.equal(code.querySelector('.reader-code-copy').style['--reader-code-copy-dark-color'], undefined, 'Code copy button color should not carry an extracted dark color');
+assert.equal(code.querySelector('.reader-code-copy').style.color, undefined, 'Code copy button should not freeze an extracted color inline');
+assert.equal(code.querySelector('.reader-code-pre').style['--reader-code-pre-light-background'], undefined, 'Code pre background should fall back to the reader token');
+assert.equal(code.querySelector('.reader-code-pre').style['--reader-code-pre-dark-background'], undefined, 'Code pre background should not carry an extracted dark color');
+assert.equal(code.querySelector('.reader-code-pre').style.background, undefined, 'Code pre should not freeze an extracted background inline');
+assert.equal(code.querySelector('.reader-code-pre').style.color, undefined, 'Code pre text color should fall back to the reader token');
+assert.equal(code.querySelector('code').style['--reader-code-light-background'], undefined, 'Code element background should fall back to the reader token');
+assert.equal(code.querySelector('code').style['--reader-code-dark-background'], undefined, 'Code element background should not carry an extracted dark color');
+assert.equal(code.querySelector('code').style.background, undefined, 'Code element should not freeze an extracted background inline');
+assert.equal(code.querySelector('code').style['--reader-code-light-color'], undefined, 'Code element color should fall back to the reader token');
+assert.equal(code.querySelector('code').style['--reader-code-dark-color'], undefined, 'Code element color should not carry an extracted dark color');
+assert.equal(code.querySelector('code').style.color, undefined, 'Code element should not freeze an extracted color inline');
 const codeTokenSpans = code.querySelector('code').children.filter((child) => child.tagName === 'SPAN');
 assert(codeTokenSpans.some((span) => span.textContent === 'from' && span.style['--reader-code-token-light-color'] === 'rgb(166, 38, 164)' && span.style['--reader-code-token-dark-color'] === 'rgb(86, 156, 214)' && span.style.color === undefined), 'Code keyword token should expose source day/night colors without freezing inline color');
 assert(codeTokenSpans.some((span) => span.textContent === '# comment' && span.style['--reader-code-token-light-color'] === 'rgb(160, 161, 167)' && span.style['--reader-code-token-dark-color'] === 'rgb(106, 153, 85)' && span.style.fontStyle === 'italic'), 'Code comment token should expose source day/night colors and keep italic style');

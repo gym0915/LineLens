@@ -1930,29 +1930,20 @@ function renderCodeBlock(block: CodeBlock): HTMLElement {
   figure.dataset.blockType = 'code';
 
   const header = document.createElement('figcaption');
+  // Surface colors (header bg/color, language color, copy color) are owned by
+  // Reader design tokens (code.css → tokens.css) and respond to system theme
+  // automatically; we no longer bake extracted X colors for these properties.
   header.className = 'reader-code-header';
-  if (!applyCodeThemeColorPair(header, '--reader-code-header-light-background', '--reader-code-header-dark-background', block.codeStyle?.themeColors?.headerBackgroundColor) && block.codeStyle?.headerBackgroundColor) {
-    header.style.background = block.codeStyle.headerBackgroundColor;
-  }
-  if (!applyCodeThemeColorPair(header, '--reader-code-header-light-color', '--reader-code-header-dark-color', block.codeStyle?.themeColors?.headerColor) && block.codeStyle?.headerColor) {
-    header.style.color = block.codeStyle.headerColor;
-  }
 
   const label = document.createElement('span');
   label.className = 'reader-code-language';
   label.textContent = block.language || detectCodeLanguage(block.text) || 'text';
-  if (!applyCodeThemeColorPair(label, '--reader-code-language-light-color', '--reader-code-language-dark-color', block.codeStyle?.themeColors?.headerColor) && block.codeStyle?.headerColor) {
-    label.style.color = block.codeStyle.headerColor;
-  }
 
   const button = document.createElement('button');
   button.className = 'reader-code-copy';
   button.type = 'button';
   button.setAttribute('aria-label', 'Copy to clipboard');
   button.dataset.copyCode = block.text;
-  if (!applyCodeThemeColorPair(button, '--reader-code-copy-light-color', '--reader-code-copy-dark-color', block.codeStyle?.themeColors?.copyColor) && block.codeStyle?.copyColor) {
-    button.style.color = block.codeStyle.copyColor;
-  }
   button.append(renderCopyIcon());
 
   header.append(label, button);
@@ -1962,12 +1953,7 @@ function renderCodeBlock(block: CodeBlock): HTMLElement {
   applyCodeStyle(pre, block.codeStyle);
   const code = document.createElement('code');
   code.className = `language-${label.textContent}`;
-  if (!applyCodeThemeColorPair(code, '--reader-code-light-background', '--reader-code-dark-background', block.codeStyle?.themeColors?.codeBackgroundColor) && block.codeStyle?.codeBackgroundColor) {
-    code.style.background = block.codeStyle.codeBackgroundColor;
-  }
-  if (!applyCodeThemeColorPair(code, '--reader-code-light-color', '--reader-code-dark-color', block.codeStyle?.themeColors?.codeColor) && block.codeStyle?.codeColor) {
-    code.style.color = block.codeStyle.codeColor;
-  }
+  // Surface colors (code bg/color) fall back to Reader design tokens.
   if (block.codeStyle?.fontFamily) code.style.fontFamily = block.codeStyle.fontFamily;
   if (block.codeStyle?.fontSize) code.style.fontSize = block.codeStyle.fontSize;
   if (block.codeStyle?.lineHeight) code.style.lineHeight = block.codeStyle.lineHeight;
@@ -1984,12 +1970,7 @@ function renderCodeBlock(block: CodeBlock): HTMLElement {
 
 function applyCodeStyle(pre: HTMLElement, style?: CodeBlock['codeStyle']): void {
   if (!style) return;
-  if (!applyCodeThemeColorPair(pre, '--reader-code-pre-light-background', '--reader-code-pre-dark-background', style.themeColors?.preBackgroundColor) && style.preBackgroundColor) {
-    pre.style.background = style.preBackgroundColor;
-  }
-  if (!applyCodeThemeColorPair(pre, '--reader-code-pre-light-color', '--reader-code-pre-dark-color', style.themeColors?.preColor) && style.preColor) {
-    pre.style.color = style.preColor;
-  }
+  // Surface colors (pre bg/color) fall back to Reader design tokens.
   if (style.fontFamily) pre.style.fontFamily = style.fontFamily;
   if (style.fontSize) pre.style.fontSize = style.fontSize;
   if (style.lineHeight) pre.style.lineHeight = style.lineHeight;
