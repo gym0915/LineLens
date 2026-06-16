@@ -1941,9 +1941,6 @@ function renderCodeBlock(block: CodeBlock): HTMLElement {
   const label = document.createElement('span');
   label.className = 'reader-code-language';
   label.textContent = block.language || detectCodeLanguage(block.text) || 'text';
-  if (!applyCodeThemeColorPair(label, '--reader-code-language-light-color', '--reader-code-language-dark-color', block.codeStyle?.themeColors?.headerColor) && block.codeStyle?.headerColor) {
-    label.style.color = block.codeStyle.headerColor;
-  }
 
   const button = document.createElement('button');
   button.className = 'reader-code-copy';

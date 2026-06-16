@@ -13,16 +13,15 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 32px;
-  padding: 0 12px;
+  min-height: 36px;
+  padding: 0 14px;
   border-bottom: 1px solid var(--reader-border-faint);
   background: var(--reader-active-code-header-background);
   color: var(--reader-active-code-header-color);
 }
 
 .reader-code-language {
-  --reader-active-code-language-color: var(--reader-code-language-light-color, var(--reader-active-code-header-color, var(--reader-ink)));
-  color: var(--reader-active-code-language-color);
+  color: var(--reader-active-code-header-color, var(--reader-ink));
   font-size: var(--reader-code-ui-size);
   line-height: 1;
   letter-spacing: 0;
@@ -33,8 +32,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   padding: 0;
   border: 0;
   background: transparent;
@@ -43,8 +42,8 @@
 }
 
 .reader-code-copy-icon {
-  width: 18px;
-  height: 18px;
+  width: 22px;
+  height: 22px;
   fill: currentColor;
 }
 
@@ -81,27 +80,17 @@
 
 @media (prefers-color-scheme: dark) {
   .reader-code-header {
-    --reader-code-header-background-fallback: var(--reader-code-header-light-background, var(--reader-code-header));
-    --reader-code-header-color-fallback: var(--reader-code-header-light-color, var(--reader-ink));
-    --reader-active-code-header-background: var(--reader-code-header-dark-background, var(--reader-code-header-background-fallback));
-    --reader-active-code-header-color: var(--reader-code-header-dark-color, var(--reader-code-header-color-fallback));
+    --reader-active-code-header-background: var(--reader-code-header-dark-background, var(--reader-code-header-light-background, var(--reader-code-header)));
+    --reader-active-code-header-color: var(--reader-code-header-dark-color, var(--reader-code-header-light-color, var(--reader-ink)));
   }
 
   .reader-code-copy {
-    --reader-code-copy-color-fallback: var(--reader-code-copy-light-color, var(--reader-active-code-header-color));
-    --reader-active-code-copy-color: var(--reader-code-copy-dark-color, var(--reader-code-copy-color-fallback));
-  }
-
-  .reader-code-language {
-    --reader-code-language-color-fallback: var(--reader-code-language-light-color, var(--reader-active-code-header-color));
-    --reader-active-code-language-color: var(--reader-code-language-dark-color, var(--reader-code-language-color-fallback));
+    --reader-active-code-copy-color: var(--reader-code-copy-dark-color, var(--reader-code-copy-light-color, var(--reader-active-code-header-color, var(--reader-ink))));
   }
 
   .reader-code-pre {
-    --reader-code-pre-background-fallback: var(--reader-code-pre-light-background, var(--reader-code-pre-surface));
-    --reader-code-pre-color-fallback: var(--reader-code-pre-light-color, var(--reader-code-ink));
-    --reader-active-code-pre-background: var(--reader-code-pre-dark-background, var(--reader-code-pre-background-fallback));
-    --reader-active-code-pre-color: var(--reader-code-pre-dark-color, var(--reader-code-pre-color-fallback));
+    --reader-active-code-pre-background: var(--reader-code-pre-dark-background, var(--reader-code-pre-light-background, var(--reader-code-pre-surface)));
+    --reader-active-code-pre-color: var(--reader-code-pre-dark-color, var(--reader-code-pre-light-color, var(--reader-code-ink)));
   }
 
   .reader-code-pre code {
