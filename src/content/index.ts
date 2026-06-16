@@ -1112,7 +1112,7 @@ function extractCodeBlockStyle(codeRoot: Element, pre: Element | null, code: Ele
   const header = codeRoot.querySelector(':scope > div:first-child');
   const copyIcon = codeRoot.querySelector('button svg, button [style*="color"]');
   const headerBackgroundColor = getStyleValue(header, 'backgroundColor');
-  const headerColor = getStyleValue(header, 'color');
+  const headerColor = getCodeHeaderColor(codeRoot, header);
   const copyColor = getStyleValue(copyIcon, 'color');
   const preBackgroundColor = getStyleValue(pre, 'backgroundColor');
   const preColor = getStyleValue(pre, 'color');
@@ -1140,6 +1140,11 @@ function extractCodeBlockStyle(codeRoot: Element, pre: Element | null, code: Ele
     lineHeight: getStyleValue(code, 'lineHeight') || getStyleValue(pre, 'lineHeight'),
     tabSize: getStyleValue(code, 'tabSize') || getStyleValue(pre, 'tabSize')
   });
+}
+
+function getCodeHeaderColor(codeRoot: Element | null, header: Element | null): string | undefined {
+  const languageLabel = codeRoot?.querySelector(':scope > div:first-child > div:first-child, :scope > div:first-child [dir="ltr"]') ?? null;
+  return getStyleValue(languageLabel, 'color') || getStyleValue(header, 'color');
 }
 
 function extractCodeTokens(code: Element | null): CodeToken[] | undefined {
