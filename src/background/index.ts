@@ -6,8 +6,18 @@ import { isXArticleUrl } from '../shared/url.js';
 const readyTabs = new Map<number, string>();
 const tabVideoMap = new Map<number, Map<string, CapturedXVideo>>();
 const LOG_PREFIX = '[LineLens SW]';
-const READY_ICON_COLOR = '#22c55e';
-const IDLE_ICON_COLOR = '#6b7280';
+const READY_ICON_PATH = {
+  16: 'icons/linelens-dark-16.png',
+  32: 'icons/linelens-dark-32.png',
+  48: 'icons/linelens-dark-48.png',
+  128: 'icons/linelens-dark-128.png'
+};
+const IDLE_ICON_PATH = {
+  16: 'icons/linelens-dark-disabled-16.png',
+  32: 'icons/linelens-dark-disabled-32.png',
+  48: 'icons/linelens-dark-disabled-48.png',
+  128: 'icons/linelens-dark-disabled-128.png'
+};
 const AMPLIFY_VIDEO_ID_PATTERN = /amplify_video\/(\d+)\//;
 
 chrome.webRequest.onBeforeRequest.addListener(
@@ -144,7 +154,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (typeof tabId === 'number') {
       readyTabs.set(tabId, message.extractorId);
       void chrome.action.enable(tabId);
-      void setActionIcon(tabId, READY_ICON_COLOR);
+      void setActionIcon(tabId, READY_ICON_PATH);
       void chrome.action.setTitle({ tabId, title: 'Open in LineLens' });
       console.info(LOG_PREFIX, 'article ready; icon set to green', {
         tabId,
@@ -158,7 +168,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'ARTICLE_NOT_READY') {
     if (typeof tabId === 'number') {
       readyTabs.delete(tabId);
-      void setActionIcon(tabId, IDLE_ICON_COLOR);
+      void setActionIcon(tabId, IDLE_ICON_PATH);
       void chrome.action.setTitle({ tabId, title: 'LineLens: unsupported page' });
       console.info(LOG_PREFIX, 'article not ready', {
         tabId,
@@ -227,7 +237,7 @@ function getMessageTabId(message: ExtensionMessage) {
 async function refreshActionStateForTab(tabId: number, url: string | undefined) {
   if (!url || !isXArticleUrl(url)) {
     readyTabs.delete(tabId);
-    await setActionIcon(tabId, IDLE_ICON_COLOR);
+    await setActionIcon(tabId, IDLE_ICON_PATH);
     await chrome.action.setTitle({ tabId, title: 'LineLens: unsupported page' });
     console.info(LOG_PREFIX, 'action refreshed: unsupported tab', {
       tabId,
@@ -238,7 +248,7 @@ async function refreshActionStateForTab(tabId: number, url: string | undefined) 
 
   readyTabs.set(tabId, 'x.article');
   await chrome.action.enable(tabId);
-  await setActionIcon(tabId, READY_ICON_COLOR);
+  await setActionIcon(tabId, READY_ICON_PATH);
   await chrome.action.setTitle({ tabId, title: 'Open in LineLens' });
   await notifyRouteChanged(tabId, url);
   console.info(LOG_PREFIX, 'action refreshed: X article tab', {
@@ -325,14 +335,10 @@ async function saveAndOpenReader(article: Article) {
   await openReader(article);
 }
 
-async function setActionIcon(tabId: number, color: string) {
+async function setActionIcon(tabId: number, paths: Record<string, string>) {
   await chrome.action.setIcon({
     tabId,
-    imageData: {
-      16: createIconImageData(16, color),
-      32: createIconImageData(32, color),
-      48: createIconImageData(48, color)
-    }
+    path: paths
   });
 }
 
@@ -371,28 +377,6 @@ function listCapturedVideos(tabId: number): CapturedXVideo[] {
     ...(video.videoPlaylists ? { videoPlaylists: { ...video.videoPlaylists } } : {}),
     ...(video.audioPlaylists ? { audioPlaylists: { ...video.audioPlaylists } } : {})
   }));
-}
-
-function createIconImageData(size: number, color: string): ImageData {
-  const canvas = new OffscreenCanvas(size, size);
-  const context = canvas.getContext('2d');
-  if (!context) {
-    throw new Error('icon_canvas_unavailable');
-  }
-
-  context.clearRect(0, 0, size, size);
-  context.fillStyle = color;
-  context.beginPath();
-  context.roundRect(0, 0, size, size, Math.max(3, size * 0.2));
-  context.fill();
-
-  context.fillStyle = '#ffffff';
-  context.font = `700 ${Math.floor(size * 0.58)}px sans-serif`;
-  context.textAlign = 'center';
-  context.textBaseline = 'middle';
-  context.fillText('L', size / 2, size / 2 + size * 0.03);
-
-  return context.getImageData(0, 0, size, size);
 }
 
 export {};
