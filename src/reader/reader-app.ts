@@ -35,7 +35,9 @@ export function mountReaderApp(root: HTMLElement, article: Article): void {
   preloadMediaPreviews(mediaPreviewState);
 
   const engine = new FocusEngine(units, (unit, index) => {
-    const shouldScroll = hasRenderedInitialFocus && index !== activeIndex;
+    const shouldScroll = !hasRenderedInitialFocus
+      ? initialIndex > 0
+      : index !== activeIndex;
     activeUnit = unit;
     activeIndex = index;
     highlightLayer.update(unit, elements, { scroll: shouldScroll });
