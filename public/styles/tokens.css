@@ -43,7 +43,6 @@
     --reader-theme-night-subtle: rgba(218, 226, 252, 0.62);
     --reader-theme-night-highlight-surface: rgba(255, 255, 255, 0.1);
     --reader-theme-night-highlight-shadow: 0 0 40px rgba(255, 255, 255, 0.15);
-    --reader-theme-night-highlight-backdrop-filter: blur(20px);
     --reader-theme-night-panel-shadow: 0 18px 60px rgba(0, 0, 0, 0.38), 0 0 40px rgba(255, 255, 255, 0.12);
     --reader-theme-night-code-surface: #131b2e;
     --reader-theme-night-code-header: #222a3d;
@@ -63,7 +62,6 @@
     --reader-highlight-surface: var(--reader-system-card);
     --reader-card-shadow: 0 2px 14px rgba(44, 37, 33, 0.11);
     --reader-highlight-shadow: var(--reader-card-shadow);
-    --reader-highlight-backdrop-filter: none;
     --reader-inline-highlight-padding-block: 2px;
     --reader-inline-highlight-padding-inline: 6px;
     --reader-inline-highlight-transition: all 250ms ease;
@@ -161,7 +159,6 @@
         --reader-highlight-surface: var(--reader-theme-night-highlight-surface);
         --reader-card-shadow: var(--reader-theme-night-highlight-shadow);
         --reader-highlight-shadow: var(--reader-theme-night-highlight-shadow);
-        --reader-highlight-backdrop-filter: var(--reader-theme-night-highlight-backdrop-filter);
         --reader-panel-shadow: var(--reader-theme-night-panel-shadow);
         --reader-overlay-shadow: var(--reader-theme-night-panel-shadow);
         --reader-toast-shadow: var(--reader-theme-night-panel-shadow);

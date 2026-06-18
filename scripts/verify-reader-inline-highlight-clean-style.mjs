@@ -45,6 +45,8 @@ for (const expected of [
 }
 
 assert(!activeRule.includes('padding:'), 'paragraph active highlight should not introduce a focus-only padding delta');
+assert(!activeRule.includes('backdrop-filter'), 'paragraph inline highlight should not use backdrop-filter because it changes the rendering mechanism between themes');
+assert(!activeRule.includes('-webkit-backdrop-filter'), 'paragraph inline highlight should not use webkit backdrop-filter because it can create a covering composited layer');
 for (const expected of [
   'display: flex;',
   'padding: 7px 10px;',

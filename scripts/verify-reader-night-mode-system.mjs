@@ -46,7 +46,6 @@ for (const [token, value] of [
   ['--reader-theme-night-subtle', 'rgba(218, 226, 252, 0.62)'],
   ['--reader-theme-night-highlight-surface', 'rgba(255, 255, 255, 0.1)'],
   ['--reader-theme-night-highlight-shadow', '0 0 40px rgba(255, 255, 255, 0.15)'],
-  ['--reader-theme-night-highlight-backdrop-filter', 'blur(20px)'],
   ['--reader-theme-night-panel-shadow', '0 18px 60px rgba(0, 0, 0, 0.38), 0 0 40px rgba(255, 255, 255, 0.12)'],
   ['--reader-theme-night-code-surface', '#131b2e'],
   ['--reader-theme-night-code-header', '#222a3d'],
@@ -68,7 +67,6 @@ for (const [token, value] of [
   ['--reader-text-title', 'var(--reader-theme-night-title)'],
   ['--reader-highlight-surface', 'var(--reader-theme-night-highlight-surface)'],
   ['--reader-highlight-shadow', 'var(--reader-theme-night-highlight-shadow)'],
-  ['--reader-highlight-backdrop-filter', 'var(--reader-theme-night-highlight-backdrop-filter)'],
   ['--reader-social-ink', 'var(--reader-theme-night-foreground)'],
   ['--reader-social-muted', 'var(--reader-theme-night-subtle)'],
   ['--reader-social-blue', 'var(--reader-theme-night-secondary)'],
@@ -105,7 +103,17 @@ for (const token of sharedTokens) {
   assert(!new RegExp(escapeRegExp(token) + '\\s*:').test(darkMediaBlock[1]),
     token + ' must not be overridden in dark mode — layout/font/typography is shared between themes');
 }
-assert.match(read('public/styles/focus.css'), /backdrop-filter:\s*var\(--reader-highlight-backdrop-filter\);/, 'active focus surface should consume the tokenized spotlight backdrop filter');
+assert.doesNotMatch(
+  tokensCss,
+  /--reader-(?:theme-night-)?highlight-backdrop-filter\s*:/,
+  'highlight focus should not expose a theme-dependent backdrop-filter token because day and night must share one rendering mechanism'
+);
+
+assert.doesNotMatch(
+  read('public/styles/focus.css'),
+  /backdrop-filter\s*:/,
+  'focus.css should not use backdrop-filter for inline active focus because it creates a separate night-mode rendering path'
+);
 
 console.log('verify:reader-night-mode-system passed');
 
