@@ -187,6 +187,15 @@ for (const expected of [
   assert(css.includes(expected), `missing CSS coverage for ${expected}`);
 }
 
+assert(
+  getRule(css, '.highlight-layer.is-visible').includes('opacity: 0;'),
+  'HighlightLayer should stay visually disabled; active focus units own their background/radius/shadow'
+);
+assert(
+  getRule(css, '.highlight-focus').includes('box-shadow: none;'),
+  'HighlightLayer should not render a separate focus halo'
+);
+
 console.log('Reader A5 verification passed.');
 
 function unit(unitId, type, blockType) {
@@ -220,4 +229,13 @@ function readReaderCss() {
     .map((fileName) => readFileSync(join(stylesDir, fileName), 'utf8'))
     .join('\n');
   return `${entryCss}\n${styleCss}`;
+}
+
+function getRule(css, selector) {
+  const bodies = [];
+  for (const match of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    const selectors = match[1].split(',').map((item) => item.trim());
+    if (selectors.includes(selector)) bodies.push(match[2]);
+  }
+  return bodies.join('\n');
 }

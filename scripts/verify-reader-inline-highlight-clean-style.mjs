@@ -38,7 +38,7 @@ for (const expected of [
 }
 
 for (const expected of [
-  'box-shadow: var(--reader-highlight-shadow);',
+  'box-shadow: var(--reader-card-shadow);',
   'transition: var(--reader-inline-highlight-transition);'
 ]) {
   assert(activeRule.includes(expected), 'paragraph inline highlight should include: ' + expected);
