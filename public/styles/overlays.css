@@ -107,7 +107,7 @@
   align-items: center;
   justify-content: center;
   padding: 0;
-  background: color-mix(in srgb, var(--reader-ink) 95%, transparent);
+  background: var(--reader-media-preview-overlay, color-mix(in srgb, var(--reader-ink) 95%, transparent));
   opacity: 0;
   pointer-events: none;
   transition: opacity 180ms ease;
@@ -133,10 +133,10 @@
   border-radius: 999px;
   background: color-mix(
     in srgb,
-    var(--reader-highlight-surface) 16%,
+    var(--reader-media-preview-btn-surface, var(--reader-highlight-surface)) 16%,
     transparent
   );
-  color: var(--reader-highlight-surface);
+  color: var(--reader-media-preview-btn-surface, var(--reader-highlight-surface));
   font-family: var(--reader-font-ui);
   font-size: 28px;
   font-weight: 300;
@@ -151,7 +151,7 @@
 .reader-media-preview-close:hover {
   background: color-mix(
     in srgb,
-    var(--reader-highlight-surface) 24%,
+    var(--reader-media-preview-btn-surface, var(--reader-highlight-surface)) 24%,
     transparent
   );
   transform: scale(1.04);
@@ -172,10 +172,10 @@
   border-radius: 999px;
   background: color-mix(
     in srgb,
-    var(--reader-highlight-surface) 16%,
+    var(--reader-media-preview-btn-surface, var(--reader-highlight-surface)) 16%,
     transparent
   );
-  color: var(--reader-highlight-surface);
+  color: var(--reader-media-preview-btn-surface, var(--reader-highlight-surface));
   font-family: var(--reader-font-ui);
   font-size: 28px;
   font-weight: 300;
@@ -190,7 +190,7 @@
 .reader-media-preview-nav:not(:disabled):hover {
   background: color-mix(
     in srgb,
-    var(--reader-highlight-surface) 24%,
+    var(--reader-media-preview-btn-surface, var(--reader-highlight-surface)) 24%,
     transparent
   );
   opacity: 0.72;
@@ -283,7 +283,7 @@
   padding: 0;
   border-radius: 0;
   background: transparent;
-  color: var(--reader-highlight-surface);
+  color: var(--reader-media-preview-btn-surface, var(--reader-highlight-surface));
   font-family: var(--reader-font-ui);
   font-size: 14px;
   opacity: 0;

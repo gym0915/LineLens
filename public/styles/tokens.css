@@ -165,6 +165,8 @@
         --reader-panel-shadow: var(--reader-theme-night-panel-shadow);
         --reader-overlay-shadow: var(--reader-theme-night-panel-shadow);
         --reader-toast-shadow: var(--reader-theme-night-panel-shadow);
+        --reader-media-preview-overlay: color-mix(in srgb, var(--reader-theme-night-bg) 96%, transparent);
+        --reader-media-preview-btn-surface: var(--reader-theme-night-active);
         --reader-highlight-outline: var(--reader-theme-night-border);
         --reader-quote-border-muted: var(--reader-theme-night-border);
         --reader-quote-border-active: rgba(255, 255, 255, 0.55);
