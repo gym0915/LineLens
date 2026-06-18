@@ -43,7 +43,8 @@
     --reader-theme-night-subtle: rgba(218, 226, 252, 0.62);
     --reader-theme-night-highlight-surface: rgba(255, 255, 255, 0.1);
     --reader-theme-night-highlight-shadow: 0 0 40px rgba(255, 255, 255, 0.15);
-    --reader-theme-night-panel-shadow: 0 18px 60px rgba(0, 0, 0, 0.38), 0 0 40px rgba(255, 255, 255, 0.12);
+    --reader-theme-night-panel-shadow:
+        0 18px 60px rgba(0, 0, 0, 0.38), 0 0 40px rgba(255, 255, 255, 0.12);
     --reader-theme-night-code-surface: #131b2e;
     --reader-theme-night-code-header: #222a3d;
     --reader-theme-night-code-pre-surface: rgba(255, 255, 255, 0.08);
@@ -65,7 +66,8 @@
     --reader-inline-highlight-padding-block: 2px;
     --reader-inline-highlight-padding-inline: 6px;
     --reader-inline-highlight-transition: all 250ms ease;
-    --reader-panel-shadow: 0 8px 40px rgba(44, 37, 33, 0.14), 0 2px 8px rgba(44, 37, 33, 0.06);
+    --reader-panel-shadow:
+        0 8px 40px rgba(44, 37, 33, 0.14), 0 2px 8px rgba(44, 37, 33, 0.06);
     --reader-overlay-shadow: 0 18px 60px rgba(44, 37, 33, 0.18);
     --reader-toast-shadow: 0 8px 24px rgba(44, 37, 33, 0.18);
     --reader-highlight-outline: rgba(44, 37, 33, 0.16);
@@ -82,7 +84,7 @@
     --reader-media-active-border: rgba(44, 37, 33, 0.14);
     --reader-media-active-padding: 6px;
     --reader-media-active-width: 100%;
-    --reader-column-width: 580px;
+    --reader-column-width: 620px;
     --reader-page-padding-x: 32px;
     --reader-page-padding-top: 80px;
     --reader-page-padding-bottom: 50vh;
@@ -118,9 +120,12 @@
     --reader-code-muted: rgba(44, 37, 33, 0.45);
     --reader-toast-surface: rgba(44, 37, 33, 0.9);
     --reader-toast-ink: #f7f2ea;
-    --reader-font-body: "Atkinson Hyperlegible", "LXGW WenKai TC", system-ui, sans-serif;
-    --reader-font-display: "Atkinson Hyperlegible", "LXGW WenKai TC", system-ui, sans-serif;
-    --reader-font-ui: "Atkinson Hyperlegible", "LXGW WenKai TC", system-ui, sans-serif;
+    --reader-font-body:
+        "Atkinson Hyperlegible", "LXGW WenKai TC", system-ui, sans-serif;
+    --reader-font-display:
+        "Atkinson Hyperlegible", "LXGW WenKai TC", system-ui, sans-serif;
+    --reader-font-ui:
+        "Atkinson Hyperlegible", "LXGW WenKai TC", system-ui, sans-serif;
     --reader-font-mono: "DM Mono", "Fira Mono", Menlo, Consolas, monospace;
     --reader-social-ink: rgb(15, 20, 25);
     --reader-social-muted: rgb(83, 100, 113);
@@ -162,7 +167,11 @@
         --reader-panel-shadow: var(--reader-theme-night-panel-shadow);
         --reader-overlay-shadow: var(--reader-theme-night-panel-shadow);
         --reader-toast-shadow: var(--reader-theme-night-panel-shadow);
-        --reader-media-preview-overlay: color-mix(in srgb, var(--reader-theme-night-bg) 96%, transparent);
+        --reader-media-preview-overlay: color-mix(
+            in srgb,
+            var(--reader-theme-night-bg) 96%,
+            transparent
+        );
         --reader-media-preview-btn-surface: var(--reader-theme-night-active);
         --reader-highlight-outline: var(--reader-theme-night-border);
         --reader-quote-border-muted: var(--reader-theme-night-border);
@@ -171,7 +180,9 @@
         --reader-border-faint: var(--reader-theme-night-border-faint);
         --reader-progress-track: var(--reader-theme-night-border-faint);
         --reader-progress-fill: var(--reader-theme-night-active);
-        --reader-surface-translucent: var(--reader-theme-night-highlight-surface);
+        --reader-surface-translucent: var(
+            --reader-theme-night-highlight-surface
+        );
         --reader-code-pre-surface: var(--reader-theme-night-code-pre-surface);
         --reader-media-placeholder: var(--reader-theme-night-media-placeholder);
         --reader-media-active-border: var(--reader-theme-night-border);
