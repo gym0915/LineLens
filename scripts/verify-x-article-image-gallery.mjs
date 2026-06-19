@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
+import { mergeCleanTreePrimaryBlocks } from '../dist/content/preprocess/clean-tree-main-path.js';
+
 const repoRoot = resolve(import.meta.dirname, '..');
 
 function read(path) {
@@ -58,5 +60,56 @@ assert.match(mediaCss, /aspect-ratio:\s*var\(--reader-media-aspect-ratio, 16 \/ 
 assert.match(mediaCss, /\.reader-image-gallery-node\[data-layout-type="column"\]/, 'gallery CSS should support nested column nodes');
 assert.match(mediaCss, /\.reader-media-background/, 'gallery CSS should use the shared background layer');
 assert.match(mediaCss, /\.reader-media-frame > img\s*\{[\s\S]*opacity:\s*0/, 'gallery img should be load/accessibility layer behind the visible background');
+
+const legacyGalleryLayout = {
+  type: 'row',
+  children: [
+    { type: 'item', itemIndex: 0, grow: 1, shrink: 1, basis: '0%' },
+    {
+      type: 'column',
+      grow: 1,
+      shrink: 1,
+      children: [
+        { type: 'item', itemIndex: 1, grow: 1, shrink: 1, basis: '0%' },
+        { type: 'item', itemIndex: 2, grow: 1, shrink: 1, basis: '0%' }
+      ]
+    }
+  ]
+};
+const galleryMergeProbe = mergeCleanTreePrimaryBlocks(
+  [
+    {
+      id: 'legacy-gallery',
+      type: 'image-gallery',
+      items: [
+        { src: 'https://example.com/1.jpg' },
+        { src: 'https://example.com/2.jpg' },
+        { src: 'https://example.com/3.jpg' }
+      ],
+      layout: legacyGalleryLayout
+    }
+  ],
+  [
+    {
+      id: 'clean-gallery',
+      type: 'image-gallery',
+      items: [
+        { src: 'https://example.com/1.jpg', displaySrc: 'https://example.com/1-display.jpg' },
+        { src: 'https://example.com/2.jpg', displaySrc: 'https://example.com/2-display.jpg' },
+        { src: 'https://example.com/3.jpg', displaySrc: 'https://example.com/3-display.jpg' }
+      ]
+    }
+  ]
+);
+assert.deepEqual(
+  galleryMergeProbe.blocks[0]?.layout,
+  legacyGalleryLayout,
+  'clean-tree replacement should preserve legacy image-gallery layout so Reader does not flatten X galleries'
+);
+assert.equal(
+  galleryMergeProbe.blocks[0]?.items?.[0]?.displaySrc,
+  'https://example.com/1-display.jpg',
+  'clean-tree replacement should still keep clean-tree media item fields'
+);
 
 console.log('verify:x-article-image-gallery passed');

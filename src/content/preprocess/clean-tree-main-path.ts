@@ -77,8 +77,9 @@ export function mergeCleanTreePrimaryBlocks(
 
     cleanTreeCursor = match.index + 1;
     replacedBlockCount += 1;
+    const mergedBlock = mergeCleanTreeBlockWithLegacyRuntimeFields(legacyBlock, match.block);
     return {
-      ...match.block,
+      ...mergedBlock,
       id: legacyBlock.id
     };
   });
@@ -90,6 +91,17 @@ export function mergeCleanTreePrimaryBlocks(
     highRiskBlockCount,
     replacedBlockCount
   };
+}
+
+function mergeCleanTreeBlockWithLegacyRuntimeFields(legacyBlock: ArticleBlock, cleanTreeBlock: ArticleBlock): ArticleBlock {
+  if (legacyBlock.type === 'image-gallery' && cleanTreeBlock.type === 'image-gallery') {
+    return {
+      ...cleanTreeBlock,
+      ...(legacyBlock.layout ? { layout: legacyBlock.layout } : {})
+    };
+  }
+
+  return cleanTreeBlock;
 }
 
 function findEquivalentCleanTreeBlock(
