@@ -280,10 +280,10 @@ assert.equal(calls.enabledTabs.at(-1), 42);
 assert.equal(calls.icons.at(-1).tabId, 42);
 assert.deepEqual(Object.keys(calls.icons.at(-1).path).sort(), ['128', '16', '32', '48']);
 assert.deepEqual(Object.values(calls.icons.at(-1).path).sort(), [
-  'icons/linelens-dark-128.png',
-  'icons/linelens-dark-16.png',
-  'icons/linelens-dark-32.png',
-  'icons/linelens-dark-48.png'
+  'icons/linelens-active-128.png',
+  'icons/linelens-active-16.png',
+  'icons/linelens-active-32.png',
+  'icons/linelens-active-48.png'
 ]);
 
 webRequestListener({

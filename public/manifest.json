@@ -6,17 +6,17 @@
   "action": {
     "default_title": "LineLens",
     "default_icon": {
-      "16": "icons/linelens-dark-16.png",
-      "32": "icons/linelens-dark-32.png",
-      "48": "icons/linelens-dark-48.png",
-      "128": "icons/linelens-dark-128.png"
+      "16": "icons/linelens-active-16.png",
+      "32": "icons/linelens-active-32.png",
+      "48": "icons/linelens-active-48.png",
+      "128": "icons/linelens-active-128.png"
     }
   },
   "icons": {
-    "16": "icons/linelens-dark-16.png",
-    "32": "icons/linelens-dark-32.png",
-    "48": "icons/linelens-dark-48.png",
-    "128": "icons/linelens-dark-128.png"
+    "16": "icons/linelens-active-16.png",
+    "32": "icons/linelens-active-32.png",
+    "48": "icons/linelens-active-48.png",
+    "128": "icons/linelens-active-128.png"
   },
   "background": {
     "service_worker": "background.js",

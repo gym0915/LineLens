@@ -7,16 +7,16 @@ const readyTabs = new Map<number, string>();
 const tabVideoMap = new Map<number, Map<string, CapturedXVideo>>();
 const LOG_PREFIX = '[LineLens SW]';
 const READY_ICON_PATH = {
-  16: 'icons/linelens-dark-16.png',
-  32: 'icons/linelens-dark-32.png',
-  48: 'icons/linelens-dark-48.png',
-  128: 'icons/linelens-dark-128.png'
+  16: 'icons/linelens-active-16.png',
+  32: 'icons/linelens-active-32.png',
+  48: 'icons/linelens-active-48.png',
+  128: 'icons/linelens-active-128.png'
 };
 const IDLE_ICON_PATH = {
-  16: 'icons/linelens-dark-disabled-16.png',
-  32: 'icons/linelens-dark-disabled-32.png',
-  48: 'icons/linelens-dark-disabled-48.png',
-  128: 'icons/linelens-dark-disabled-128.png'
+  16: 'icons/linelens-disabled-16.png',
+  32: 'icons/linelens-disabled-32.png',
+  48: 'icons/linelens-disabled-48.png',
+  128: 'icons/linelens-disabled-128.png'
 };
 const AMPLIFY_VIDEO_ID_PATTERN = /amplify_video\/(\d+)\//;
 
