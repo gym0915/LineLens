@@ -4,8 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc -p tsconfig.json && node scripts/copy-static.mjs",
+    "build": "tsc -p tsconfig.json && node scripts/copy-static.mjs && node scripts/build-content.mjs",
     "verify:stage0": "node scripts/verify-stage0.mjs",
+    "verify:content-single-source": "node scripts/verify-content-single-source.mjs",
     "verify:reader-a3-a4": "npm run build && node scripts/verify-reader-a3-a4.mjs",
     "verify:reader-a5": "npm run build && node scripts/verify-reader-a5.mjs",
     "verify:reader-a6-a7": "npm run build && node scripts/verify-reader-a6-a7.mjs",
@@ -39,6 +40,7 @@
     "verify:reader-restore-scroll": "npm run build && node scripts/verify-reader-restore-scroll.mjs"
   },
   "devDependencies": {
+    "esbuild": "^0.28.1",
     "typescript": "^5.5.4"
   },
   "dependencies": {

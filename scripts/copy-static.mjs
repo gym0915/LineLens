@@ -22,8 +22,6 @@ if (existsSync(fixturesDir)) {
 const entrypoints = [
   ['background/index.js', 'background.js'],
   ['background/index.js.map', 'background.js.map'],
-  ['content/index.js', 'content.js'],
-  ['content/index.js.map', 'content.js.map'],
   ['reader/index.js', 'reader.js'],
   ['reader/index.js.map', 'reader.js.map']
 ];
