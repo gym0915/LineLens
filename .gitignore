@@ -1,5 +1,7 @@
 node_modules/
 dist/
 fixtures/
+assets2/
+docs/
 .worktrees/
 .DS_Store
