@@ -924,8 +924,7 @@ function convertTableElement(
         text: normalizePreWrapText(getElementDisplayText(cell, true)),
         ...(isTableHeaderCell(cell) ? { header: true } : {}),
         ...getTableSpanAttributes(cell),
-        textStyle: extractElementTextStyle(cell),
-        ...extractTableCellSurface(cell)
+        textStyle: extractTableTextStyle(cell)
       }))
     }))
     .filter((row) => row.cells.some((cell) => cell.text));
@@ -944,8 +943,7 @@ function convertTableElement(
     id: cleanTreeBlockId(context, index),
     type: 'table',
     rows,
-    columnCount: Math.max(...rows.map((row) => row.cells.reduce((total, cell) => total + (cell.colSpan ?? 1), 0))),
-    tableStyle: extractTableSurface(tableRoot)
+    columnCount: Math.max(...rows.map((row) => row.cells.reduce((total, cell) => total + (cell.colSpan ?? 1), 0)))
   };
 }
 
@@ -1235,18 +1233,22 @@ function getTableSpanAttributes(cell: Element): Pick<TableBlock['rows'][number][
   };
 }
 
-function extractTableSurface(element: Element): TableBlock['tableStyle'] {
+function extractTableTextStyle(element: Element | null): TextStyle {
+  const textElement = findTableCellTextStyleElement(element);
   return compactStyle({
-    backgroundColor: getStyleValue(element, 'backgroundColor'),
-    borderColor: getStyleValue(element, 'borderColor')
+    fontSize: getStyleValue(textElement, 'fontSize') || getStyleValue(element, 'fontSize'),
+    textAlign: getStyleValue(element, 'textAlign') || getStyleValue(textElement, 'textAlign')
   });
 }
 
-function extractTableCellSurface(element: Element): Pick<TableBlock['rows'][number]['cells'][number], 'backgroundColor' | 'borderColor'> {
-  return compactStyle({
-    backgroundColor: getStyleValue(element, 'backgroundColor'),
-    borderColor: getStyleValue(element, 'borderColor')
-  });
+function findTableCellTextStyleElement(element: Element | null): Element | null {
+  if (!element) {
+    return null;
+  }
+  return (
+    Array.from(element.querySelectorAll('[data-text="true"], [dir="ltr"], [dir="auto"], span, div')).find((candidate) => normalizeText(candidate.textContent ?? '') !== '') ??
+    element
+  );
 }
 
 function extractElementTextStyle(element: Element | null): TextStyle {

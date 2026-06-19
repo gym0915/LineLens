@@ -94,9 +94,9 @@
 .reader-table {
   margin: 28px 0;
   overflow-x: auto;
-  border: 1px solid var(--reader-border-subtle);
+  border: 1px solid var(--reader-table-border);
   border-radius: var(--reader-radius-content);
-  background: var(--reader-surface-translucent);
+  background: var(--reader-table-surface);
 }
 
 .reader-table-grid {
@@ -107,13 +107,21 @@
 
 .reader-table-cell {
   padding: 10px 12px;
-  border: 1px solid var(--reader-border-subtle);
-  color: inherit;
+  border: 1px solid var(--reader-table-border);
+  color: var(--reader-table-ink);
   font: inherit;
   line-height: var(--reader-table-line-height);
   text-align: left;
   vertical-align: top;
   white-space: pre-wrap;
+}
+
+.reader-table-cell[scope],
+.reader-table-cell:is(th) {
+  background: var(--reader-table-header-surface);
+  color: var(--reader-table-header-ink);
+  font-weight: 600;
+  text-align: center;
 }
 
 .reader-table-cell:first-child {

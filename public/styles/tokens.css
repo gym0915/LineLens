@@ -107,6 +107,15 @@
     --reader-code-body-size: 13.5px;
     --reader-code-line-height: 1.55;
     --reader-table-line-height: 1.5;
+    --reader-table-surface: color-mix(
+        in srgb,
+        var(--reader-system-card) 58%,
+        transparent
+    );
+    --reader-table-header-surface: rgba(44, 37, 33, 0.06);
+    --reader-table-border: var(--reader-border-subtle);
+    --reader-table-ink: var(--reader-text-active);
+    --reader-table-header-ink: var(--reader-text-title);
     --reader-paragraph-gap: 28px;
     --reader-media-gap: 32px;
     --reader-radius-content: 8px;
@@ -190,6 +199,15 @@
         --reader-code-surface: var(--reader-theme-night-code-surface);
         --reader-code-ink: var(--reader-theme-night-foreground);
         --reader-code-muted: var(--reader-theme-night-subtle);
+        --reader-table-surface: color-mix(
+            in srgb,
+            var(--reader-theme-night-card) 78%,
+            transparent
+        );
+        --reader-table-header-surface: rgba(255, 255, 255, 0.08);
+        --reader-table-border: rgba(218, 226, 252, 0.52);
+        --reader-table-ink: var(--reader-theme-night-active);
+        --reader-table-header-ink: var(--reader-theme-night-active);
         --reader-toast-surface: rgba(218, 226, 252, 0.92);
         --reader-toast-ink: var(--reader-theme-night-bg);
         --reader-social-ink: var(--reader-theme-night-foreground);

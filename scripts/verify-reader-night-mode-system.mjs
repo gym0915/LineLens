@@ -109,6 +109,12 @@ assert.doesNotMatch(
   'highlight focus should not expose a theme-dependent backdrop-filter token because day and night must share one rendering mechanism'
 );
 
+assert.match(tokensCss, /--reader-table-surface\s*:/, 'table surface should be owned by Reader theme tokens');
+assert.match(tokensCss, /--reader-table-header-surface\s*:/, 'table header surface should be owned by Reader theme tokens');
+assert.match(tokensCss, /--reader-table-border\s*:/, 'table border should be owned by Reader theme tokens');
+assert.match(tokensCss, /--reader-table-ink\s*:/, 'table text color should be owned by Reader theme tokens');
+assert.match(tokensCss, /--reader-table-header-ink\s*:/, 'table header text color should be owned by Reader theme tokens');
+
 assert.doesNotMatch(
   read('public/styles/focus.css'),
   /backdrop-filter\s*:/,

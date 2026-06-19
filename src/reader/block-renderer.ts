@@ -1892,8 +1892,6 @@ function renderTableBlock(block: TableBlock): HTMLElement {
   wrapper.className = 'reader-block reader-table';
   wrapper.dataset.blockId = block.id;
   wrapper.dataset.blockType = 'table';
-  if (block.tableStyle?.backgroundColor) wrapper.style.background = block.tableStyle.backgroundColor;
-  if (block.tableStyle?.borderColor) wrapper.style.borderColor = block.tableStyle.borderColor;
 
   const table = document.createElement('table');
   table.className = 'reader-table-grid';
@@ -1909,9 +1907,8 @@ function renderTableBlock(block: TableBlock): HTMLElement {
       cellElement.className = 'reader-table-cell';
       if (cell.colSpan) cellElement.colSpan = cell.colSpan;
       if (cell.rowSpan) cellElement.rowSpan = cell.rowSpan;
-      if (cell.backgroundColor) cellElement.style.background = cell.backgroundColor;
-      if (cell.borderColor) cellElement.style.borderColor = cell.borderColor;
-      applyTextStyle(cellElement, cell.textStyle);
+      applyTableCellTextStyle(cellElement, cell.textStyle);
+      if (cell.header) cellElement.style.textAlign = 'center';
       cellElement.textContent = cell.text;
       tr.append(cellElement);
     }
@@ -1921,6 +1918,12 @@ function renderTableBlock(block: TableBlock): HTMLElement {
   table.append(tbody);
   wrapper.append(table);
   return wrapper;
+}
+
+function applyTableCellTextStyle(element: HTMLElement, style?: TextStyle): void {
+  if (!style) return;
+  if (style.fontSize) element.style.fontSize = style.fontSize;
+  if (style.textAlign) element.style.textAlign = style.textAlign;
 }
 
 function renderCodeBlock(block: CodeBlock): HTMLElement {

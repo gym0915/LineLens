@@ -372,9 +372,19 @@ assert.equal(table.querySelectorAll('.reader-table-cell').length, 6, 'Table shou
 assert.equal(table.querySelector('.reader-table-grid').style['--reader-table-columns'], '3', 'Table should expose dynamic column count');
 const tableCells = table.querySelectorAll('.reader-table-cell');
 assert.equal(tableCells[0].tagName, 'TH', 'Header cells should render as th');
+assert.equal(table.style.background, undefined, 'Table wrapper should use Reader theme background instead of extracted source background');
+assert.equal(table.style.borderColor, undefined, 'Table wrapper should use Reader theme border instead of extracted source border');
+assert.equal(tableCells[0].style.color, undefined, 'Table header should use Reader theme text color instead of extracted source color');
+assert.equal(tableCells[0].style.background, undefined, 'Table header should use Reader theme surface instead of extracted source background');
+assert.equal(tableCells[0].style.fontSize, '15px', 'Table header should preserve its own source font size');
+assert.equal(tableCells[0].style.textAlign, 'center', 'Table headers should be centered by the Reader table rule');
 assert.equal(tableCells[1].style.textAlign, 'center', 'Table cell should preserve source text alignment');
-assert.equal(tableCells[2].style.textAlign, 'right', 'Table cell should preserve source right alignment');
-assert.equal(tableCells[4].style.color, 'rgb(83, 100, 113)', 'Table body cell should preserve source text color');
+assert.equal(tableCells[2].style.textAlign, 'center', 'Table headers should ignore source right alignment and stay centered');
+assert.equal(tableCells[5].style.textAlign, 'right', 'Table body cell should preserve source right alignment');
+assert.equal(tableCells[4].style.color, undefined, 'Table body cell should use Reader theme text color instead of extracted source color');
+assert.equal(tableCells[4].style.background, undefined, 'Table body cell should use Reader theme surface instead of extracted source background');
+assert.equal(tableCells[4].style.borderColor, undefined, 'Table body cell should use Reader theme border instead of extracted source border');
+assert.equal(tableCells[4].style.fontSize, '14px', 'Table body cell should preserve its own source font size independently from headers');
 
 console.log('X Article dynamic style and table verification passed.');
 
