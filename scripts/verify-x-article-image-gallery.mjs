@@ -11,7 +11,6 @@ function read(path) {
 const extractor = read('src/content/extractors/x/article-extractor.ts');
 const articleTypes = read('src/shared/article.ts');
 const simpleTweetExtractor = read('src/content/extractors/x/simple-tweet.ts');
-const bundledContent = read('src/content/index.ts');
 const cleanTreeConverter = read('src/content/preprocess/clean-tree-block-converter.ts');
 const renderer = read('src/reader/block-renderer.ts');
 const mediaCss = read('public/styles/media.css');
@@ -34,7 +33,7 @@ assert.equal(userGalleryFixture.includes('r-18u37iz'), true, 'fixture should con
 assert.equal(userGalleryFixture.includes('r-eqz5dr'), true, 'fixture should contain the X column flex marker');
 assert.equal((userGalleryFixture.match(/background-image: url/g) ?? []).length, 3, 'fixture should model tweetPhoto background layers');
 
-for (const source of [extractor, bundledContent, cleanTreeConverter]) {
+for (const source of [extractor, cleanTreeConverter]) {
   assert.match(source, /function getDescendantPaddingBottomAspectRatio/, 'gallery aspect ratio should inspect descendant padding-bottom nodes');
   assert.match(source, /querySelectorAll<HTMLElement>\('\[style\*="padding-bottom"\]'\)/, 'gallery aspect ratio should search nested ratio placeholders');
   assert.match(source, /return roundAspectRatio\(100 \/ paddingBottom\)/, 'gallery aspect ratio should convert padding-bottom percent to width divided by height');

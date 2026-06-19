@@ -370,7 +370,9 @@ assert.equal(
 const contentSource = await import('node:fs').then((fs) =>
   fs.readFileSync(new URL('../src/content/index.ts', import.meta.url), 'utf8')
 );
-assert.match(contentSource, /extractXArticle/);
+assert.match(contentSource, /createExtractorRegistry/);
+assert.match(contentSource, /xArticleExtractor/);
+assert.doesNotMatch(contentSource, /async function extractXArticle/);
 assert.match(contentSource, /ARTICLE_READY/);
 assert.match(contentSource, /ARTICLE_NOT_READY/);
 assert.match(contentSource, /EXTRACT_CURRENT_ARTICLE/);
@@ -378,7 +380,6 @@ assert.match(contentSource, /LINELENS_ROUTE_CHANGED/);
 assert.match(contentSource, /monitorArticleState/);
 assert.match(contentSource, /MutationObserver/);
 assert.match(contentSource, /UPSERT_X_VIDEO_POSTERS/);
-assert.match(contentSource, /GET_CAPTURED_X_VIDEOS/);
 assert.match(contentSource, /startPosterMonitor/);
 assert.match(contentSource, /MAX_READY_CHECKS/);
 assert.match(contentSource, /LineLens Content/);
@@ -389,6 +390,7 @@ const contentBundle = await import('node:fs').then((fs) =>
 );
 assert.doesNotMatch(contentBundle, /^import\s/m);
 assert.doesNotMatch(contentBundle, /^export\s/m);
+assert.match(contentBundle, /GET_CAPTURED_X_VIDEOS/);
 
 const backgroundSource = await import('node:fs').then((fs) =>
   fs.readFileSync(new URL('../src/background/index.ts', import.meta.url), 'utf8')

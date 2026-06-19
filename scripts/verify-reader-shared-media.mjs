@@ -13,14 +13,13 @@ const mediaCss = read('public/styles/media.css');
 const socialCss = read('public/styles/social-card.css');
 const articleTypes = read('src/shared/article.ts');
 const extractor = read('src/content/extractors/x/article-extractor.ts');
-const bundledContent = read('src/content/index.ts');
 const cleanTreeConverter = read('src/content/preprocess/clean-tree-block-converter.ts');
 
 assert.match(articleTypes, /type ImageBlock = \{[\s\S]*displaySrc\?: string/, 'single image blocks should preserve the visible X background-image URL');
 assert.match(articleTypes, /type ImageBlock = \{[\s\S]*backgroundSize\?:/, 'single image blocks should carry media frame background sizing');
 assert.match(articleTypes, /type ImageBlock = \{[\s\S]*objectFit\?:/, 'single image blocks should carry media frame object-fit');
 
-for (const source of [extractor, bundledContent]) {
+for (const source of [extractor]) {
   assert.match(source, /function tweetPhotoElementToImageBlock/, 'X article single-image extraction should use the tweetPhoto container, not only the hidden img');
   assert.match(source, /getTweetPhotoBackgroundLayer/, 'single-image extraction should inspect the visible tweetPhoto background layer');
   assert.match(source, /displaySrc = getTweetPhotoBackgroundUrl\(element\)/, 'single-image extraction should preserve the X visible background image');

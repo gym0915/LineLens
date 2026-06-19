@@ -1,27 +1,28 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-const workspaceRoot = resolve(new URL('..', import.meta.url).pathname);
+const projectRoot = resolve(new URL('..', import.meta.url).pathname);
+const assetRoot = findAssetRoot(projectRoot);
 
 const sourceFiles = {
-  article: readFileSync(resolve(workspaceRoot, 'src/content/extractors/x/article-extractor.ts'), 'utf8'),
-  simpleTweet: readFileSync(resolve(workspaceRoot, 'src/content/extractors/x/simple-tweet.ts'), 'utf8'),
-  cleanTree: readFileSync(resolve(workspaceRoot, 'src/content/preprocess/clean-tree-block-converter.ts'), 'utf8'),
-  platformFixes: readFileSync(resolve(workspaceRoot, 'src/content/preprocess/apply-platform-fixes.ts'), 'utf8'),
-  cloneTree: readFileSync(resolve(workspaceRoot, 'src/content/preprocess/clone-content-tree.ts'), 'utf8'),
-  adapterTypes: readFileSync(resolve(workspaceRoot, 'src/content/adapters/adapter-types.ts'), 'utf8'),
-  xAdapter: readFileSync(resolve(workspaceRoot, 'src/content/adapters/x-article-adapter.ts'), 'utf8'),
-  renderer: readFileSync(resolve(workspaceRoot, 'src/reader/block-renderer.ts'), 'utf8'),
-  comparator: readFileSync(resolve(workspaceRoot, 'src/content/preprocess/clean-tree-main-path.ts'), 'utf8'),
-  types: readFileSync(resolve(workspaceRoot, 'src/shared/article.ts'), 'utf8'),
-  layoutCss: readFileSync(resolve(workspaceRoot, 'public/styles/layout.css'), 'utf8'),
-  css: readFileSync(resolve(workspaceRoot, 'public/styles/social-card.css'), 'utf8'),
-  responsiveCss: readFileSync(resolve(workspaceRoot, 'public/styles/responsive.css'), 'utf8')
+  article: readFileSync(resolve(projectRoot, 'src/content/extractors/x/article-extractor.ts'), 'utf8'),
+  simpleTweet: readFileSync(resolve(projectRoot, 'src/content/extractors/x/simple-tweet.ts'), 'utf8'),
+  cleanTree: readFileSync(resolve(projectRoot, 'src/content/preprocess/clean-tree-block-converter.ts'), 'utf8'),
+  platformFixes: readFileSync(resolve(projectRoot, 'src/content/preprocess/apply-platform-fixes.ts'), 'utf8'),
+  cloneTree: readFileSync(resolve(projectRoot, 'src/content/preprocess/clone-content-tree.ts'), 'utf8'),
+  adapterTypes: readFileSync(resolve(projectRoot, 'src/content/adapters/adapter-types.ts'), 'utf8'),
+  xAdapter: readFileSync(resolve(projectRoot, 'src/content/adapters/x-article-adapter.ts'), 'utf8'),
+  renderer: readFileSync(resolve(projectRoot, 'src/reader/block-renderer.ts'), 'utf8'),
+  comparator: readFileSync(resolve(projectRoot, 'src/content/preprocess/clean-tree-main-path.ts'), 'utf8'),
+  types: readFileSync(resolve(projectRoot, 'src/shared/article.ts'), 'utf8'),
+  layoutCss: readFileSync(resolve(projectRoot, 'public/styles/layout.css'), 'utf8'),
+  css: readFileSync(resolve(projectRoot, 'public/styles/social-card.css'), 'utf8'),
+  responsiveCss: readFileSync(resolve(projectRoot, 'public/styles/responsive.css'), 'utf8')
 };
 
-const articleFixture = readFileSync(resolve(workspaceRoot, 'assets2/我们还要被“AI智障客服”折磨多久？.html'), 'utf8');
-const quotedTweetFixture = readFileSync(resolve(workspaceRoot, '../assets/x-article-simpletweet-tweet.html'), 'utf8');
+const articleFixture = readFileSync(resolve(assetRoot, 'assets2/我们还要被“AI智障客服”折磨多久？.html'), 'utf8');
+const quotedTweetFixture = readFileSync(resolve(assetRoot, 'assets/x-article-simpletweet-tweet.html'), 'utf8');
 
 assert.match(sourceFiles.types, /type:\s*'quoted-tweet'/, 'simpleTweet types should define quoted-tweet items');
 assert.match(sourceFiles.types, /type:\s*'video-preview'/, 'simpleTweet types should define video-preview items');
@@ -131,3 +132,23 @@ assert.match(quotedTweetFixture, /role="link"[\s\S]*data-testid="User-Name"/, 'q
 assert.match(quotedTweetFixture, /data-testid="testCondensedMedia"[\s\S]*data-testid="previewInterstitial"[\s\S]*data-testid="tweetText"/, 'quoted tweet fixture should include condensed preview plus text');
 assert.match(quotedTweetFixture, /data-testid="testCondensedMedia"[\s\S]*padding-bottom:\s*100%/, 'quoted tweet fixture should encode a square condensed thumbnail');
 console.log('SimpleTweet content-flow verification passed.');
+
+function findAssetRoot(startDir) {
+  let current = startDir;
+  while (true) {
+    if (
+      existsSync(resolve(current, 'assets/x-article-simpletweet-tweet.html')) &&
+      existsSync(resolve(current, 'assets2/我们还要被“AI智障客服”折磨多久？.html'))
+    ) {
+      return current;
+    }
+
+    const parent = resolve(current, '..');
+    if (parent === current) {
+      break;
+    }
+    current = parent;
+  }
+
+  throw new Error(`Unable to locate workspace assets directory from ${startDir}`);
+}

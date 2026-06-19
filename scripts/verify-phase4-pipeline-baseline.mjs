@@ -151,7 +151,7 @@ const mainPathSource = readFileSync(
 );
 assert.match(mainPathSource, /buildCleanTreePrimaryBlocks/, 'P4.5 should define clean tree primary block builder');
 assert.match(mainPathSource, /mergeCleanTreePrimaryBlocks/, 'P4.5 should keep legacy merge statistics available');
-assert.match(mainPathSource, /blocks:\s*cleanTreeBlocks/, 'P4.5 should expose cleanTreeBlocks directly as the browser output');
+assert.match(mainPathSource, /blocks:\s*params\.legacyBlocks \? mergeStats\.blocks : cleanTreeBlocks/, 'P4.5 should merge clean-tree primary blocks with legacy high-risk blocks when legacy input is provided');
 assert.match(mainPathSource, /id: legacyBlock\.id/, 'P4.5 should preserve legacy block ids for Reader progress and FocusUnit stability');
 assert.match(mainPathSource, /fallbackBlockCount/, 'P4.5 should report legacy fallback count');
 assert.match(mainPathSource, /highRiskBlockCount/, 'P4.5 should report high-risk dual-track count');
@@ -162,10 +162,11 @@ const modularExtractorSource = readFileSync(
 );
 for (const source of [modularExtractorSource]) {
   assert.match(source, /buildCleanTreePrimaryBlocks/, 'P4.5 should wire clean tree primary blocks into the modular X extractor path');
-  assert.doesNotMatch(source, /legacyBlocks = await extractBlocks/, 'P4.5 browser path should not execute legacy extraction as fallback input');
+  assert.match(source, /legacyBlocks = await extractBlocks/, 'browser X extractor should keep legacy high-risk blocks until clean-tree video migration is complete');
 }
 const liveExtractorSource = readFileSync(resolve(projectRoot, 'src/content/index.ts'), 'utf8');
-assert.doesNotMatch(liveExtractorSource, /^import /m, 'live content script source should remain import-free because manifest content_scripts are not modules');
+assert.match(liveExtractorSource, /createExtractorRegistry/, 'content entry source should route through the extractor registry');
+assert.match(liveExtractorSource, /xArticleExtractor/, 'content entry source should register the modular X Article extractor');
 const builtContentSource = readFileSync(resolve(projectRoot, 'dist/content.js'), 'utf8');
 assert.doesNotMatch(builtContentSource, /^import /m, 'built content.js should remain import-free so Chrome can execute it as a content script');
 

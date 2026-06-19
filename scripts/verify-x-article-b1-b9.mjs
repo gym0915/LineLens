@@ -182,12 +182,11 @@ const modularExtractorSource = readFileSync(
   resolve(projectRoot, 'src/content/extractors/x/article-extractor.ts'),
   'utf8'
 );
-const liveExtractorSource = readFileSync(resolve(projectRoot, 'src/content/index.ts'), 'utf8');
 const articleModelSource = readFileSync(resolve(projectRoot, 'src/shared/article.ts'), 'utf8');
 const readerRendererSource = readFileSync(resolve(projectRoot, 'src/reader/block-renderer.ts'), 'utf8');
 const cleanTreeBlockConverterSource = readFileSync(resolve(projectRoot, 'src/content/preprocess/clean-tree-block-converter.ts'), 'utf8');
 const platformFixesSource = readFileSync(resolve(projectRoot, 'src/content/preprocess/apply-platform-fixes.ts'), 'utf8');
-for (const source of [modularExtractorSource, liveExtractorSource]) {
+for (const source of [modularExtractorSource]) {
   assert.match(source, /X_CANONICAL_ORIGIN/, 'extractor should use a dedicated X canonical origin constant');
   assert.match(source, /function getListKind/, 'extractor should detect Draft.js list items and preserve list kind');
   assert.match(source, /function extractHandwrittenOrderedListItem/, 'extractor should normalize handwritten ordered list markers');
@@ -288,7 +287,7 @@ assert.match(cleanTreeBlockConverterSource, /function getOrderedListMarker/, 'cl
 assert.match(cleanTreeBlockConverterSource, /kind === 'ordered' && markerLength > 0 \? rawText/, 'clean-tree conversion should keep handwritten ordered-list markers in item text');
 assert.doesNotMatch(platformFixesSource, /isHandwrittenOrderedListItem/, 'platform fixes should not convert handwritten ordered marker text into list blocks');
 assert.doesNotMatch(platformFixesSource, /querySelectorAll\('\[data-block="true"\]'\)[\s\S]*data-linelens-list-kind', 'ordered'/, 'platform fixes should only mark real Draft.js ordered list items');
-assert.doesNotMatch(modularExtractorSource, /legacyBlocks = await extractBlocks/, 'X article browser path should not execute legacy extraction as fallback input');
+assert.match(modularExtractorSource, /legacyBlocks = await extractBlocks/, 'X article browser path should preserve legacy high-risk blocks until clean-tree video migration is complete');
 assert.match(articleModelSource, /photos\?: TweetPhoto\[\]/, 'simple tweet model should include optional photo cards');
 assert.match(articleModelSource, /authorName\?: string/, 'simple tweet model should include dynamic author name');
 assert.match(articleModelSource, /metrics\?: TweetMetrics/, 'simple tweet model should include dynamic action metrics');

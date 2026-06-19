@@ -143,7 +143,11 @@ assert.match(blockConverterSource, /annotation\.bold = true/, 'block conversion 
 assert.match(blockConverterSource, /annotation\.href = href/, 'block conversion gate should preserve link annotations');
 assert.match(blockConverterSource, /annotation\.emojiImageUrl = emojiImageUrl/, 'block conversion gate should preserve emoji annotations');
 assert.match(mainPathSource, /mergeCleanTreePrimaryBlocks/, 'main path gate should keep legacy merge statistics available');
-assert.match(mainPathSource, /blocks:\s*cleanTreeBlocks/, 'main path gate should expose cleanTreeBlocks directly to the browser');
+assert.match(
+  mainPathSource,
+  /blocks:\s*params\.legacyBlocks \? mergeStats\.blocks : cleanTreeBlocks/,
+  'main path gate should merge clean-tree primary blocks with legacy high-risk blocks when legacy input is provided'
+);
 assert.match(mainPathSource, /id: legacyBlock\.id/, 'legacy merge helper should preserve legacy ids when its statistics path is exercised');
 assert.match(mainPathSource, /fallbackBlockCount/, 'main path gate should report fallback count');
 assert.match(mainPathSource, /highRiskBlockCount/, 'main path gate should report high-risk dual-track count');

@@ -48,7 +48,7 @@ export function buildCleanTreePrimaryBlocks(params: {
 
   return {
     ...mergeStats,
-    blocks: cleanTreeBlocks
+    blocks: params.legacyBlocks ? mergeStats.blocks : cleanTreeBlocks
   };
 }
 

@@ -107,7 +107,6 @@ const projectRoot = resolve(import.meta.dirname, '..');
 const sourceFiles = {
   types: readFileSync(resolve(projectRoot, 'src/shared/article.ts'), 'utf8'),
   modularExtractor: readFileSync(resolve(projectRoot, 'src/content/extractors/x/article-extractor.ts'), 'utf8'),
-  liveExtractor: readFileSync(resolve(projectRoot, 'src/content/index.ts'), 'utf8'),
   cleanTree: readFileSync(resolve(projectRoot, 'src/content/preprocess/clean-tree-block-converter.ts'), 'utf8'),
   renderer: readFileSync(resolve(projectRoot, 'src/reader/block-renderer.ts'), 'utf8'),
   textRenderer: readFileSync(resolve(projectRoot, 'src/reader/reader-text-renderer.ts'), 'utf8'),
@@ -127,7 +126,6 @@ assert.match(sourceFiles.types, /export type TextStyle = \{[\s\S]*?textAlign\?: 
 
 for (const [name, source] of [
   ['modular extractor', sourceFiles.modularExtractor],
-  ['live extractor', sourceFiles.liveExtractor],
   ['clean-tree converter', sourceFiles.cleanTree]
 ]) {
   assert.match(source, /extractCodeBlockStyle/, `${name} should extract code block surface styles`);

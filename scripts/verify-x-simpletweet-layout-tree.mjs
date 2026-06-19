@@ -1,10 +1,10 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
 
 const repoRoot = resolve(import.meta.dirname, '..');
-const workspaceRoot = resolve(repoRoot, '..');
+const workspaceRoot = findWorkspaceRoot(repoRoot);
 
 function read(path) {
   return readFileSync(resolve(repoRoot, path), 'utf8');
@@ -18,7 +18,6 @@ const files = {
   types: read('src/shared/article.ts'),
   parser: read('src/content/extractors/x/block-layout-tree.ts'),
   extractor: read('src/content/extractors/x/simple-tweet.ts'),
-  contentIndex: read('src/content/index.ts'),
   renderer: read('src/reader/block-renderer.ts')
 };
 
@@ -43,10 +42,6 @@ assert.match(files.parser, /role:\s*'quotedTweet'/, 'layout parser should preser
 
 assert.match(files.extractor, /extractSimpleTweetLayoutTree\(tweetRoot, tweet, card\.items\)/, 'module extractor should attach layoutTree from DOM before returning simpleTweet block');
 assert.match(files.extractor, /\.\.\.\(layoutTree \? \{ layoutTree \} : \{\}\)/, 'module extractor should serialize layoutTree only when available');
-
-assert.match(files.contentIndex, /function extractSimpleTweetLayoutTree/, 'bundled content script should include the layout parser');
-assert.match(files.contentIndex, /extractSimpleTweetLayoutTree\(tweetRoot, tweet, items\)/, 'bundled content extractor should attach layoutTree');
-assert.match(files.contentIndex, /layoutTree\?:\s*SimpleTweetLayoutNode/, 'bundled content ArticleBlock type should carry layoutTree');
 
 assert.match(files.renderer, /function renderSimpleTweetLayoutTree/, 'Reader should include a layoutTree renderer');
 assert.match(files.renderer, /block\.layoutTree\s*&&\s*!options\.compact\s*\?\s*renderSimpleTweetLayoutTree/, 'Reader should prefer layoutTree for non-compact simpleTweet content');
@@ -108,4 +103,21 @@ function installDomGlobals(window) {
   globalThis.HTMLElement = window.HTMLElement;
   globalThis.HTMLMediaElement = window.HTMLMediaElement;
   globalThis.Node = window.Node;
+}
+
+function findWorkspaceRoot(startDir) {
+  let current = startDir;
+  while (true) {
+    if (existsSync(resolve(current, 'assets/x-article-simpletweet-text.html'))) {
+      return current;
+    }
+
+    const parent = resolve(current, '..');
+    if (parent === current) {
+      break;
+    }
+    current = parent;
+  }
+
+  throw new Error(`Unable to locate workspace assets directory from ${startDir}`);
 }

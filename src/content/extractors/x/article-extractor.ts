@@ -84,11 +84,14 @@ export const xArticleExtractor: ArticleExtractor = {
     }
 
     const adapter = loadSettingsFromLocalStorage().platformAdapters[xArticleAdapter.id] ?? xArticleAdapter;
+    const capturedVideos = await getCapturedVideos();
+    const legacyBlocks = await extractBlocks(longform, articleId, capturedVideos);
     const blocks = buildCleanTreePrimaryBlocks({
       sourceRoot: longform,
       adapter,
       sourceUrl: context.url.toString(),
-      debugId: `x.article:${articleId}`
+      debugId: `x.article:${articleId}`,
+      legacyBlocks
     }).blocks;
     const coverImage = extractCoverImage(readView, articleId);
     const articleMeta = extractArticleHeaderMetadata(readView, longform);

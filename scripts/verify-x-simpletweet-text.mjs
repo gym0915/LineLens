@@ -8,7 +8,6 @@ const workspaceRoot = findWorkspaceRoot(rootDir);
 const articleModelSource = readFileSync(resolve(rootDir, 'src/shared/article.ts'), 'utf8');
 const extractorSource = readFileSync(resolve(rootDir, 'src/content/extractors/x/article-extractor.ts'), 'utf8');
 const simpleTweetSource = readFileSync(resolve(rootDir, 'src/content/extractors/x/simple-tweet.ts'), 'utf8');
-const mirroredExtractorSource = readFileSync(resolve(rootDir, 'src/content/index.ts'), 'utf8');
 const readerRendererSource = readFileSync(resolve(rootDir, 'src/reader/block-renderer.ts'), 'utf8');
 const readerCss = readReaderCss();
 const packageJson = JSON.parse(readFileSync(resolve(rootDir, 'package.json'), 'utf8'));
@@ -63,7 +62,6 @@ assert.match(
   'article extractor should delegate simpleTweet parsing to the dedicated model extractor'
 );
 assertTextExtractorContract(simpleTweetSource, 'dedicated simpleTweet model extractor');
-assertTextExtractorContract(mirroredExtractorSource, 'mirrored content extractor');
 
 assert.match(
   readerRendererSource,
