@@ -65,7 +65,65 @@ for (const [token, value] of [
   ['--reader-social-muted', 'rgb(83, 100, 113)'],
   ['--reader-social-blue', 'rgb(29, 155, 240)'],
   ['--reader-social-border', 'rgb(207, 217, 222)'],
-  ['--reader-social-surface', 'var(--reader-canvas)']
+  ['--reader-social-surface', 'var(--reader-canvas)'],
+  ['--reader-meta-avatar-size', '40px'],
+  ['--reader-meta-author-primary-size', '17px'],
+  ['--reader-meta-author-secondary-size', '16px'],
+  ['--reader-meta-metrics-size', '14px'],
+  ['--reader-meta-metric-icon-size', '20px'],
+  ['--reader-social-card-avatar-size', '48px'],
+  ['--reader-social-card-padding', '14px 16px 12px'],
+  ['--reader-social-card-author-primary-size', '17px'],
+  ['--reader-social-card-author-secondary-size', '16px'],
+  ['--reader-social-card-text-size', '16.5px'],
+  ['--reader-social-card-show-more-size', '16px'],
+  ['--reader-social-card-actions-size', '14px'],
+  ['--reader-social-card-action-icon-size', '20px'],
+  ['--reader-social-card-avatar-size-mobile', '40px'],
+  ['--reader-social-card-padding-mobile', '12px'],
+  ['--reader-social-card-author-primary-size-mobile', '16px'],
+  ['--reader-social-card-author-secondary-size-mobile', '15px'],
+  ['--reader-social-card-text-size-mobile', '15.5px'],
+  ['--reader-social-card-condensed-media-size-mobile', '76px'],
+  ['--reader-social-card-actions-size-mobile', '14px'],
+  ['--reader-social-card-action-icon-size-mobile', '20px'],
+  ['--reader-media-preview-control-size', '42px'],
+  ['--reader-media-preview-control-icon-size', '28px'],
+  ['--reader-media-preview-image-enter-duration', '400ms'],
+  ['--reader-media-preview-status-size', '14px'],
+  ['--reader-media-control-height', '24px'],
+  ['--reader-media-gif-pause-width', '28px'],
+  ['--reader-media-gif-badge-size', '13px'],
+  ['--reader-media-gif-icon-size', '15px'],
+  ['--reader-media-error-min-height', '140px'],
+  ['--reader-social-article-title-size', '19px'],
+  ['--reader-social-article-excerpt-size', '16.5px'],
+  ['--reader-social-article-avatar-size', '40px'],
+  ['--reader-social-article-author-primary-size', '17px'],
+  ['--reader-social-article-author-secondary-size', '16px'],
+  ['--reader-social-article-metrics-size', '14px'],
+  ['--reader-social-article-metric-icon-size', '20px'],
+  ['--reader-social-condensed-media-size', '84px'],
+  ['--reader-social-condensed-video-badge-size', '12px'],
+  ['--reader-social-condensed-text-size', '15px'],
+  ['--reader-toast-size', '13px'],
+  ['--reader-hint-size', '10px'],
+  ['--reader-kicker-size', '10px'],
+  ['--reader-social-card-compact-avatar-size', '24px'],
+  ['--reader-social-card-compact-author-size', '15px'],
+  ['--reader-social-card-shell-photo-gap', '26px'],
+  ['--reader-social-card-shell-video-gap', '20px'],
+  ['--reader-social-card-video-portrait-max-width', '360px'],
+  ['--reader-social-card-reply-size', '16px'],
+  ['--reader-social-card-translation-icon-size', '20px'],
+  ['--reader-social-card-ai-generated-size', '14px'],
+  ['--reader-social-card-ai-generated-icon-size', '18px'],
+  ['--reader-social-media-grid-gap', '1px'],
+  ['--reader-social-video-duration-size', '15px'],
+  ['--reader-social-source-size', '12px'],
+  ['--reader-social-source-icon-size', '13px'],
+  ['--reader-media-gallery-gap', '2px'],
+  ['--reader-media-load-error-size', '14px']
 ]) {
   assert(
     hasTokenDeclaration(tokensCss, token, value),
@@ -160,13 +218,35 @@ for (const hardCodedValue of [
   assert(!cssOutsideTokens.includes(hardCodedValue), `${hardCodedValue} should only live in tokens.css`);
 }
 
+for (const [name, css] of [
+  ['layout', layoutCss],
+  ['media', mediaCss],
+  ['overlays', overlaysCss],
+  ['responsive', responsiveCss],
+  ['social-card', socialCss]
+]) {
+  for (const declaration of collectRawDimensionalDeclarations(css)) {
+    assert(
+      declaration.value.includes('var(') || isAllowedStructuralDimensionalDeclaration(declaration),
+      `${name} should not keep tokenizable raw dimensional value: ${declaration.property}: ${declaration.value}`
+    );
+  }
+}
+
 assert.match(layoutCss, /font-family:\s*var\(--reader-font-body\);/, 'reader shell should use body font token');
+assert.match(layoutCss, /\.reader-kicker\s*\{[\s\S]*?top:\s*var\(--reader-kicker-top\);[\s\S]*?left:\s*var\(--reader-kicker-left\);[\s\S]*?font-size:\s*var\(--reader-kicker-size\);/, 'reader kicker should use kicker position and size tokens');
 assert.match(layoutCss, /font-size:\s*var\(--reader-title-size\);/, 'article title should use the title size token');
+assert.match(layoutCss, /\.article-title\s*\{[\s\S]*?margin:\s*0 0 var\(--reader-title-margin-bottom\);/, 'article title margin should use the title margin token');
 assert.match(layoutCss, /font-weight:\s*var\(--reader-title-weight\);/, 'article title should use the title weight token');
 assert.match(layoutCss, /line-height:\s*var\(--reader-title-line-height\);/, 'article title should use the title line-height token');
 assert.match(layoutCss, /font-size:\s*var\(--reader-body-size\);/, 'article body should use the body size token');
 assert.match(layoutCss, /font-weight:\s*var\(--reader-body-weight\);/, 'article body should use the body weight token');
 assert.match(layoutCss, /line-height:\s*var\(--reader-body-line-height\);/, 'article body should use the body line-height token');
+assert.match(layoutCss, /\.article-meta-avatar\s*\{[\s\S]*?width:\s*var\(--reader-meta-avatar-size\);[\s\S]*?height:\s*var\(--reader-meta-avatar-size\);/, 'article meta avatar should use the meta avatar size token');
+assert.match(layoutCss, /\.article-meta-author-primary\s*\{[\s\S]*?font-size:\s*var\(--reader-meta-author-primary-size\);/, 'article meta primary author text should use the meta primary size token');
+assert.match(layoutCss, /\.article-meta-author-secondary\s*\{[\s\S]*?font-size:\s*var\(--reader-meta-author-secondary-size\);/, 'article meta secondary text should use the meta secondary size token');
+assert.match(layoutCss, /\.article-meta-metrics\s*\{[\s\S]*?font-size:\s*var\(--reader-meta-metrics-size\);/, 'article meta metrics should use the meta metrics size token');
+assert.match(layoutCss, /\.article-meta-metric-icon\s*\{[\s\S]*?width:\s*var\(--reader-meta-metric-icon-size\);[\s\S]*?height:\s*var\(--reader-meta-metric-icon-size\);/, 'article meta metric icons should use the meta icon size token');
 assert.match(blocksCss, /\.reader-block\[data-block-type="heading"\]\s*\{[\s\S]*?font-size:\s*var\(--reader-heading-size\);/, 'heading blocks should use the heading size token');
 assert.match(blocksCss, /\.reader-block\[data-block-type="heading"\]\s*\{[\s\S]*?font-weight:\s*var\(--reader-heading-weight\);/, 'heading blocks should use the heading weight token');
 assert.match(blocksCss, /\.reader-block\[data-block-type="heading"\]\s*\{[\s\S]*?line-height:\s*var\(--reader-heading-line-height\);/, 'heading blocks should use the heading line-height token');
@@ -197,9 +277,70 @@ for (const [selector, color] of [
   assert(hasRuleDeclaration(codeCss, selector, 'color', color), `${selector} should keep the phase4 worktree color ${color}`);
 }
 assert.match(socialCss, /color:\s*var\(--reader-social-muted\);/, 'social cards should use social color tokens');
+assert.match(socialCss, /\.reader-simple-tweet\s*\{[\s\S]*?margin:\s*var\(--reader-social-card-margin-block\) 0;/, 'simpleTweet card margin should use the social card margin token');
+assert.match(socialCss, /\.reader-simple-tweet-frame\s*\{[\s\S]*?grid-template-columns:\s*var\(--reader-social-card-avatar-size\) minmax\(0, 1fr\);/, 'simpleTweet frame should use the social card avatar size token for its grid column');
+assert.match(socialCss, /\.reader-simple-tweet-frame\s*\{[\s\S]*?padding:\s*var\(--reader-social-card-padding\);/, 'simpleTweet frame padding should use the social card padding token');
+assert.match(socialCss, /\.reader-simple-tweet-avatar\s*\{[\s\S]*?width:\s*var\(--reader-social-card-avatar-size\);[\s\S]*?height:\s*var\(--reader-social-card-avatar-size\);/, 'simpleTweet avatar should use the social card avatar size token');
+assert.match(socialCss, /\.reader-simple-tweet-author-primary\s*\{[\s\S]*?font-size:\s*var\(--reader-social-card-author-primary-size\);/, 'simpleTweet primary author text should use the social card primary size token');
+assert.match(socialCss, /\.reader-simple-tweet-author-secondary\s*\{[\s\S]*?font-size:\s*var\(--reader-social-card-author-secondary-size\);/, 'simpleTweet secondary author text should use the social card secondary size token');
+assert.match(socialCss, /\.reader-simple-tweet-verified-icon\s*\{[\s\S]*?width:\s*var\(--reader-social-card-verified-icon-size\);[\s\S]*?height:\s*var\(--reader-social-card-verified-icon-size\);/, 'simpleTweet verified icon should use the social card verified icon token');
+assert.match(socialCss, /\.reader-simple-tweet-text-container\s*\{[\s\S]*?font-size:\s*var\(--reader-social-card-text-size\);/, 'simpleTweet text body should use the social card text size token');
+assert.match(socialCss, /\.reader-simple-tweet-show-more\s*\{[\s\S]*?font-size:\s*var\(--reader-social-card-show-more-size\);/, 'simpleTweet show-more control should use the social card show-more size token');
+assert.match(socialCss, /\.reader-simple-tweet-actions\s*\{[\s\S]*?font-size:\s*var\(--reader-social-card-actions-size\);/, 'simpleTweet actions should use the social card actions size token');
+assert.match(socialCss, /\.reader-simple-tweet-action-icon\s*\{[\s\S]*?width:\s*var\(--reader-social-card-action-icon-size\);[\s\S]*?height:\s*var\(--reader-social-card-action-icon-size\);/, 'simpleTweet action icons should use the social card action icon size token');
 assert.match(socialCss, /\.reader-simple-tweet-frame\s*\{[\s\S]*?background:\s*var\(--reader-social-surface\);/, 'simpleTweet frame should read background from the social surface token');
 assert.match(socialCss, /\.reader-simple-tweet-quoted\s*\{[\s\S]*?background:\s*var\(--reader-social-surface\);/, 'quoted simpleTweet should read background from the social surface token');
+assert.match(socialCss, /\.reader-simple-tweet-frame-compact\s*\{[\s\S]*?grid-template-columns:\s*var\(--reader-social-card-compact-avatar-size\) minmax\(0, 1fr\);[\s\S]*?padding:\s*var\(--reader-social-card-compact-padding\);/, 'compact simpleTweet frame should use compact card tokens');
+assert.match(socialCss, /\.reader-simple-tweet-frame-compact \.reader-simple-tweet-avatar\s*\{[\s\S]*?width:\s*var\(--reader-social-card-compact-avatar-size\);[\s\S]*?height:\s*var\(--reader-social-card-compact-avatar-size\);/, 'compact simpleTweet avatar should use compact avatar token');
+assert.match(socialCss, /\.reader-simple-tweet-shell-photo\s*\{[\s\S]*?gap:\s*var\(--reader-social-card-shell-photo-gap\);/, 'simpleTweet photo shell should use the photo shell gap token');
+assert.match(socialCss, /\.reader-simple-tweet-shell-video\s*\{[\s\S]*?gap:\s*var\(--reader-social-card-shell-video-gap\);/, 'simpleTweet video shell should use the video shell gap token');
+assert.match(socialCss, /\.reader-simple-tweet-video-portrait\s*\{[\s\S]*?width:\s*min\(100%, var\(--reader-social-card-video-portrait-max-width\)\);/, 'portrait tweet video should use the portrait max-width token');
+assert.match(socialCss, /\.reader-simple-tweet-reply-context,[\s\S]*?\.reader-simple-tweet-translation\s*\{[\s\S]*?font-size:\s*var\(--reader-social-card-reply-size\);/, 'reply and translation context should use the reply size token');
+assert.match(socialCss, /\.reader-simple-tweet-translation-icon\s*\{[\s\S]*?width:\s*var\(--reader-social-card-translation-icon-size\);[\s\S]*?height:\s*var\(--reader-social-card-translation-icon-size\);/, 'translation icon should use the translation icon token');
+assert.match(socialCss, /\.reader-simple-tweet-ai-generated\s*\{[\s\S]*?font-size:\s*var\(--reader-social-card-ai-generated-size\);/, 'AI generated badge should use the AI generated size token');
+assert.match(socialCss, /\.reader-simple-tweet-ai-generated-icon\s*\{[\s\S]*?width:\s*var\(--reader-social-card-ai-generated-icon-size\);[\s\S]*?height:\s*var\(--reader-social-card-ai-generated-icon-size\);/, 'AI generated icon should use the AI generated icon token');
+assert.match(socialCss, /\.reader-simple-tweet-photo-grid\s*\{[\s\S]*?gap:\s*var\(--reader-social-media-grid-gap\);/, 'simpleTweet photo grid should use the social media grid gap token');
+assert.match(socialCss, /\.reader-simple-tweet-photo-layout\s*\{[\s\S]*?gap:\s*var\(--reader-social-media-grid-gap\);/, 'simpleTweet photo layout should use the social media grid gap token');
+assert.match(socialCss, /\.reader-simple-tweet-video-duration\s*\{[\s\S]*?left:\s*var\(--reader-social-video-duration-left\);[\s\S]*?bottom:\s*var\(--reader-social-video-duration-bottom\);[\s\S]*?font-size:\s*var\(--reader-social-video-duration-size\);/, 'simpleTweet video duration should use video duration tokens');
+assert.match(socialCss, /\.reader-simple-tweet-source\s*\{[\s\S]*?bottom:\s*var\(--reader-social-source-bottom\);[\s\S]*?left:\s*var\(--reader-social-source-left\);[\s\S]*?font-size:\s*var\(--reader-social-source-size\);/, 'simpleTweet source badge should use source badge tokens');
+assert.match(socialCss, /\.reader-simple-tweet-source-icon\s*\{[\s\S]*?width:\s*var\(--reader-social-source-icon-size\);[\s\S]*?height:\s*var\(--reader-social-source-icon-size\);/, 'simpleTweet source icon should use source icon token');
+assert.match(responsiveCss, /@media\s*\(max-width:\s*720px\)\s*\{[\s\S]*?grid-template-columns:\s*var\(--reader-social-card-avatar-size-mobile\) minmax\(0, 1fr\);/, 'mobile simpleTweet frame should use the mobile avatar size token for its grid column');
+assert.match(responsiveCss, /\.reader-simple-tweet-avatar\s*\{[\s\S]*?width:\s*var\(--reader-social-card-avatar-size-mobile\);[\s\S]*?height:\s*var\(--reader-social-card-avatar-size-mobile\);/, 'mobile simpleTweet avatar should use the mobile avatar size token');
+assert.match(responsiveCss, /\.reader-simple-tweet-author-primary\s*\{[\s\S]*?font-size:\s*var\(--reader-social-card-author-primary-size-mobile\);/, 'mobile simpleTweet primary author should use the mobile primary size token');
+assert.match(responsiveCss, /\.reader-simple-tweet-author-secondary\s*\{[\s\S]*?font-size:\s*var\(--reader-social-card-author-secondary-size-mobile\);/, 'mobile simpleTweet secondary author should use the mobile secondary size token');
+assert.match(responsiveCss, /\.reader-simple-tweet-text-container\s*\{[\s\S]*?font-size:\s*var\(--reader-social-card-text-size-mobile\);/, 'mobile simpleTweet text should use the mobile text size token');
+assert.match(responsiveCss, /\.reader-simple-tweet-condensed\s*\{[\s\S]*?grid-template-columns:\s*var\(--reader-social-card-condensed-media-size-mobile\) minmax\(0, 1fr\);/, 'mobile condensed tweet should use the mobile condensed media token for its grid column');
+assert.match(responsiveCss, /\.reader-simple-tweet-actions\s*\{[\s\S]*?font-size:\s*var\(--reader-social-card-actions-size-mobile\);/, 'mobile simpleTweet actions should use the mobile actions size token');
+assert.match(responsiveCss, /\.reader-simple-tweet-action-icon\s*\{[\s\S]*?width:\s*var\(--reader-social-card-action-icon-size-mobile\);[\s\S]*?height:\s*var\(--reader-social-card-action-icon-size-mobile\);/, 'mobile simpleTweet action icons should use the mobile action icon token');
 assert.match(overlaysCss, /box-shadow:\s*var\(--reader-overlay-shadow\);/, 'overlay shadow should use the design shadow token');
+assert.match(overlaysCss, /\.reader-media-preview\s*\{[\s\S]*?transition:\s*opacity var\(--reader-media-preview-fade-duration\) ease;/, 'media preview fade should use the preview fade token');
+assert.match(overlaysCss, /\.reader-media-preview-close\s*\{[\s\S]*?width:\s*var\(--reader-media-preview-control-size\);[\s\S]*?height:\s*var\(--reader-media-preview-control-size\);/, 'media preview close button should use the preview control size token');
+assert.match(overlaysCss, /\.reader-media-preview-close\s*\{[\s\S]*?font-size:\s*var\(--reader-media-preview-control-icon-size\);/, 'media preview close button should use the preview icon size token');
+assert.match(overlaysCss, /\.reader-media-preview-nav\s*\{[\s\S]*?width:\s*var\(--reader-media-preview-control-size\);[\s\S]*?height:\s*var\(--reader-media-preview-control-size\);/, 'media preview nav buttons should use the preview control size token');
+assert.match(overlaysCss, /\.reader-media-preview.is-entering-from-left \.reader-media-preview-image\s*\{[\s\S]*?var\(--reader-media-preview-image-enter-duration\)/, 'media preview image enter animation should use the duration token');
+assert.match(overlaysCss, /\.reader-media-preview-status\s*\{[\s\S]*?font-size:\s*var\(--reader-media-preview-status-size\);/, 'media preview status should use the preview status size token');
+assert.match(mediaCss, /\.reader-gif-overlay\s*\{[\s\S]*?left:\s*var\(--reader-media-control-offset\);[\s\S]*?bottom:\s*var\(--reader-media-control-offset\);/, 'GIF overlay should use the media control offset token');
+assert.match(mediaCss, /\.reader-gif-pause,[\s\S]*?\.reader-gif-badge\s*\{[\s\S]*?height:\s*var\(--reader-media-control-height\);/, 'GIF controls should use the media control height token');
+assert.match(mediaCss, /\.reader-gif-pause\s*\{[\s\S]*?width:\s*var\(--reader-media-gif-pause-width\);/, 'GIF pause button should use the GIF pause width token');
+assert.match(mediaCss, /\.reader-gif-badge\s*\{[\s\S]*?font-size:\s*var\(--reader-media-gif-badge-size\);/, 'GIF badge should use the GIF badge size token');
+assert.match(mediaCss, /\.reader-gif-pause-icon\s*\{[\s\S]*?width:\s*var\(--reader-media-gif-icon-size\);[\s\S]*?height:\s*var\(--reader-media-gif-icon-size\);/, 'GIF pause icon should use the GIF icon size token');
+assert.match(mediaCss, /\.reader-media\.is-load-error\s*\{[\s\S]*?min-height:\s*var\(--reader-media-error-min-height\);/, 'media load-error surface should use the media error min-height token');
+assert.match(mediaCss, /\.reader-image-gallery-grid\s*\{[\s\S]*?gap:\s*var\(--reader-media-gallery-gap\);/, 'image gallery grid should use the media gallery gap token');
+assert.match(mediaCss, /\.reader-image-gallery-node\s*\{[\s\S]*?gap:\s*var\(--reader-media-gallery-gap\);/, 'image gallery nested nodes should use the media gallery gap token');
+assert.match(mediaCss, /\.reader-media\.is-load-error\s*\{[\s\S]*?font-size:\s*var\(--reader-media-load-error-size\);/, 'media load-error text should use the media load-error size token');
+assert.match(socialCss, /\.reader-simple-tweet-title\s*\{[\s\S]*?font-size:\s*var\(--reader-social-article-title-size\);/, 'simpleTweet article title should use the article title size token');
+assert.match(socialCss, /\.reader-simple-tweet-excerpt\s*\{[\s\S]*?font-size:\s*var\(--reader-social-article-excerpt-size\);/, 'simpleTweet article excerpt should use the article excerpt size token');
+assert.match(socialCss, /\.reader-simple-tweet-article-avatar\s*\{[\s\S]*?width:\s*var\(--reader-social-article-avatar-size\);[\s\S]*?height:\s*var\(--reader-social-article-avatar-size\);/, 'simpleTweet article avatar should use the article avatar size token');
+assert.match(socialCss, /\.reader-simple-tweet-article-author-primary\s*\{[\s\S]*?font-size:\s*var\(--reader-social-article-author-primary-size\);/, 'simpleTweet article primary author should use the article primary author size token');
+assert.match(socialCss, /\.reader-simple-tweet-article-author-secondary\s*\{[\s\S]*?font-size:\s*var\(--reader-social-article-author-secondary-size\);/, 'simpleTweet article secondary author should use the article secondary author size token');
+assert.match(socialCss, /\.reader-simple-tweet-article-meta-metrics\s*\{[\s\S]*?font-size:\s*var\(--reader-social-article-metrics-size\);/, 'simpleTweet article metrics should use the article metrics size token');
+assert.match(socialCss, /\.reader-simple-tweet-article-metric-icon\s*\{[\s\S]*?width:\s*var\(--reader-social-article-metric-icon-size\);[\s\S]*?height:\s*var\(--reader-social-article-metric-icon-size\);/, 'simpleTweet article metric icons should use the article metric icon token');
+assert.match(socialCss, /\.reader-simple-tweet-condensed\s*\{[\s\S]*?grid-template-columns:\s*var\(--reader-social-condensed-media-size\) minmax\(0, 1fr\);/, 'condensed tweet should use the condensed media size token for its grid column');
+assert.match(socialCss, /\.reader-simple-tweet-condensed-media \.reader-simple-tweet-media\s*\{[\s\S]*?width:\s*var\(--reader-social-condensed-media-size\);[\s\S]*?min-height:\s*var\(--reader-social-condensed-media-size\);/, 'condensed tweet media should use the condensed media size token');
+assert.match(socialCss, /\.reader-simple-tweet-condensed-media \.reader-simple-tweet-video-duration\s*\{[\s\S]*?font-size:\s*var\(--reader-social-condensed-video-badge-size\);/, 'condensed tweet video badge should use the condensed badge size token');
+assert.match(socialCss, /\.reader-simple-tweet-condensed-text \.reader-simple-tweet-text-container\s*\{[\s\S]*?font-size:\s*var\(--reader-social-condensed-text-size\);/, 'condensed tweet text should use the condensed text size token');
+assert.match(overlaysCss, /\.reader-toast\s*\{[\s\S]*?bottom:\s*var\(--reader-toast-bottom\);[\s\S]*?font-size:\s*var\(--reader-toast-size\);/, 'toast should use toast layout and size tokens');
+assert.match(overlaysCss, /\.reader-hint\s*\{[\s\S]*?bottom:\s*var\(--reader-hint-bottom\);[\s\S]*?font-size:\s*var\(--reader-hint-size\);/, 'reader hint should use hint layout and size tokens');
 
 console.log('verify:reader-radius-system passed');
 
@@ -215,6 +356,23 @@ function hasRuleDeclaration(css, selector, property, value) {
       return true;
     }
   }
+  return false;
+}
+
+function collectRawDimensionalDeclarations(css) {
+  const declarations = [];
+  for (const match of css.matchAll(/(^|\n)\s*([a-z-]+)\s*:\s*([^;]*(?:\d+(?:\.\d+)?px|100vw|100vh|100%|999px)[^;]*);/g)) {
+    declarations.push({ property: match[2], value: match[3].trim() });
+  }
+  return declarations;
+}
+
+function isAllowedStructuralDimensionalDeclaration({ property, value }) {
+  const normalized = value.replace(/\s+/g, ' ').trim();
+  if ((property === 'width' || property === 'height' || property === 'max-width') && normalized === '100%') return true;
+  if ((property === 'max-width' && normalized === '100vw') || (property === 'max-height' && normalized === '100vh')) return true;
+  if (property === 'border-radius' && normalized === '999px') return true;
+  if ((property === 'border' || property === 'border-top' || property === 'border-bottom') && normalized.startsWith('1px solid ')) return true;
   return false;
 }
 

@@ -24,26 +24,26 @@
 .reader-toast {
   position: fixed;
   right: 50%;
-  bottom: 36px;
+  bottom: var(--reader-toast-bottom);
   z-index: 40;
-  min-width: 144px;
-  max-width: calc(100vw - 40px);
-  padding: 10px 18px;
-  transform: translateX(50%) translateY(10px);
-  border-radius: 3px;
+  min-width: var(--reader-toast-min-width);
+  max-width: calc(100vw - var(--reader-toast-max-width-gutter));
+  padding: var(--reader-toast-padding);
+  transform: translateX(50%) translateY(var(--reader-toast-enter-offset-y));
+  border-radius: var(--reader-toast-radius);
   background: var(--reader-toast-surface);
   color: var(--reader-toast-ink);
   box-shadow: var(--reader-toast-shadow);
   font-family: var(--reader-font-ui);
-  font-size: 13px;
+  font-size: var(--reader-toast-size);
   font-weight: 500;
-  line-height: 1.35;
+  line-height: var(--reader-toast-line-height);
   text-align: center;
   opacity: 0;
   pointer-events: none;
   transition:
-    opacity 180ms ease,
-    transform 180ms ease;
+    opacity var(--reader-toast-transition-duration) ease,
+    transform var(--reader-toast-transition-duration) ease;
 }
 
 .reader-toast.is-visible {
@@ -54,17 +54,17 @@
 .reader-hint {
   position: fixed;
   right: 0;
-  bottom: 64px;
+  bottom: var(--reader-hint-bottom);
   left: 0;
   margin: 0;
   color: var(--reader-dim-medium);
   font-family: var(--reader-font-ui);
-  font-size: 10px;
+  font-size: var(--reader-hint-size);
   letter-spacing: 0.16em;
   text-align: center;
   text-transform: uppercase;
   pointer-events: none;
-  transition: opacity 600ms ease;
+  transition: opacity var(--reader-hint-transition-duration) ease;
 }
 
 .reader-hint.is-hidden {
@@ -110,7 +110,7 @@
   background: var(--reader-media-preview-overlay, color-mix(in srgb, var(--reader-ink) 95%, transparent));
   opacity: 0;
   pointer-events: none;
-  transition: opacity 180ms ease;
+  transition: opacity var(--reader-media-preview-fade-duration) ease;
 }
 
 .reader-media-preview.is-visible {
@@ -120,14 +120,14 @@
 
 .reader-media-preview-close {
   position: fixed;
-  top: 18px;
-  left: 18px;
+  top: var(--reader-media-preview-control-offset);
+  left: var(--reader-media-preview-control-offset);
   z-index: 84;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 42px;
-  height: 42px;
+  width: var(--reader-media-preview-control-size);
+  height: var(--reader-media-preview-control-size);
   padding: 0;
   border: 0;
   border-radius: 999px;
@@ -138,14 +138,14 @@
   );
   color: var(--reader-media-preview-btn-surface, var(--reader-highlight-surface));
   font-family: var(--reader-font-ui);
-  font-size: 28px;
-  font-weight: 300;
+  font-size: var(--reader-media-preview-control-icon-size);
+  font-weight: var(--reader-media-preview-control-weight);
   line-height: 1;
   cursor: pointer;
   transition:
-    background 160ms ease,
-    transform 160ms ease,
-    opacity 160ms ease;
+    background var(--reader-media-preview-control-transition-duration) ease,
+    transform var(--reader-media-preview-control-transition-duration) ease,
+    opacity var(--reader-media-preview-control-transition-duration) ease;
 }
 
 .reader-media-preview-close:hover {
@@ -154,7 +154,7 @@
     var(--reader-media-preview-btn-surface, var(--reader-highlight-surface)) 24%,
     transparent
   );
-  transform: scale(1.04);
+  transform: scale(var(--reader-media-preview-control-hover-scale));
 }
 
 .reader-media-preview-nav {
@@ -164,8 +164,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 42px;
-  height: 42px;
+  width: var(--reader-media-preview-control-size);
+  height: var(--reader-media-preview-control-size);
   padding: 0;
   transform: translateY(-50%);
   border: 0;
@@ -177,14 +177,14 @@
   );
   color: var(--reader-media-preview-btn-surface, var(--reader-highlight-surface));
   font-family: var(--reader-font-ui);
-  font-size: 28px;
-  font-weight: 300;
+  font-size: var(--reader-media-preview-control-icon-size);
+  font-weight: var(--reader-media-preview-control-weight);
   line-height: 1;
-  opacity: 0.5;
+  opacity: var(--reader-media-preview-nav-opacity);
   transition:
-    background 160ms ease,
-    transform 160ms ease,
-    opacity 160ms ease;
+    background var(--reader-media-preview-control-transition-duration) ease,
+    transform var(--reader-media-preview-control-transition-duration) ease,
+    opacity var(--reader-media-preview-control-transition-duration) ease;
 }
 
 .reader-media-preview-nav:not(:disabled):hover {
@@ -193,16 +193,16 @@
     var(--reader-media-preview-btn-surface, var(--reader-highlight-surface)) 24%,
     transparent
   );
-  opacity: 0.72;
-  transform: translateY(-50%) scale(1.04);
+  opacity: var(--reader-media-preview-nav-hover-opacity);
+  transform: translateY(-50%) scale(var(--reader-media-preview-control-hover-scale));
 }
 
 .reader-media-preview-prev {
-  left: 18px;
+  left: var(--reader-media-preview-control-offset);
 }
 
 .reader-media-preview-next {
-  right: 18px;
+  right: var(--reader-media-preview-control-offset);
 }
 
 .reader-media-preview-nav:disabled {
@@ -223,11 +223,11 @@
 }
 
 .reader-media-preview.is-entering-from-left .reader-media-preview-image {
-  animation: reader-media-preview-enter-from-left 400ms ease-out both;
+  animation: reader-media-preview-enter-from-left var(--reader-media-preview-image-enter-duration) ease-out both;
 }
 
 .reader-media-preview.is-entering-from-right .reader-media-preview-image {
-  animation: reader-media-preview-enter-from-right 400ms ease-out both;
+  animation: reader-media-preview-enter-from-right var(--reader-media-preview-image-enter-duration) ease-out both;
 }
 
 @keyframes reader-media-preview-enter-from-left {
@@ -238,7 +238,7 @@
 
   82% {
     opacity: 1;
-    transform: translateX(-8px);
+    transform: translateX(calc(-1 * var(--reader-media-preview-image-enter-nudge)));
   }
 
   to {
@@ -255,7 +255,7 @@
 
   82% {
     opacity: 1;
-    transform: translateX(8px);
+    transform: translateX(var(--reader-media-preview-image-enter-nudge));
   }
 
   to {
@@ -285,10 +285,10 @@
   background: transparent;
   color: var(--reader-media-preview-btn-surface, var(--reader-highlight-surface));
   font-family: var(--reader-font-ui);
-  font-size: 14px;
+  font-size: var(--reader-media-preview-status-size);
   opacity: 0;
   pointer-events: none;
-  transition: opacity 160ms ease;
+  transition: opacity var(--reader-media-preview-control-transition-duration) ease;
 }
 
 .reader-media-preview.is-loading .reader-media-preview-status,

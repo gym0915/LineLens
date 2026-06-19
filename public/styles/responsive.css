@@ -1,31 +1,31 @@
 @media (max-width: 720px) {
   .reader-simple-tweet-frame {
-    grid-template-columns: 40px minmax(0, 1fr);
-    padding: 12px;
+    grid-template-columns: var(--reader-social-card-avatar-size-mobile) minmax(0, 1fr);
+    padding: var(--reader-social-card-padding-mobile);
     border-radius: var(--reader-radius-content);
   }
 
   .reader-simple-tweet-avatar {
-    width: 40px;
-    height: 40px;
+    width: var(--reader-social-card-avatar-size-mobile);
+    height: var(--reader-social-card-avatar-size-mobile);
   }
 
   .reader-simple-tweet-author-primary {
-    font-size: 16px;
+    font-size: var(--reader-social-card-author-primary-size-mobile);
   }
 
   .reader-simple-tweet-verified-icon {
-    width: 18px;
-    height: 18px;
+    width: var(--reader-social-card-verified-icon-size-mobile);
+    height: var(--reader-social-card-verified-icon-size-mobile);
   }
 
   .reader-simple-tweet-author-secondary {
-    font-size: 15px;
+    font-size: var(--reader-social-card-author-secondary-size-mobile);
   }
 
   .reader-simple-tweet-grok-icon {
-    width: 22px;
-    height: 22px;
+    width: var(--reader-social-card-grok-icon-size-mobile);
+    height: var(--reader-social-card-grok-icon-size-mobile);
   }
 
   .reader-simple-tweet-shell {
@@ -37,21 +37,21 @@
   }
 
   .reader-simple-tweet-shell-photo {
-    gap: 16px;
+    gap: var(--reader-social-card-shell-media-gap-mobile);
     border-radius: 0;
   }
 
   .reader-simple-tweet-shell-video {
-    gap: 16px;
+    gap: var(--reader-social-card-shell-media-gap-mobile);
     border-radius: 0;
   }
 
   .reader-simple-tweet-text-container {
-    font-size: 15.5px;
+    font-size: var(--reader-social-card-text-size-mobile);
   }
 
   .reader-simple-tweet-show-more {
-    font-size: 15px;
+    font-size: var(--reader-social-card-show-more-size-mobile);
   }
 
   .reader-simple-tweet-photo-grid {
@@ -67,54 +67,54 @@
   }
 
   .reader-simple-tweet-frame-compact {
-    grid-template-columns: 24px minmax(0, 1fr);
+    grid-template-columns: var(--reader-social-card-compact-avatar-size-mobile) minmax(0, 1fr);
   }
 
   .reader-simple-tweet-frame-compact .reader-simple-tweet-avatar {
-    width: 24px;
-    height: 24px;
+    width: var(--reader-social-card-compact-avatar-size-mobile);
+    height: var(--reader-social-card-compact-avatar-size-mobile);
   }
 
   .reader-simple-tweet-condensed {
-    grid-template-columns: 76px minmax(0, 1fr);
+    grid-template-columns: var(--reader-social-card-condensed-media-size-mobile) minmax(0, 1fr);
   }
 
   .reader-simple-tweet-condensed-media .reader-simple-tweet-media,
   .reader-simple-tweet-condensed-media .reader-simple-tweet-photo-grid {
-    width: 76px;
-    min-height: 76px;
+    width: var(--reader-social-card-condensed-media-size-mobile);
+    min-height: var(--reader-social-card-condensed-media-size-mobile);
   }
 
   .reader-simple-tweet-actions {
-    gap: 8px;
-    padding-top: 4px;
-    font-size: 13px;
+    gap: var(--reader-social-card-actions-gap-mobile);
+    padding-top: var(--reader-social-card-actions-padding-top-mobile);
+    font-size: var(--reader-social-card-actions-size-mobile);
   }
 
   .reader-simple-tweet-actions-primary {
-    gap: 8px;
+    gap: var(--reader-social-card-actions-primary-gap-mobile);
   }
 
   .reader-simple-tweet-actions-secondary {
-    gap: 2px;
-    margin-left: 4px;
+    gap: var(--reader-social-card-actions-secondary-gap-mobile);
+    margin-left: var(--reader-social-card-actions-secondary-margin-left-mobile);
   }
 
   .reader-simple-tweet-title {
-    font-size: 19px;
+    font-size: var(--reader-social-card-title-size-mobile);
   }
 
   .reader-simple-tweet-excerpt {
-    font-size: 16px;
+    font-size: var(--reader-social-card-excerpt-size-mobile);
   }
 
   .reader-simple-tweet-actions {
-    font-size: 14px;
+    font-size: var(--reader-social-card-actions-size-mobile);
   }
 
   .reader-simple-tweet-action-icon {
-    width: 20px;
-    height: 20px;
+    width: var(--reader-social-card-action-icon-size-mobile);
+    height: var(--reader-social-card-action-icon-size-mobile);
   }
 }
 

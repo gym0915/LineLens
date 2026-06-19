@@ -59,7 +59,7 @@
 .reader-image-gallery-grid {
   display: flex;
   flex-direction: row;
-  gap: 2px;
+  gap: var(--reader-media-gallery-gap);
   width: 100%;
   aspect-ratio: var(--reader-media-aspect-ratio, 16 / 9);
   overflow: hidden;
@@ -71,7 +71,7 @@
   flex: 1 1 0;
   min-width: 0;
   min-height: 0;
-  gap: 2px;
+  gap: var(--reader-media-gallery-gap);
   overflow: hidden;
 }
 
@@ -132,11 +132,11 @@
 
 .reader-gif-overlay {
   position: absolute;
-  left: 10px;
-  bottom: 10px;
+  left: var(--reader-media-control-offset);
+  bottom: var(--reader-media-control-offset);
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: var(--reader-media-control-gap);
   pointer-events: auto;
 }
 
@@ -146,15 +146,15 @@
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
-  height: 24px;
-  min-height: 24px;
-  line-height: 24px;
+  height: var(--reader-media-control-height);
+  min-height: var(--reader-media-control-height);
+  line-height: var(--reader-media-control-height);
   border-radius: 0;
   color: var(--reader-inverse-ink);
 }
 
 .reader-gif-pause {
-  width: 28px;
+  width: var(--reader-media-gif-pause-width);
   border: 0;
   padding: 0;
   background: color-mix(in srgb, var(--reader-social-ink) 82%, transparent);
@@ -163,34 +163,34 @@
 }
 
 .reader-gif-badge {
-  padding: 0 9px;
+  padding: 0 var(--reader-media-gif-badge-padding-inline);
   background: color-mix(in srgb, var(--reader-social-muted) 78%, transparent);
   font-family: var(--reader-font-ui);
-  font-size: 13px;
+  font-size: var(--reader-media-gif-badge-size);
   font-weight: 700;
   letter-spacing: 0;
   border-radius: 0 var(--reader-radius-sm) var(--reader-radius-sm) 0;
 }
 
 .reader-gif-pause-icon {
-  width: 15px;
-  height: 15px;
+  width: var(--reader-media-gif-icon-size);
+  height: var(--reader-media-gif-icon-size);
   fill: currentColor;
 }
 
 .reader-gif-play-icon {
-  width: 15px;
-  height: 15px;
+  width: var(--reader-media-gif-icon-size);
+  height: var(--reader-media-gif-icon-size);
   fill: currentColor;
 }
 
 .reader-media.is-load-error {
-  min-height: 140px;
+  min-height: var(--reader-media-error-min-height);
   display: flex;
   align-items: center;
   justify-content: center;
   border: 1px solid var(--reader-border-subtle);
   color: var(--reader-text-chrome);
   font-family: var(--reader-font-ui);
-  font-size: 14px;
+  font-size: var(--reader-media-load-error-size);
 }

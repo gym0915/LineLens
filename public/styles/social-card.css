@@ -1,5 +1,5 @@
 .reader-simple-tweet {
-  margin: 28px 0;
+  margin: var(--reader-social-card-margin-block) 0;
   display: block;
   border-radius: var(--reader-radius-content);
   color: var(--reader-social-muted);
@@ -9,10 +9,10 @@
 
 .reader-simple-tweet-frame {
   display: grid;
-  grid-template-columns: 48px minmax(0, 1fr);
-  column-gap: 12px;
+  grid-template-columns: var(--reader-social-card-avatar-size) minmax(0, 1fr);
+  column-gap: var(--reader-social-card-column-gap);
   align-items: start;
-  padding: 14px 16px 12px;
+  padding: var(--reader-social-card-padding);
   border: 1px solid var(--reader-social-border);
   border-radius: var(--reader-radius-content);
   background: var(--reader-social-surface);
@@ -20,26 +20,26 @@
 }
 
 .reader-simple-tweet-frame-compact {
-  grid-template-columns: 24px minmax(0, 1fr);
-  column-gap: 8px;
-  padding: 12px;
+  grid-template-columns: var(--reader-social-card-compact-avatar-size) minmax(0, 1fr);
+  column-gap: var(--reader-social-card-compact-column-gap);
+  padding: var(--reader-social-card-compact-padding);
   border: 0;
   border-radius: 0;
   box-shadow: none;
 }
 
 .reader-simple-tweet-frame-compact .reader-simple-tweet-avatar {
-  width: 24px;
-  height: 24px;
+  width: var(--reader-social-card-compact-avatar-size);
+  height: var(--reader-social-card-compact-avatar-size);
 }
 
 .reader-simple-tweet-frame-compact .reader-simple-tweet-content-column {
-  gap: 6px;
+  gap: var(--reader-social-card-compact-content-gap);
 }
 
 .reader-simple-tweet-frame-compact .reader-simple-tweet-shell-compact {
   grid-column: 1 / -1;
-  padding: 6px 0 0 4px;
+  padding: var(--reader-social-card-compact-shell-padding);
 }
 
 .reader-simple-tweet-frame-compact .reader-simple-tweet-author {
@@ -47,18 +47,18 @@
 }
 
 .reader-simple-tweet-frame-compact .reader-simple-tweet-author-primary {
-  font-size: 15px;
-  line-height: 1.2;
+  font-size: var(--reader-social-card-compact-author-size);
+  line-height: var(--reader-social-card-compact-author-line-height);
 }
 
 .reader-simple-tweet-frame-compact .reader-simple-tweet-author-secondary {
-  font-size: 15px;
-  line-height: 1.2;
+  font-size: var(--reader-social-card-compact-author-size);
+  line-height: var(--reader-social-card-compact-author-line-height);
 }
 
 .reader-simple-tweet-frame-compact .reader-simple-tweet-verified-icon {
-  width: 16px;
-  height: 16px;
+  width: var(--reader-social-card-compact-verified-icon-size);
+  height: var(--reader-social-card-compact-verified-icon-size);
 }
 
 .reader-simple-tweet-frame-compact .reader-simple-tweet-grok-icon {
@@ -69,8 +69,8 @@
   grid-column: 1;
   grid-row: 1;
   display: block;
-  width: 48px;
-  height: 48px;
+  width: var(--reader-social-card-avatar-size);
+  height: var(--reader-social-card-avatar-size);
   border-radius: 999px;
   object-fit: cover;
 }
@@ -79,7 +79,7 @@
   grid-column: 2;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--reader-social-card-content-gap);
   min-width: 0;
 }
 
@@ -87,15 +87,15 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--reader-social-card-header-gap);
   min-width: 0;
 }
 
 .reader-simple-tweet-author {
   display: flex;
   align-items: baseline;
-  gap: 6px;
-  padding-top: 2px;
+  gap: var(--reader-social-card-author-gap);
+  padding-top: var(--reader-social-card-author-padding-top);
   min-width: 0;
 }
 
@@ -108,12 +108,12 @@
 }
 
 .reader-simple-tweet-author-primary {
-  gap: 6px;
+  gap: var(--reader-social-card-author-gap);
   min-width: 0;
   color: var(--reader-social-ink);
-  font-size: 17px;
+  font-size: var(--reader-social-card-author-primary-size);
   font-weight: 700;
-  line-height: 1.15;
+  line-height: var(--reader-social-card-author-primary-line-height);
 }
 
 .reader-simple-tweet-display-name {
@@ -125,26 +125,26 @@
 
 .reader-simple-tweet-verified-icon {
   flex: 0 0 auto;
-  width: 18px;
-  height: 18px;
+  width: var(--reader-social-card-verified-icon-size);
+  height: var(--reader-social-card-verified-icon-size);
   fill: var(--reader-social-blue);
 }
 
 .reader-simple-tweet-author-badge {
   flex: 0 0 auto;
-  width: 20px;
-  height: 20px;
+  width: var(--reader-social-card-author-badge-size);
+  height: var(--reader-social-card-author-badge-size);
   border: 1px solid var(--reader-social-border);
   border-radius: var(--reader-radius-sm);
   object-fit: cover;
 }
 
 .reader-simple-tweet-author-secondary {
-  gap: 6px;
+  gap: var(--reader-social-card-author-gap);
   min-width: 0;
   color: var(--reader-social-muted);
-  font-size: 16px;
-  line-height: 1.2;
+  font-size: var(--reader-social-card-author-secondary-size);
+  line-height: var(--reader-social-card-author-secondary-line-height);
 }
 
 .reader-simple-tweet-author-secondary span:first-child {
@@ -156,9 +156,9 @@
 
 .reader-simple-tweet-grok-icon {
   flex: 0 0 auto;
-  margin-top: 2px;
-  width: 22px;
-  height: 22px;
+  margin-top: var(--reader-social-card-author-padding-top);
+  width: var(--reader-social-card-grok-icon-size);
+  height: var(--reader-social-card-grok-icon-size);
   fill: var(--reader-social-muted);
 }
 
@@ -172,7 +172,7 @@
 .reader-simple-tweet-shell-photo {
   display: flex;
   flex-direction: column;
-  gap: 26px;
+  gap: var(--reader-social-card-shell-photo-gap);
   overflow: visible;
   border: 0;
   border-radius: 0;
@@ -181,7 +181,7 @@
 .reader-simple-tweet-shell-video {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: var(--reader-social-card-shell-video-gap);
   overflow: visible;
   border: 0;
   border-radius: 0;
@@ -198,16 +198,16 @@
 }
 
 .reader-simple-tweet-video-portrait {
-  width: min(100%, 360px);
+  width: min(100%, var(--reader-social-card-video-portrait-max-width));
   margin-left: 0;
   margin-right: auto;
 }
 
 .reader-simple-tweet-text-container {
   color: var(--reader-social-ink);
-  font-size: 16.5px;
+  font-size: var(--reader-social-card-text-size);
   font-weight: 400;
-  line-height: 1.5;
+  line-height: var(--reader-social-card-text-line-height);
 }
 
 .reader-simple-tweet-text {
@@ -223,68 +223,68 @@
 
 .reader-simple-tweet-show-more {
   display: inline-block;
-  margin-top: 4px;
+  margin-top: var(--reader-social-card-show-more-margin-top);
   color: var(--reader-social-blue);
   font: inherit;
-  font-size: 16px;
+  font-size: var(--reader-social-card-show-more-size);
   font-weight: 700;
-  line-height: 1.25;
+  line-height: var(--reader-social-card-show-more-line-height);
   cursor: pointer;
 }
 
 .reader-simple-tweet-show-more:focus-visible {
   border-radius: var(--reader-radius-sm);
-  outline: 2px solid var(--reader-social-blue-outline);
-  outline-offset: 2px;
+  outline: var(--reader-social-card-focus-outline-width) solid var(--reader-social-blue-outline);
+  outline-offset: var(--reader-social-card-focus-outline-offset);
 }
 
 .reader-simple-tweet-text-only {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--reader-social-card-text-only-gap);
 }
 
 .reader-simple-tweet-text-only .reader-simple-tweet-text-container {
-  font-size: 16.5px;
+  font-size: var(--reader-social-card-text-size);
   font-weight: 400;
-  line-height: 1.5;
+  line-height: var(--reader-social-card-text-line-height);
 }
 
 .reader-simple-tweet-reply-context,
 .reader-simple-tweet-translation {
   color: var(--reader-social-muted);
-  font-size: 16px;
+  font-size: var(--reader-social-card-reply-size);
   font-weight: 500;
-  line-height: 1.3;
+  line-height: var(--reader-social-card-reply-line-height);
 }
 
 .reader-simple-tweet-translation {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--reader-social-card-translation-gap);
 }
 
 .reader-simple-tweet-translation-icon {
   flex: 0 0 auto;
-  width: 20px;
-  height: 20px;
+  width: var(--reader-social-card-translation-icon-size);
+  height: var(--reader-social-card-translation-icon-size);
   fill: currentColor;
 }
 
 .reader-simple-tweet-ai-generated {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--reader-social-card-ai-generated-gap);
   color: var(--reader-social-muted);
-  font-size: 14px;
+  font-size: var(--reader-social-card-ai-generated-size);
   font-weight: 500;
-  line-height: 1.2;
+  line-height: var(--reader-social-card-ai-generated-line-height);
 }
 
 .reader-simple-tweet-ai-generated-icon {
   flex: 0 0 auto;
-  width: 18px;
-  height: 18px;
+  width: var(--reader-social-card-ai-generated-icon-size);
+  height: var(--reader-social-card-ai-generated-icon-size);
   fill: currentColor;
 }
 
@@ -300,7 +300,7 @@
   display: grid;
   overflow: hidden;
   min-height: 0;
-  gap: 1px;
+  gap: var(--reader-social-media-grid-gap);
   border: 1px solid var(--reader-social-media-border);
   border-radius: var(--reader-radius-content);
   background: var(--reader-social-media-placeholder);
@@ -312,7 +312,7 @@
   display: flex;
   overflow: hidden;
   min-height: 0;
-  gap: 1px;
+  gap: var(--reader-social-media-grid-gap);
   border: 1px solid var(--reader-social-media-border);
   border-radius: var(--reader-radius-content);
   background: var(--reader-social-media-placeholder);
@@ -437,10 +437,10 @@
 
 .reader-simple-tweet-video-duration {
   position: absolute;
-  left: 14px;
-  bottom: 12px;
+  left: var(--reader-social-video-duration-left);
+  bottom: var(--reader-social-video-duration-bottom);
   color: var(--reader-inverse-ink);
-  font-size: 15px;
+  font-size: var(--reader-social-video-duration-size);
   font-weight: 700;
   line-height: 1;
 }
@@ -456,17 +456,17 @@
 
 .reader-simple-tweet-source {
   position: absolute;
-  bottom: 10px;
-  left: 12px;
+  bottom: var(--reader-social-source-bottom);
+  left: var(--reader-social-source-left);
   display: inline-flex;
   align-items: baseline;
   justify-content: center;
-  gap: 3px;
-  padding: 4px 8px 5px;
+  gap: var(--reader-social-source-gap);
+  padding: var(--reader-social-source-padding);
   border-radius: var(--reader-radius-sm);
   background: color-mix(in srgb, var(--reader-inverse-surface) 55%, transparent);
   color: var(--reader-simple-tweet-source-color, color-mix(in srgb, var(--reader-inverse-ink) 94%, transparent));
-  font-size: 12px;
+  font-size: var(--reader-social-source-size);
   font-weight: 700;
   line-height: 1;
   letter-spacing: 0;
@@ -474,10 +474,10 @@
 
 .reader-simple-tweet-source-icon {
   display: block;
-  width: 13px;
-  height: 13px;
+  width: var(--reader-social-source-icon-size);
+  height: var(--reader-social-source-icon-size);
   fill: currentColor;
-  transform: translateY(1px);
+  transform: translateY(var(--reader-social-source-icon-offset-y));
 }
 
 .reader-simple-tweet-source-text {
@@ -488,7 +488,7 @@
 .reader-simple-tweet-source-inline {
   position: static;
   display: inline-flex;
-  margin-bottom: 10px;
+  margin-bottom: var(--reader-social-source-inline-margin-bottom);
   background: var(--reader-border-faint);
   color: var(--reader-text-subtle);
 }
@@ -498,15 +498,15 @@
 }
 
 .reader-simple-tweet-article-cover-content {
-  padding: 18px 22px 20px;
+  padding: var(--reader-social-article-cover-content-padding);
 }
 
 .reader-simple-tweet-content-compact {
-  gap: 6px;
+  gap: var(--reader-social-card-content-compact-gap);
 }
 
 .reader-simple-tweet-quoted {
-  margin-top: 6px;
+  margin-top: var(--reader-social-quoted-margin-top);
   border: 1px solid var(--reader-social-border);
   border-radius: var(--reader-radius-content);
   padding: 0;
@@ -516,12 +516,12 @@
 
 .reader-simple-tweet-condensed {
   display: grid;
-  grid-template-columns: 84px minmax(0, 1fr);
+  grid-template-columns: var(--reader-social-condensed-media-size) minmax(0, 1fr);
   align-items: stretch;
   overflow: hidden;
   border: 0;
   border-radius: 0;
-  column-gap: 14px;
+  column-gap: var(--reader-social-condensed-column-gap);
 }
 
 .reader-simple-tweet-condensed-media {
@@ -531,16 +531,16 @@
 
 .reader-simple-tweet-condensed-media .reader-simple-tweet-media {
   height: 100%;
-  width: 84px;
-  min-height: 84px;
+  width: var(--reader-social-condensed-media-size);
+  min-height: var(--reader-social-condensed-media-size);
   aspect-ratio: 1 / 1;
   border-radius: var(--reader-radius-content);
 }
 
 .reader-simple-tweet-condensed-media .reader-simple-tweet-photo-grid {
   height: 100%;
-  width: 84px;
-  min-height: 84px;
+  width: var(--reader-social-condensed-media-size);
+  min-height: var(--reader-social-condensed-media-size);
   aspect-ratio: 1 / 1;
   border-radius: var(--reader-radius-content);
 }
@@ -558,12 +558,12 @@
 }
 
 .reader-simple-tweet-condensed-media .reader-simple-tweet-video-duration {
-  left: 8px;
-  bottom: 8px;
-  padding: 3px 5px;
+  left: var(--reader-social-condensed-video-badge-offset);
+  bottom: var(--reader-social-condensed-video-badge-offset);
+  padding: var(--reader-social-condensed-video-badge-padding);
   border-radius: 999px;
   background: color-mix(in srgb, var(--reader-social-ink) 72%, transparent);
-  font-size: 12px;
+  font-size: var(--reader-social-condensed-video-badge-size);
 }
 
 .reader-simple-tweet-condensed-text {
@@ -571,13 +571,13 @@
   min-width: 0;
   flex-direction: column;
   justify-content: flex-start;
-  gap: 6px;
-  padding: 2px 0 0;
+  gap: var(--reader-social-condensed-text-gap);
+  padding: var(--reader-social-condensed-text-padding);
 }
 
 .reader-simple-tweet-condensed-text .reader-simple-tweet-text-container {
-  font-size: 15px;
-  line-height: 1.35;
+  font-size: var(--reader-social-condensed-text-size);
+  line-height: var(--reader-social-condensed-text-line-height);
 }
 
 .reader-simple-tweet-condensed-text .reader-simple-tweet-text-container.is-collapsed .reader-simple-tweet-text {
@@ -585,17 +585,17 @@
 }
 
 .reader-simple-tweet-title {
-  margin-bottom: 8px;
+  margin-bottom: var(--reader-social-article-title-margin-bottom);
   color: var(--reader-social-ink);
-  font-size: 19px;
+  font-size: var(--reader-social-article-title-size);
   font-weight: 700;
-  line-height: 1.35;
+  line-height: var(--reader-social-article-title-line-height);
 }
 
 .reader-simple-tweet-excerpt {
   color: var(--reader-social-ink);
-  font-size: 16.5px;
-  line-height: 1.55;
+  font-size: var(--reader-social-article-excerpt-size);
+  line-height: var(--reader-social-article-excerpt-line-height);
 }
 
 .reader-simple-tweet-article-meta {
@@ -609,13 +609,13 @@
 }
 
 .reader-simple-tweet-article-meta-author {
-  gap: 12px;
-  margin-top: 10px;
+  gap: var(--reader-social-article-meta-author-gap);
+  margin-top: var(--reader-social-article-meta-author-margin-top);
 }
 
 .reader-simple-tweet-article-avatar {
-  width: 40px;
-  height: 40px;
+  width: var(--reader-social-article-avatar-size);
+  height: var(--reader-social-article-avatar-size);
   border-radius: 999px;
   object-fit: cover;
   flex: 0 0 auto;
@@ -628,36 +628,36 @@
 .reader-simple-tweet-article-author-primary {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--reader-social-article-author-gap);
   min-width: 0;
   color: var(--reader-social-ink);
-  font-size: 17px;
+  font-size: var(--reader-social-article-author-primary-size);
   font-weight: 700;
-  line-height: 1.2;
+  line-height: var(--reader-social-article-author-line-height);
 }
 
 .reader-simple-tweet-article-verified-icon {
-  width: 18px;
-  height: 18px;
+  width: var(--reader-social-article-verified-icon-size);
+  height: var(--reader-social-article-verified-icon-size);
 }
 
 .reader-simple-tweet-article-author-secondary {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-top: 2px;
+  gap: var(--reader-social-article-author-gap);
+  margin-top: var(--reader-social-article-author-secondary-margin-top);
   min-width: 0;
-  font-size: 16px;
-  line-height: 1.2;
+  font-size: var(--reader-social-article-author-secondary-size);
+  line-height: var(--reader-social-article-author-line-height);
 }
 
 .reader-simple-tweet-article-meta-metrics {
   justify-content: space-between;
-  gap: 12px;
-  margin-top: 12px;
-  padding-top: 12px;
+  gap: var(--reader-social-article-metrics-gap);
+  margin-top: var(--reader-social-article-metrics-margin-top);
+  padding-top: var(--reader-social-article-metrics-padding-top);
   border-top: 1px solid color-mix(in srgb, var(--reader-social-muted) 24%, transparent);
-  font-size: 14px;
+  font-size: var(--reader-social-article-metrics-size);
   line-height: 1;
 }
 
@@ -668,27 +668,27 @@
 }
 
 .reader-simple-tweet-article-metric {
-  gap: 7px;
+  gap: var(--reader-social-article-metric-gap);
   min-width: 0;
 }
 
 .reader-simple-tweet-article-metric-trailing {
-  gap: 10px;
+  gap: var(--reader-social-article-metric-trailing-gap);
   margin-left: auto;
 }
 
 .reader-simple-tweet-article-metric-icon {
-  width: 20px;
-  height: 20px;
+  width: var(--reader-social-article-metric-icon-size);
+  height: var(--reader-social-article-metric-icon-size);
   fill: currentColor;
 }
 
 .reader-simple-tweet-actions {
   justify-content: space-between;
-  gap: 10px;
+  gap: var(--reader-social-card-actions-gap);
   padding-top: 0;
   color: var(--reader-social-muted);
-  font-size: 14px;
+  font-size: var(--reader-social-card-actions-size);
   line-height: 1;
 }
 
@@ -701,23 +701,23 @@
 .reader-simple-tweet-actions-primary {
   flex: 1 1 auto;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--reader-social-card-actions-primary-gap);
   min-width: 0;
 }
 
 .reader-simple-tweet-actions-secondary {
   flex: 0 0 auto;
-  gap: 4px;
-  margin-left: 8px;
+  gap: var(--reader-social-card-actions-secondary-gap);
+  margin-left: var(--reader-social-card-actions-secondary-margin-left);
 }
 
 .reader-simple-tweet-action {
-  gap: 7px;
+  gap: var(--reader-social-card-action-gap);
   min-width: 0;
 }
 
 .reader-simple-tweet-action-icon {
-  width: 20px;
-  height: 20px;
+  width: var(--reader-social-card-action-icon-size);
+  height: var(--reader-social-card-action-icon-size);
   fill: currentColor;
 }
