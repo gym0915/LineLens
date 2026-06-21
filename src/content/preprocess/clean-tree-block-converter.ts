@@ -146,7 +146,8 @@ function convertTextElement(
 
   return {
     ...base,
-    type
+    type,
+    ...(type === 'paragraph' && isMediaCaptionElement(element) ? { role: 'caption' as const } : {})
   };
 }
 
@@ -1042,6 +1043,14 @@ function isTableElement(element: Element): boolean {
 
 function isSimpleTweetElement(element: Element): boolean {
   return element.matches('[data-testid="simpleTweet"]') || element.querySelector('[data-testid="simpleTweet"]') !== null;
+}
+
+function isMediaCaptionElement(element: Element): boolean {
+  return Boolean(
+    element.getAttribute('data-linelens-block-role') === 'caption' ||
+      element.closest('.twitter-article-media-caption-id, [id^="caption-"]') ||
+      element.querySelector('.twitter-article-media-caption-id, [id^="caption-"]')
+  );
 }
 
 function shouldSkipParagraphFallback(element: Element): boolean {

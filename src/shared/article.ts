@@ -45,6 +45,7 @@ export type HeadingBlock = {
 export type ParagraphBlock = {
   id: string;
   type: 'paragraph';
+  role?: 'caption';
   text: string;
   annotations?: TextAnnotation[];
   textStyle?: TextStyle;

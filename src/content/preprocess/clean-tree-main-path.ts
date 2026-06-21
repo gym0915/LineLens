@@ -94,6 +94,17 @@ export function mergeCleanTreePrimaryBlocks(
 }
 
 function mergeCleanTreeBlockWithLegacyRuntimeFields(legacyBlock: ArticleBlock, cleanTreeBlock: ArticleBlock): ArticleBlock {
+  if (legacyBlock.type === 'paragraph' && cleanTreeBlock.type === 'paragraph' && (legacyBlock.role === 'caption' || cleanTreeBlock.role === 'caption')) {
+    return {
+      ...cleanTreeBlock,
+      role: 'caption',
+      textStyle: {
+        ...cleanTreeBlock.textStyle,
+        ...legacyBlock.textStyle
+      }
+    };
+  }
+
   if (legacyBlock.type === 'image-gallery' && cleanTreeBlock.type === 'image-gallery') {
     return {
       ...cleanTreeBlock,

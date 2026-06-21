@@ -370,13 +370,26 @@ async function extractBlock(block: Element, articleId: string, index: number, ca
     id: blockId(articleId, index),
     type: 'paragraph',
     text: extracted.text,
-    textStyle: extractElementTextStyle(block)
+    ...(isMediaCaptionElement(block) ? { role: 'caption' as const } : {}),
+    textStyle: extractParagraphTextStyle(block)
   };
   if (textBlock.type === 'paragraph' && extracted.annotations.length > 0) {
     textBlock.annotations = extracted.annotations;
   }
 
   return textBlock;
+}
+
+function extractParagraphTextStyle(block: Element): TextStyle {
+  if (!isMediaCaptionElement(block)) {
+    return extractElementTextStyle(block);
+  }
+
+  const captionRoot = getMediaCaptionStyleRoot(block);
+  return compactStyle({
+    ...extractElementTextStyle(captionRoot),
+    ...extractElementTextStyle(block)
+  });
 }
 
 async function extractNonTextBlock(block: Element, articleId: string, index: number, capturedVideos: CapturedXVideo[]): Promise<ArticleBlock | null> {
@@ -667,6 +680,18 @@ function findTableCellTextStyleElement(element: Element | null): Element | null 
     Array.from(element.querySelectorAll('[data-text="true"], [dir="ltr"], [dir="auto"], span, div')).find((candidate) => normalizeText(candidate.textContent ?? '') !== '') ??
     element
   );
+}
+
+function isMediaCaptionElement(element: Element): boolean {
+  return Boolean(
+    element.getAttribute('data-linelens-block-role') === 'caption' ||
+      element.closest('.twitter-article-media-caption-id, [id^="caption-"]') ||
+      element.querySelector('.twitter-article-media-caption-id, [id^="caption-"]')
+  );
+}
+
+function getMediaCaptionStyleRoot(element: Element): Element {
+  return element.closest('.twitter-article-media-caption-id') ?? element.closest('[id^="caption-"]') ?? element;
 }
 
 function extractElementTextStyle(element: Element | null): TextStyle {

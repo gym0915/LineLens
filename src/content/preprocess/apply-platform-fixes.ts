@@ -17,6 +17,7 @@ const FIX_ORDER: PlatformFixId[] = [
   'normalize-handwritten-ordered-list',
   'preserve-svg-emoji',
   'capture-x-video-hls',
+  'preserve-x-media-caption',
   'preserve-x-media-layout'
 ];
 
@@ -53,6 +54,8 @@ function runPlatformFix(fixId: PlatformFixId, root: Element, context: CleanTreeC
       return { id: fixId, applied: true, changedNodeCount: preserveSvgEmojiMetadata(root) };
     case 'capture-x-video-hls':
       return { id: fixId, applied: true, changedNodeCount: markVideoHlsCandidates(root, context) };
+    case 'preserve-x-media-caption':
+      return { id: fixId, applied: true, changedNodeCount: preserveXMediaCaptionMetadata(root) };
     case 'preserve-x-media-layout':
       return { id: fixId, applied: true, changedNodeCount: preserveXMediaLayoutMetadata(root) };
   }
@@ -109,6 +112,31 @@ function markVideoHlsCandidates(root: Element, context: CleanTreeContext): numbe
   for (const element of Array.from(root.querySelectorAll('[data-testid="videoPlayer"]'))) {
     element.setAttribute('data-linelens-video-hls-candidate', context.debugId);
     changedNodeCount += 1;
+  }
+
+  return changedNodeCount;
+}
+
+function preserveXMediaCaptionMetadata(root: Element): number {
+  let changedNodeCount = 0;
+  const captionRoots = new Set<Element>();
+
+  for (const element of Array.from(root.querySelectorAll('.twitter-article-media-caption-id'))) {
+    captionRoots.add(element);
+  }
+
+  for (const element of Array.from(root.querySelectorAll('[id^="caption-"]'))) {
+    captionRoots.add(element);
+  }
+
+  for (const captionRoot of Array.from(captionRoots)) {
+    const textBlocks = captionRoot.matches('[data-block="true"]')
+      ? [captionRoot]
+      : Array.from(captionRoot.querySelectorAll('[data-block="true"]'));
+    for (const textBlock of textBlocks) {
+      textBlock.setAttribute('data-linelens-block-role', 'caption');
+      changedNodeCount += 1;
+    }
   }
 
   return changedNodeCount;

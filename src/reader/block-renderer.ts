@@ -200,7 +200,7 @@ function renderBlock(block: ArticleBlock): HTMLElement {
     case 'heading':
       return renderTextBlock(getHeadingTagName(block.level), block.id, block.type, block.text, block.annotations, block.textStyle);
     case 'paragraph':
-      return renderTextBlock('p', block.id, block.type, block.text, block.annotations, block.textStyle);
+      return renderTextBlock('p', block.id, block.type, block.text, block.annotations, block.textStyle, block.role);
     case 'quote':
       return renderTextBlock('blockquote', block.id, block.type, block.text, block.annotations, block.textStyle);
     case 'image':
@@ -232,12 +232,17 @@ function renderTextBlock(
   blockType: string,
   text: string,
   annotations: TextAnnotation[] = [],
-  textStyle?: TextStyle
+  textStyle?: TextStyle,
+  blockRole?: 'caption'
 ): HTMLElement {
   const element = document.createElement(tagName);
-  element.className = 'reader-block';
+  element.className = blockRole === 'caption' ? 'reader-block reader-media-caption' : 'reader-block';
   element.dataset.blockId = blockId;
   element.dataset.blockType = blockType;
+  if (blockRole) {
+    element.dataset.blockRole = blockRole;
+    applyCaptionTextStyle(element, textStyle);
+  }
   applyReaderTextMetadata(
     element,
     appendReaderText(element, text, annotations, {
@@ -245,6 +250,15 @@ function renderTextBlock(
     })
   );
   return element;
+}
+
+function applyCaptionTextStyle(element: HTMLElement, style?: TextStyle): void {
+  if (style?.fontSize) {
+    element.style.setProperty('--reader-media-caption-source-size', style.fontSize);
+  }
+  if (style?.lineHeight) {
+    element.style.setProperty('--reader-media-caption-source-line-height', style.lineHeight);
+  }
 }
 
 function getHeadingTagName(level: 1 | 2 | 3 | 4 | 5 | 6 = 2): 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' {

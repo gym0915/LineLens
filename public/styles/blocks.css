@@ -16,6 +16,12 @@
   white-space: pre-wrap;
 }
 
+.reader-media-caption {
+  color: var(--reader-text-subtle);
+  font-size: var(--reader-media-caption-source-size, var(--reader-media-caption-size));
+  line-height: var(--reader-media-caption-source-line-height, var(--reader-media-caption-line-height));
+}
+
 .reader-block[data-block-type="heading"] {
   margin-top: 40px;
   color: var(--reader-text-title);

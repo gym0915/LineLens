@@ -32,6 +32,11 @@ export const xArticleAdapter: PlatformAdapter = {
       description: 'Use captured X HLS metadata when embedded videos do not expose direct playable sources.'
     },
     {
+      id: 'preserve-x-media-caption',
+      enabledByDefault: true,
+      description: 'Preserve X article media caption semantics before class/id sanitizing.'
+    },
+    {
       id: 'preserve-x-media-layout',
       enabledByDefault: true,
       description: 'Preserve X media layout direction and aspect ratio before class/style sanitizing.'
@@ -42,6 +47,7 @@ export const xArticleAdapter: PlatformAdapter = {
     'normalize-handwritten-ordered-list',
     'preserve-svg-emoji',
     'capture-x-video-hls',
+    'preserve-x-media-caption',
     'preserve-x-media-layout'
   ],
   styleWhitelist: {

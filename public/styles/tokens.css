@@ -104,6 +104,8 @@
     --reader-media-gif-badge-size: 13px;
     --reader-media-gif-icon-size: 15px;
     --reader-media-error-min-height: 140px;
+    --reader-media-caption-size: 14px;
+    --reader-media-caption-line-height: 1.55;
     --reader-column-width: 620px;
     --reader-page-padding-x: 32px;
     --reader-page-padding-top: 80px;

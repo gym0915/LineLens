@@ -37,6 +37,7 @@
     "verify:x-article-image-gallery": "npm run build && node scripts/verify-x-article-image-gallery.mjs",
     "verify:x-simpletweet-flow": "npm run build && node scripts/verify-x-simpletweet-flow.mjs",
     "verify:x-article-dynamic-styles": "npm run build && node scripts/verify-x-article-dynamic-styles.mjs",
+    "verify:x-media-caption": "npm run build && node scripts/verify-x-media-caption.mjs",
     "verify:reader-restore-scroll": "npm run build && node scripts/verify-reader-restore-scroll.mjs"
   },
   "devDependencies": {

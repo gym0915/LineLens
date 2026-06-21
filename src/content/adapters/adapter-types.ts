@@ -5,6 +5,7 @@ export type PlatformFixId =
   | 'normalize-handwritten-ordered-list'
   | 'preserve-svg-emoji'
   | 'capture-x-video-hls'
+  | 'preserve-x-media-caption'
   | 'preserve-x-media-layout';
 
 export type PlatformFix = {
