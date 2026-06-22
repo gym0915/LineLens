@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { weixinArticleAdapter, xArticleAdapter } from '../dist/content/adapters/index.js';
+import { xArticleAdapter } from '../dist/content/adapters/index.js';
 import {
   buildCleanTreeDebugSnapshot,
   cloneContentTree
@@ -52,16 +52,22 @@ assert.deepEqual(getPlatformFixOrder(xArticleAdapter), [
 ]);
 assert.deepEqual(CLEAN_TREE_PRIMARY_BLOCK_TYPES, ['paragraph', 'heading', 'quote', 'list', 'image', 'code', 'table', 'simple-tweet', 'image-gallery']);
 assert.deepEqual(HIGH_RISK_DUAL_TRACK_BLOCK_TYPES, ['video']);
-assert.equal(weixinArticleAdapter.rootSelector, '#js_content', 'P4.5 should keep second-platform root selector expressible');
-assert.equal(weixinArticleAdapter.titleSelector, '#activity-name', 'P4.5 should keep second-platform title selector expressible');
-assert.ok(weixinArticleAdapter.contentSelector, 'P4.5 should keep second-platform content selector expressible');
-assert.ok(weixinArticleAdapter.styleWhitelist.preserveProps.length > 0, 'P4.5 should keep second-platform style whitelist expressible');
-assert.deepEqual(weixinArticleAdapter.enabledFixes, [], 'P4.5 should allow second-platform adapter to opt out of platform fixes');
-const weixinMinimalFixture = `<article id="js_content"><h1 id="activity-name">Weixin Phase4 fixture</h1><p><a href="https://example.com" style="color: #576b95">link</a><strong style="color: #d92121">emphasis</strong></p></article>`;
-assert.equal(hasMinimalSelectorMatch(weixinMinimalFixture, weixinArticleAdapter.rootSelector), true, 'P4 should include a second-platform root sample in the minimal validation pool');
-assert.equal(hasMinimalSelectorMatch(weixinMinimalFixture, weixinArticleAdapter.titleSelector), true, 'P4 should include a second-platform title sample in the minimal validation pool');
-assert.equal(count(weixinMinimalFixture, 'href='), 1, 'P4 second-platform sample should include link semantics');
-assert.equal(count(weixinMinimalFixture, '<strong'), 1, 'P4 second-platform sample should include inline emphasis semantics');
+assert.equal(xArticleAdapter.semanticMap?.blockSelector, '[data-block="true"]', 'P4.5 should expose X block semantics through adapter config');
+assert.match(xArticleAdapter.semanticMap?.headingSelector ?? '', /longform-header-one/, 'P4.5 should expose X heading semantics through adapter config');
+assert.match(xArticleAdapter.semanticMap?.quoteSelector ?? '', /blockquote/, 'P4.5 should expose X quote semantics through adapter config');
+assert.match(xArticleAdapter.semanticMap?.orderedListSelector ?? '', /orderedListItem/, 'P4.5 should expose X ordered list semantics through adapter config');
+assert.match(xArticleAdapter.semanticMap?.imageSelector ?? '', /tweetPhoto/, 'P4.5 should expose X image semantics through adapter config');
+assert.match(xArticleAdapter.semanticMap?.codeSelector ?? '', /markdown-code-block/, 'P4.5 should expose X code semantics through adapter config');
+assert.equal(
+  xArticleAdapter.specialComponents?.some((component) => component.id === 'x.simple-tweet' && component.handlerId === 'x.simple-tweet'),
+  true,
+  'P4.5 should expose X simpleTweet as a declared special component'
+);
+assert.equal(
+  xArticleAdapter.specialComponents?.some((component) => component.id === 'x.video-or-gif' && component.handlerId === 'x.video-or-gif'),
+  true,
+  'P4.5 should expose X video/GIF as a declared special component'
+);
 
 const regressionInventory = {
   title: count(detailSnapshot, 'data-testid="twitter-article-title"'),
@@ -310,7 +316,7 @@ const baselineReport = {
     highRiskBlocksRemainDualTrack: ['video'],
     legacyIdsPreserved: true,
     legacyFallbackAvailable: true,
-    secondPlatformAdapterWired: true
+    xAdapterSchemaDeclared: true
   },
   whitelistBaseline,
   whitelistFiltering: {
