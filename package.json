@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc -p tsconfig.json && node scripts/copy-static.mjs && node scripts/build-content.mjs",
+    "build": "node scripts/clean-dist.mjs && tsc -p tsconfig.json && node scripts/copy-static.mjs && node scripts/build-content.mjs",
     "verify:stage0": "node scripts/verify-stage0.mjs",
     "verify:content-single-source": "node scripts/verify-content-single-source.mjs",
     "verify:reader-a3-a4": "npm run build && node scripts/verify-reader-a3-a4.mjs",

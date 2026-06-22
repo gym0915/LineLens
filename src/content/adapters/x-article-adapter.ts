@@ -10,6 +10,20 @@ export const xArticleAdapter: PlatformAdapter = {
   rootSelector: '[data-testid="twitterArticleReadView"]',
   titleSelector: '[data-testid="twitter-article-title"]',
   contentSelector: '[data-testid="longformRichTextComponent"]',
+  semanticMap: {
+    blockSelector: '[data-block="true"]',
+    paragraphSelector: '[data-block="true"]',
+    headingSelector: '.longform-header-one, .longform-header-two, [data-linelens-block-role="heading"], h1, h2, h3, h4, h5, h6',
+    quoteSelector: 'blockquote.longform-blockquote[data-block="true"], blockquote',
+    orderedListSelector: '.public-DraftStyleDefault-orderedListItem, .longform-ordered-list-item, [data-linelens-list-kind="ordered"]',
+    unorderedListSelector: '.public-DraftStyleDefault-unorderedListItem, .longform-unordered-list-item, [data-linelens-list-kind="unordered"]',
+    imageSelector: '[data-testid="tweetPhoto"], img',
+    imageGallerySelector: '[data-testid="tweetPhoto"]',
+    codeSelector: '[data-testid="markdown-code-block"], pre, code',
+    tableSelector: 'table, [role="table"], [role="grid"]',
+    linkSelector: 'a[href], [role="link"]',
+    textSelector: '[data-text]'
+  },
   fixes: [
     {
       id: 'expand-folded-tweet-text',
@@ -54,5 +68,21 @@ export const xArticleAdapter: PlatformAdapter = {
     preserveProps: ['font-weight'],
     preserveColorFor: ['link'],
     preserveWhiteSpaceValues: ['pre', 'pre-wrap']
-  }
+  },
+  specialComponents: [
+    {
+      id: 'x.simple-tweet',
+      type: 'social-card',
+      rootSelector: '[data-testid="simpleTweet"]',
+      handlerId: 'x.simple-tweet',
+      preserveSelectors: ['[data-testid="tweetText"]', 'img', '[data-testid="videoPlayer"]'],
+      removeSelectors: ['[data-testid="reply"]', '[data-testid="retweet"]', '[data-testid="like"]']
+    },
+    {
+      id: 'x.video-or-gif',
+      type: 'video',
+      rootSelector: '[data-testid="videoPlayer"]',
+      handlerId: 'x.video-or-gif'
+    }
+  ]
 };
