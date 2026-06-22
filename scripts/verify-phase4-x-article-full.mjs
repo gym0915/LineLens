@@ -2,9 +2,12 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
+import { JSDOM } from 'jsdom';
+
 import { xArticleAdapter } from '../dist/content/adapters/index.js';
 import { getPlatformFixOrder } from '../dist/content/preprocess/apply-platform-fixes.js';
 import {
+  buildCleanTreePrimaryBlocks,
   CLEAN_TREE_PRIMARY_BLOCK_TYPES,
   HIGH_RISK_DUAL_TRACK_BLOCK_TYPES
 } from '../dist/content/preprocess/clean-tree-main-path.js';
@@ -13,6 +16,18 @@ import { filterInlineStyle } from '../dist/content/preprocess/style-whitelist.js
 const projectRoot = resolve(import.meta.dirname, '..');
 const workspaceRoot = findWorkspaceRoot(projectRoot);
 const fullHtml = readFileSync(resolve(workspaceRoot, 'assets/x-article-full-html.html'), 'utf8');
+const detailHtml = readFileSync(resolve(workspaceRoot, 'assets/x-article-detail.html'), 'utf8');
+const codeBlockHtml = readFileSync(resolve(workspaceRoot, 'assets/x-article-codeblock.html'), 'utf8');
+const imageGridHtml = readFileSync(resolve(workspaceRoot, 'assets/x-article-image-grid.html'), 'utf8');
+const xDefaultSemanticFixtureHtml = [
+  '<main>',
+  '  <blockquote>Default X quote selector coverage</blockquote>',
+  '  <table>',
+  '    <tr><th>Name</th><th>Value</th></tr>',
+  '    <tr><td>semanticMap</td><td>default</td></tr>',
+  '  </table>',
+  '</main>'
+].join('');
 
 const sourceInventory = {
   articleRoot: count(fullHtml, 'data-testid="twitterArticleReadView"'),
@@ -61,10 +76,70 @@ assert.deepEqual(getPlatformFixOrder(xArticleAdapter), [
   'normalize-handwritten-ordered-list',
   'preserve-svg-emoji',
   'capture-x-video-hls',
+  'preserve-x-media-caption',
   'preserve-x-media-layout'
 ]);
 assert.deepEqual(CLEAN_TREE_PRIMARY_BLOCK_TYPES, ['paragraph', 'heading', 'quote', 'list', 'image', 'code', 'table', 'simple-tweet', 'image-gallery']);
 assert.deepEqual(HIGH_RISK_DUAL_TRACK_BLOCK_TYPES, ['video']);
+
+const xDefaultCleanTreeBlockCounts = {
+  full: summarizeXCleanTreeBlocks(fullHtml, 'x-full-default-semantic-map'),
+  detail: summarizeXCleanTreeBlocks(detailHtml, 'x-detail-default-semantic-map'),
+  code: summarizeXCleanTreeBlocks(codeBlockHtml, 'x-code-default-semantic-map'),
+  imageGrid: summarizeXCleanTreeBlocks(imageGridHtml, 'x-image-grid-default-semantic-map'),
+  defaultSemanticFixture: summarizeXCleanTreeBlocks(xDefaultSemanticFixtureHtml, 'x-default-semantic-map-fixture')
+};
+assert.equal(
+  xDefaultCleanTreeBlockCounts.full.counts.heading > 0 || xDefaultCleanTreeBlockCounts.detail.counts.heading > 0,
+  true,
+  'X default semanticMap.headingSelector should still emit heading blocks'
+);
+assert.equal(
+  xDefaultCleanTreeBlockCounts.full.counts.list > 0 || xDefaultCleanTreeBlockCounts.detail.counts.list > 0,
+  true,
+  'X default semanticMap list selectors should still emit list blocks'
+);
+assert.equal(
+  xDefaultCleanTreeBlockCounts.full.counts.image > 0 || xDefaultCleanTreeBlockCounts.detail.counts.image > 0,
+  true,
+  'X default semanticMap.imageSelector should still emit image blocks'
+);
+assert.equal(
+  xDefaultCleanTreeBlockCounts.code.counts.code,
+  1,
+  'X default semanticMap.codeSelector should still emit code blocks'
+);
+assert.equal(
+  xDefaultCleanTreeBlockCounts.defaultSemanticFixture.counts.quote,
+  1,
+  'X default semanticMap.quoteSelector should still emit quote blocks'
+);
+assert.equal(
+  xDefaultCleanTreeBlockCounts.defaultSemanticFixture.counts.table,
+  1,
+  'X default semanticMap.tableSelector should still emit table blocks'
+);
+assert.equal(
+  xDefaultCleanTreeBlockCounts.imageGrid.counts['image-gallery'],
+  1,
+  'X default semanticMap.imageGallerySelector should still emit image-gallery blocks'
+);
+assert.equal(
+  xDefaultCleanTreeBlockCounts.full.counts['simple-tweet'] > 0 || xDefaultCleanTreeBlockCounts.detail.counts['simple-tweet'] > 0,
+  true,
+  'X default specialComponents should still emit simpleTweet blocks during clean-tree conversion'
+);
+assert.equal(
+  buildCleanTreePrimaryBlocks({
+    sourceRoot: createDomRoot('<main></main>', 'https://x.com/example/article/video-probe'),
+    adapter: xArticleAdapter,
+    sourceUrl: 'https://x.com/example/article/video-probe',
+    debugId: 'x-video-dual-track-probe',
+    legacyBlocks: [{ id: 'legacy-video-1', type: 'video', src: 'https://video.example/x.mp4' }]
+  }).highRiskBlockCount,
+  1,
+  'video should remain on the high-risk dual-track path in Step 1'
+);
 
 assert.equal(
   filterInlineStyle('font-weight: bold; position: fixed; background: red;', xArticleAdapter.styleWhitelist, {
@@ -170,6 +245,37 @@ console.log('Phase4 full X article verification passed');
 
 function count(source, needle) {
   return source.split(needle).length - 1;
+}
+
+function summarizeXCleanTreeBlocks(html, debugId) {
+  const sourceUrl = 'https://x.com/example/article/' + debugId;
+  const result = buildCleanTreePrimaryBlocks({
+    sourceRoot: createDomRoot(html, sourceUrl),
+    adapter: xArticleAdapter,
+    sourceUrl,
+    debugId
+  });
+  const counts = {};
+  for (const block of result.cleanTreeBlocks) {
+    counts[block.type] = (counts[block.type] ?? 0) + 1;
+  }
+
+  return {
+    total: result.cleanTreeBlocks.length,
+    counts,
+    highRiskBlockCount: result.highRiskBlockCount
+  };
+}
+
+function createDomRoot(html, url) {
+  const dom = new JSDOM(html, { url });
+  globalThis.Element = dom.window.Element;
+  globalThis.HTMLElement = dom.window.HTMLElement;
+  globalThis.Node = dom.window.Node;
+  globalThis.MutationObserver = dom.window.MutationObserver;
+  globalThis.window = dom.window;
+  globalThis.document = dom.window.document;
+  return dom.window.document.body;
 }
 
 function findWorkspaceRoot(startDir) {

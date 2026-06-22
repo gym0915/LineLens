@@ -12,6 +12,7 @@ import {
   mergeSettings,
   normalizeSettings
 } from '../dist/shared/settings.js';
+import { resolveSemanticSelectors } from '../dist/content/preprocess/semantic-map-selectors.js';
 
 const xUrl = new URL('https://x.com/example/article/123456789');
 const twitterUrl = new URL('https://twitter.com/example/article/123456789');
@@ -42,6 +43,36 @@ assert.match(xArticleAdapter.semanticMap?.codeSelector ?? '', /markdown-code-blo
 assert.match(xArticleAdapter.semanticMap?.tableSelector ?? '', /role="table"/, 'X adapter should expose table selector semantics');
 assert.match(xArticleAdapter.semanticMap?.linkSelector ?? '', /a\[href\]/, 'X adapter should expose link selector semantics');
 assert.equal(xArticleAdapter.semanticMap?.textSelector, '[data-text]', 'X adapter should expose text selector semantics');
+
+const resolvedXSemanticSelectors = resolveSemanticSelectors(xArticleAdapter.semanticMap);
+assert.deepEqual(
+  Object.keys(resolvedXSemanticSelectors),
+  [
+    'blockSelector',
+    'paragraphSelector',
+    'headingSelector',
+    'quoteSelector',
+    'orderedListSelector',
+    'unorderedListSelector',
+    'imageSelector',
+    'imageGallerySelector',
+    'codeSelector',
+    'tableSelector',
+    'linkSelector',
+    'textSelector'
+  ],
+  'semanticMap resolver should expose a complete selector contract'
+);
+assert.equal(
+  resolveSemanticSelectors({ headingSelector: '  [data-heading]  ', quoteSelector: '' }).headingSelector,
+  '[data-heading]',
+  'semanticMap resolver should trim custom selectors'
+);
+assert.equal(
+  resolveSemanticSelectors({ headingSelector: '  [data-heading]  ', quoteSelector: '' }).quoteSelector,
+  '[data-testid="tweet"], blockquote',
+  'semanticMap resolver should fall back when selector values are empty'
+);
 
 assert.equal(
   xArticleAdapter.specialComponents?.some((component) => component.id === 'x.simple-tweet' && component.handlerId === 'x.simple-tweet' && component.type === 'social-card'),

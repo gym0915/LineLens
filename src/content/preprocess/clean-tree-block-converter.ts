@@ -19,6 +19,7 @@ import type {
   VideoBlock
 } from '../../shared/article.js';
 import type { CleanTreeContext } from './clone-content-tree.js';
+import { resolveSemanticSelectors, type ResolvedSemanticSelectors } from './semantic-map-selectors.js';
 
 export type CleanTreeBlockConversionOptions = {
   enabledBlockTypes?: Array<ArticleBlock['type']>;
@@ -47,16 +48,17 @@ export function convertCleanTreeToBlocks(
   options: CleanTreeBlockConversionOptions = {}
 ): ArticleBlock[] {
   const enabledBlockTypes = new Set(options.enabledBlockTypes ?? DEFAULT_ENABLED_BLOCK_TYPES);
+  const semanticSelectors = resolveSemanticSelectors(context.adapter.semanticMap);
   const blocks: ArticleBlock[] = [];
   const consumedElements = new Set<Element>();
   let index = 0;
 
-  for (const element of Array.from(root.querySelectorAll('[data-block="true"], [data-linelens-list-kind], [data-testid="markdown-code-block"], [data-testid="simpleTweet"], table, [role="table"], [role="grid"], h1, h2, h3, h4, h5, h6, blockquote, img'))) {
+  for (const element of Array.from(root.querySelectorAll(buildBlockCandidateSelector(semanticSelectors, context)))) {
     if (consumedElements.has(element) || hasConsumedAncestor(element, consumedElements)) {
       continue;
     }
 
-    const block = convertElementToBlock(element, context, index, enabledBlockTypes, consumedElements);
+    const block = convertElementToBlock(element, context, index, enabledBlockTypes, consumedElements, semanticSelectors);
     if (block === null) {
       continue;
     }
@@ -73,41 +75,42 @@ function convertElementToBlock(
   context: CleanTreeContext,
   index: number,
   enabledBlockTypes: Set<ArticleBlock['type']>,
-  consumedElements: Set<Element>
+  consumedElements: Set<Element>,
+  semanticSelectors: ResolvedSemanticSelectors
 ): ArticleBlock | null {
   if (isSimpleTweetElement(element) && enabledBlockTypes.has('simple-tweet')) {
     return convertSimpleTweetElement(element, context, index, consumedElements);
   }
 
-  if (isImageGalleryElement(element) && enabledBlockTypes.has('image-gallery')) {
+  if (isImageGalleryElement(element, semanticSelectors) && enabledBlockTypes.has('image-gallery')) {
     return convertImageGalleryElement(element, context, index, consumedElements);
   }
 
-  if (isImageElement(element) && enabledBlockTypes.has('image')) {
+  if (isImageElement(element, semanticSelectors) && enabledBlockTypes.has('image')) {
     return convertImageElement(element, context, index);
   }
 
-  if (isHeadingElement(element) && enabledBlockTypes.has('heading')) {
+  if (isHeadingElement(element, semanticSelectors) && enabledBlockTypes.has('heading')) {
     return convertTextElement(element, context, index, 'heading');
   }
 
-  if (isCodeElement(element) && enabledBlockTypes.has('code')) {
-    return convertCodeElement(element, context, index, consumedElements);
+  if (isCodeElement(element, semanticSelectors) && enabledBlockTypes.has('code')) {
+    return convertCodeElement(element, context, index, consumedElements, semanticSelectors);
   }
 
-  if (isTableElement(element) && enabledBlockTypes.has('table')) {
-    return convertTableElement(element, context, index, consumedElements);
+  if (isTableElement(element, semanticSelectors) && enabledBlockTypes.has('table')) {
+    return convertTableElement(element, context, index, consumedElements, semanticSelectors);
   }
 
-  if (isListElement(element) && enabledBlockTypes.has('list')) {
-    return convertListElementGroup(element, context, index, consumedElements);
+  if (isListElement(element, semanticSelectors) && enabledBlockTypes.has('list')) {
+    return convertListElementGroup(element, context, index, consumedElements, semanticSelectors);
   }
 
-  if (isQuoteElement(element) && enabledBlockTypes.has('quote')) {
+  if (isQuoteElement(element, semanticSelectors) && enabledBlockTypes.has('quote')) {
     return convertTextElement(element, context, index, 'quote');
   }
 
-  if (shouldSkipParagraphFallback(element)) {
+  if (shouldSkipParagraphFallback(element, semanticSelectors)) {
     return null;
   }
 
@@ -155,10 +158,11 @@ function convertListElementGroup(
   element: Element,
   context: CleanTreeContext,
   index: number,
-  consumedElements: Set<Element>
+  consumedElements: Set<Element>,
+  semanticSelectors: ResolvedSemanticSelectors
 ): ListBlock | null {
-  const kind = element.getAttribute('data-linelens-list-kind') === 'ordered' ? 'ordered' : 'unordered';
-  const elements = collectAdjacentListElements(element, kind);
+  const kind = getListKind(element, semanticSelectors) ?? 'unordered';
+  const elements = collectAdjacentListElements(element, kind, semanticSelectors);
   const normalizedItems = elements.map((item) => normalizeListItem(item, kind)).filter((item) => item.text !== '');
 
   if (normalizedItems.length === 0) {
@@ -871,14 +875,15 @@ function convertCodeElement(
   element: Element,
   context: CleanTreeContext,
   index: number,
-  consumedElements: Set<Element>
+  consumedElements: Set<Element>,
+  semanticSelectors: ResolvedSemanticSelectors
 ): CodeBlock | null {
-  const codeRoot = element.matches('[data-testid="markdown-code-block"]')
+  const codeRoot = element.matches(semanticSelectors.codeSelector)
     ? element
-    : element.querySelector('[data-testid="markdown-code-block"]');
-  const code = codeRoot?.querySelector('pre code');
-  const pre = codeRoot?.querySelector('pre');
-  const text = normalizeCodeText(code?.textContent ?? pre?.textContent ?? '');
+    : element.querySelector(semanticSelectors.codeSelector);
+  const code = codeRoot?.matches('code') ? codeRoot : codeRoot?.querySelector('pre code, code');
+  const pre = codeRoot?.matches('pre') ? codeRoot : codeRoot?.querySelector('pre');
+  const text = normalizeCodeText(code?.textContent ?? pre?.textContent ?? codeRoot?.textContent ?? '');
   if (text === '') {
     return null;
   }
@@ -911,9 +916,10 @@ function convertTableElement(
   element: Element,
   context: CleanTreeContext,
   index: number,
-  consumedElements: Set<Element>
+  consumedElements: Set<Element>,
+  semanticSelectors: ResolvedSemanticSelectors
 ): TableBlock | null {
-  const tableRoot = findTableRoot(element);
+  const tableRoot = findTableRoot(element, semanticSelectors);
   if (!tableRoot) {
     return null;
   }
@@ -1013,32 +1019,57 @@ function isBoldElement(element: Element): boolean {
   return Boolean(element.closest('strong, b, [style*="font-weight: bold"], [style*="font-weight: 700"]'));
 }
 
-function isHeadingElement(element: Element): boolean {
-  return /^H[1-6]$/.test(element.tagName.toUpperCase()) || element.getAttribute('data-linelens-block-role') === 'heading';
+function buildBlockCandidateSelector(selectors: ResolvedSemanticSelectors, context: CleanTreeContext): string {
+  return uniqueSelectors([
+    selectors.blockSelector,
+    selectors.paragraphSelector,
+    selectors.headingSelector,
+    selectors.quoteSelector,
+    selectors.orderedListSelector,
+    selectors.unorderedListSelector,
+    selectors.imageGallerySelector,
+    selectors.imageSelector,
+    selectors.codeSelector,
+    selectors.tableSelector,
+    ...(context.adapter.specialComponents ?? []).map((component) => component.rootSelector)
+  ]);
 }
 
-function isQuoteElement(element: Element): boolean {
-  return element.tagName.toUpperCase() === 'BLOCKQUOTE' || element.getAttribute('data-testid') === 'tweet';
+function uniqueSelectors(selectors: string[]): string {
+  return Array.from(new Set(selectors.map((selector) => selector.trim()).filter(Boolean))).join(', ');
 }
 
-function isListElement(element: Element): boolean {
-  return element.hasAttribute('data-linelens-list-kind') || element.tagName.toUpperCase() === 'LI';
+function isHeadingElement(element: Element, selectors: ResolvedSemanticSelectors): boolean {
+  return element.matches(selectors.headingSelector);
 }
 
-function isImageElement(element: Element): boolean {
-  return element.tagName.toUpperCase() === 'IMG' || element.getAttribute('data-testid') === 'tweetPhoto';
+function isQuoteElement(element: Element, selectors: ResolvedSemanticSelectors): boolean {
+  return element.matches(selectors.quoteSelector);
 }
 
-function isImageGalleryElement(element: Element): boolean {
-  return element.querySelectorAll('[data-testid="tweetPhoto"]').length > 1;
+function isListElement(element: Element, selectors: ResolvedSemanticSelectors): boolean {
+  return element.matches(selectors.orderedListSelector) || element.matches(selectors.unorderedListSelector) || isHandwrittenOrderedListElement(element);
 }
 
-function isCodeElement(element: Element): boolean {
-  return element.matches('[data-testid="markdown-code-block"]') || element.querySelector('[data-testid="markdown-code-block"]') !== null;
+function isImageElement(element: Element, selectors: ResolvedSemanticSelectors): boolean {
+  return element.matches(selectors.imageSelector);
 }
 
-function isTableElement(element: Element): boolean {
-  return findTableRoot(element) !== null;
+function isImageGalleryElement(element: Element, selectors: ResolvedSemanticSelectors): boolean {
+  const galleryImageCount = element.querySelectorAll(selectors.imageGallerySelector).length;
+  if (galleryImageCount > 1) {
+    return true;
+  }
+
+  return element.matches(selectors.imageGallerySelector) && element.querySelectorAll(selectors.imageSelector).length > 1;
+}
+
+function isCodeElement(element: Element, selectors: ResolvedSemanticSelectors): boolean {
+  return element.matches(selectors.codeSelector) || element.querySelector(selectors.codeSelector) !== null;
+}
+
+function isTableElement(element: Element, selectors: ResolvedSemanticSelectors): boolean {
+  return findTableRoot(element, selectors) !== null;
 }
 
 function isSimpleTweetElement(element: Element): boolean {
@@ -1053,10 +1084,10 @@ function isMediaCaptionElement(element: Element): boolean {
   );
 }
 
-function shouldSkipParagraphFallback(element: Element): boolean {
+function shouldSkipParagraphFallback(element: Element, selectors: ResolvedSemanticSelectors): boolean {
   return (
-    element.querySelector('[data-linelens-list-kind], [data-testid="markdown-code-block"], pre, code') !== null ||
-    element.closest('[data-testid="markdown-code-block"], pre, code') !== null ||
+    element.querySelector(uniqueSelectors([selectors.orderedListSelector, selectors.unorderedListSelector, selectors.codeSelector])) !== null ||
+    element.closest(selectors.codeSelector) !== null ||
     isMediaUiOnlyBlock(element)
   );
 }
@@ -1201,11 +1232,11 @@ function normalizeCodeColor(color: string): string {
   return color.replace(/\s+/g, '').toLowerCase();
 }
 
-function findTableRoot(element: Element): Element | null {
-  if (element.matches('table, [role="table"], [role="grid"]')) {
+function findTableRoot(element: Element, semanticSelectors: ResolvedSemanticSelectors): Element | null {
+  if (element.matches(semanticSelectors.tableSelector)) {
     return element;
   }
-  return element.querySelector('table, [role="table"], [role="grid"], [data-testid="markdown-table"]');
+  return element.querySelector(semanticSelectors.tableSelector);
 }
 
 function getTableRowElements(tableRoot: Element): Element[] {
@@ -1342,13 +1373,17 @@ function isMediaContainerBlock(element: Element): boolean {
   );
 }
 
-function collectAdjacentListElements(element: Element, kind: 'ordered' | 'unordered'): Element[] {
+function collectAdjacentListElements(
+  element: Element,
+  kind: 'ordered' | 'unordered',
+  semanticSelectors: ResolvedSemanticSelectors
+): Element[] {
   const elements = [element];
   let current: Element | null = element;
 
   while (current !== null) {
     const next = nextElementInDocument(current);
-    if (next === null || !isListElement(next) || getListKind(next) !== kind) {
+    if (next === null || !isListElement(next, semanticSelectors) || getListKind(next, semanticSelectors) !== kind) {
       break;
     }
 
@@ -1376,12 +1411,20 @@ function nextElementInDocument(element: Element): Element | null {
   return null;
 }
 
-function getListKind(element: Element): 'ordered' | 'unordered' | null {
-  if (!isListElement(element)) {
-    return null;
+function getListKind(element: Element, semanticSelectors: ResolvedSemanticSelectors): 'ordered' | 'unordered' | null {
+  if (element.matches(semanticSelectors.orderedListSelector)) {
+    return 'ordered';
   }
 
-  return element.getAttribute('data-linelens-list-kind') === 'ordered' ? 'ordered' : 'unordered';
+  if (isHandwrittenOrderedListElement(element)) {
+    return 'ordered';
+  }
+
+  if (element.matches(semanticSelectors.unorderedListSelector)) {
+    return 'unordered';
+  }
+
+  return null;
 }
 
 function* rootBlockAncestors(element: Element): Generator<Element> {
@@ -1680,11 +1723,11 @@ function normalizeListItem(
   const rawText = normalizePreWrapText(getElementDisplayText(element, true));
   const markerMatch = kind === 'ordered' ? getOrderedListMarker(rawText) : null;
   const markerLength = markerMatch?.[0].length ?? 0;
-  const text = kind === 'ordered' && markerLength > 0 ? rawText : markerLength > 0 ? rawText.slice(markerLength).trim() : rawText;
+  const text = markerLength > 0 ? rawText.slice(markerLength).trim() : rawText;
   const annotations = extractTextAnnotations(element, rawText);
   const textStyle = extractElementTextStyle(element);
 
-  if (markerLength === 0 || kind === 'ordered') {
+  if (markerLength === 0) {
     return { text, annotations, textStyle };
   }
 
@@ -1708,6 +1751,14 @@ function normalizeListItem(
 
 function getOrderedListMarker(text: string): RegExpMatchArray | null {
   return text.match(/^(\d+\.)\s+/);
+}
+
+function isHandwrittenOrderedListElement(element: Element): boolean {
+  if (!element.hasAttribute('data-block')) {
+    return false;
+  }
+
+  return getOrderedListMarker(normalizePreWrapText(getElementDisplayText(element, true))) !== null;
 }
 
 function getHeadingLevel(element: Element): 1 | 2 | 3 | 4 | 5 | 6 {

@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
+import { JSDOM } from 'jsdom';
+
 import { xArticleAdapter } from '../dist/content/adapters/index.js';
 import {
   buildCleanTreeDebugSnapshot,
@@ -43,6 +45,7 @@ assert.equal(typeof applyPlatformFixes, 'function', 'P4.3 should expose a platfo
 assert.equal(typeof getPlatformFixOrder, 'function', 'P4.3 should expose a deterministic fix order helper');
 assert.equal(typeof convertCleanTreeToBlocks, 'function', 'P4.4 should expose a clean tree block converter entry');
 assert.equal(typeof mergeCleanTreePrimaryBlocks, 'function', 'P4.5 should expose a clean tree primary merge entry');
+assertSemanticMapDrivesCleanTreeBlockConversion();
 assert.deepEqual(getPlatformFixOrder(xArticleAdapter), [
   'expand-folded-tweet-text',
   'normalize-handwritten-ordered-list',
@@ -334,6 +337,111 @@ console.log('Phase4 pipeline baseline verification passed');
 
 function readAsset(fileName) {
   return readFileSync(resolve(workspaceRoot, 'assets', fileName), 'utf8');
+}
+
+function assertSemanticMapDrivesCleanTreeBlockConversion() {
+  const dom = new JSDOM(`
+    <main data-fixture-root>
+      <section data-semantic-block data-kind="heading" data-linelens-heading-level="3">Mapped Heading</section>
+      <aside data-semantic-block data-kind="quote">Mapped quote</aside>
+      <div data-semantic-block data-kind="ordered">Ordered item</div>
+      <div data-semantic-block data-kind="unordered">Unordered item</div>
+      <figure data-semantic-block data-kind="image"><img src="https://example.com/mapped.png" alt="Mapped image"></figure>
+      <section data-semantic-block data-kind="code"><pre><code class="language-js">const mapped = true;</code></pre></section>
+      <section data-semantic-block data-kind="table">
+        <div role="row"><span role="columnheader">Name</span><span role="columnheader">Value</span></div>
+        <div role="row"><span role="cell">mapped</span><span role="cell">yes</span></div>
+      </section>
+    </main>
+  `);
+  const previousGlobals = {
+    document: globalThis.document,
+    window: globalThis.window,
+    Element: globalThis.Element,
+    HTMLElement: globalThis.HTMLElement,
+    Node: globalThis.Node
+  };
+
+  globalThis.document = dom.window.document;
+  globalThis.window = dom.window;
+  globalThis.Element = dom.window.Element;
+  globalThis.HTMLElement = dom.window.HTMLElement;
+  globalThis.Node = dom.window.Node;
+
+  try {
+    const blocks = convertCleanTreeToBlocks(dom.window.document.querySelector('[data-fixture-root]'), {
+      adapter: {
+        ...xArticleAdapter,
+        id: 'semantic-map.fixture',
+        platform: 'fixture',
+        semanticMap: {
+          blockSelector: '[data-semantic-block]',
+          paragraphSelector: '[data-kind="paragraph"]',
+          headingSelector: '[data-kind="heading"]',
+          quoteSelector: '[data-kind="quote"]',
+          orderedListSelector: '[data-kind="ordered"]',
+          unorderedListSelector: '[data-kind="unordered"]',
+          imageSelector: '[data-kind="image"]',
+          imageGallerySelector: '[data-kind="gallery"]',
+          codeSelector: '[data-kind="code"]',
+          tableSelector: '[data-kind="table"]',
+          linkSelector: 'a[href]',
+          textSelector: '[data-text="true"]'
+        }
+      },
+      debugId: 'semantic-map-fixture',
+      platform: 'fixture',
+      sourceUrl: 'https://example.com/article'
+    });
+    const blockTypes = blocks.map((block) => block.type);
+
+    assert.equal(
+      blocks.some((block) => block.type === 'heading' && block.text === 'Mapped Heading' && block.level === 3),
+      true,
+      'semanticMap.headingSelector should drive clean-tree heading detection'
+    );
+    assert.equal(
+      blocks.some((block) => block.type === 'quote' && block.text === 'Mapped quote'),
+      true,
+      'semanticMap.quoteSelector should drive clean-tree quote detection'
+    );
+    assert.equal(
+      blocks.some((block) => block.type === 'list' && block.kind === 'ordered' && block.items.includes('Ordered item')),
+      true,
+      'semanticMap.orderedListSelector should drive clean-tree ordered list detection'
+    );
+    assert.equal(
+      blocks.some((block) => block.type === 'list' && block.kind === 'unordered' && block.items.includes('Unordered item')),
+      true,
+      'semanticMap.unorderedListSelector should drive clean-tree unordered list detection'
+    );
+    assert.equal(
+      blocks.some((block) => block.type === 'image' && block.src === 'https://example.com/mapped.png'),
+      true,
+      'semanticMap.imageSelector should drive clean-tree image detection'
+    );
+    assert.equal(
+      blocks.some((block) => block.type === 'code' && block.text === 'const mapped = true;' && block.language === 'js'),
+      true,
+      'semanticMap.codeSelector should drive clean-tree code detection'
+    );
+    assert.equal(
+      blocks.some((block) => block.type === 'table' && block.rows.length === 2),
+      true,
+      'semanticMap.tableSelector should drive clean-tree table detection'
+    );
+    assert.deepEqual(
+      blockTypes,
+      ['heading', 'quote', 'list', 'list', 'image', 'code', 'table'],
+      'semanticMap selectors should preserve fixture block order'
+    );
+  } finally {
+    globalThis.document = previousGlobals.document;
+    globalThis.window = previousGlobals.window;
+    globalThis.Element = previousGlobals.Element;
+    globalThis.HTMLElement = previousGlobals.HTMLElement;
+    globalThis.Node = previousGlobals.Node;
+  }
 }
 
 function findWorkspaceRoot(startDir) {

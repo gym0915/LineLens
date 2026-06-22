@@ -12,11 +12,11 @@
 
 ## 当前基线
 
-- 主分支已移除微信 adapter，当前内置 adapter 只有 x.article。
-- PlatformAdapter 已有 semanticMap 与 specialComponents 字段。
-- semanticMap 目前还是声明式配置，尚未驱动 clean-tree-block-converter 的候选选择。
-- specialComponents 目前只声明 x.simple-tweet 与 x.video-or-gif，还没有 handler registry。
-- src/content/index.ts 已是 content runtime orchestration，不应该重新放回平台业务逻辑。
+- [x] 主分支已移除微信 adapter，当前内置 adapter 只有 x.article。
+- [x] PlatformAdapter 已有 semanticMap 与 specialComponents 字段。
+- [ ] semanticMap 目前还是声明式配置，尚未驱动 clean-tree-block-converter 的候选选择。
+- [x] specialComponents 目前只声明 x.simple-tweet 与 x.video-or-gif，还没有 handler registry。
+- [x] src/content/index.ts 已是 content runtime orchestration，不应该重新放回平台业务逻辑。
 
 ## 非目标
 
@@ -44,6 +44,14 @@
 
 目标：把 semanticMap 从“只声明不消费”推进到“clean-tree converter 实际读取”，同时保证 X 默认配置下输出不变。
 
+**Status:** completed
+
+**Checklist:**
+
+- [x] Task 1.1：为 semanticMap 消费路径写失败验证。
+- [x] Task 1.2：抽出 semantic selector 解析 helper。
+- [x] Task 1.3：锁住 X 默认行为不变。
+
 ### Task 1.1：为 semanticMap 消费路径写失败验证
 
 **Files:**
@@ -54,10 +62,10 @@
 
 **Steps:**
 
-1. 在 verifier 中构造一个最小 clean-tree DOM，包含自定义 heading、quote、ordered list、unordered list、image、code、table selector。
-2. 调用 convertCleanTreeToBlocks(root, context)，其中 context.adapter.semanticMap 使用测试自定义 selector。
-3. 先断言当前实现失败：因为 converter 仍使用硬编码 selector。
-4. 失败信息必须指向具体语义类型，例如 semanticMap.headingSelector should drive clean-tree heading detection。
+- [x] 在 verifier 中构造一个最小 clean-tree DOM，包含自定义 heading、quote、ordered list、unordered list、image、code、table selector。
+- [x] 调用 convertCleanTreeToBlocks(root, context)，其中 context.adapter.semanticMap 使用测试自定义 selector。
+- [x] 先断言当前实现失败：因为 converter 仍使用硬编码 selector。
+- [x] 失败信息必须指向具体语义类型，例如 semanticMap.headingSelector should drive clean-tree heading detection。
 
 **Run:**
 
@@ -78,7 +86,7 @@ npm run verify:phase4-pipeline-baseline
 
 **Implementation notes:**
 
-- 新增 helper resolveSemanticSelectors(map)，输出完整 ResolvedSemanticSelectors：
+- [x] 新增 helper resolveSemanticSelectors(map)，输出完整 ResolvedSemanticSelectors：
   - blockSelector
   - paragraphSelector
   - headingSelector
@@ -91,10 +99,10 @@ npm run verify:phase4-pipeline-baseline
   - tableSelector
   - linkSelector
   - textSelector
-- convertCleanTreeToBlocks() 从 context.adapter.semanticMap 解析 selector。
-- 顶层候选 query 不再直接写死 X selector；应由 resolved selectors 组合生成。
-- 判断函数如 isHeadingElement()、isQuoteElement()、isCodeElement() 需要使用 resolved selector，而不是只看 tag/class。
-- 默认 X adapter 下 block 输出必须不变。
+- [x] convertCleanTreeToBlocks() 从 context.adapter.semanticMap 解析 selector。
+- [x] 顶层候选 query 不再直接写死 X selector；应由 resolved selectors 组合生成。
+- [x] 判断函数如 isHeadingElement()、isQuoteElement()、isCodeElement() 需要使用 resolved selector，而不是只看 tag/class。
+- [x] 默认 X adapter 下 block 输出必须不变。
 
 **Run:**
 
@@ -115,9 +123,9 @@ npm run verify:m3-adapters-settings
 
 **Steps:**
 
-1. 对 X fixture 统计关键 block 类型数量。
-2. 确认 X 的 heading、quote、list、image、code、table、simpleTweet、imageGallery 仍能进入 clean-tree block conversion。
-3. 确认 video 仍保持 high-risk dual-track，不被 Step 1 误迁移。
+- [x] 对 X fixture 统计关键 block 类型数量。
+- [x] 确认 X 的 heading、quote、list、image、code、table、simpleTweet、imageGallery 仍能进入 clean-tree block conversion。
+- [x] 确认 video 仍保持 high-risk dual-track，不被 Step 1 误迁移。
 
 **Run:**
 
