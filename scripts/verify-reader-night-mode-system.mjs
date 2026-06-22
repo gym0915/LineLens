@@ -112,8 +112,23 @@ assert.doesNotMatch(
 assert.match(tokensCss, /--reader-table-surface\s*:/, 'table surface should be owned by Reader theme tokens');
 assert.match(tokensCss, /--reader-table-header-surface\s*:/, 'table header surface should be owned by Reader theme tokens');
 assert.match(tokensCss, /--reader-table-border\s*:/, 'table border should be owned by Reader theme tokens');
+assert.match(tokensCss, /--reader-table-active-border\s*:/, 'active table border should be owned by Reader theme tokens');
 assert.match(tokensCss, /--reader-table-ink\s*:/, 'table text color should be owned by Reader theme tokens');
 assert.match(tokensCss, /--reader-table-header-ink\s*:/, 'table header text color should be owned by Reader theme tokens');
+
+assert(
+  hasMediaTokenDeclaration(tokensCss, '--reader-table-border', 'var(--reader-theme-night-border-faint)'),
+  'inactive night-mode table borders should use the faint border token'
+);
+assert(
+  hasMediaTokenDeclaration(tokensCss, '--reader-table-active-border', 'rgba(218, 226, 252, 0.52)'),
+  'active night-mode table borders should keep the brighter active table line'
+);
+assert.match(
+  read('public/styles/focus.css'),
+  /\.reader-table\.focus-unit\.is-active\s*\{[\s\S]*?--reader-table-border:\s*var\(--reader-table-active-border\);/,
+  'active tables should brighten their inherited table border token only in active state'
+);
 
 assert.doesNotMatch(
   read('public/styles/focus.css'),

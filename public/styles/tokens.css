@@ -136,6 +136,7 @@
     );
     --reader-table-header-surface: rgba(44, 37, 33, 0.06);
     --reader-table-border: var(--reader-border-subtle);
+    --reader-table-active-border: rgba(44, 37, 33, 0.24);
     --reader-table-ink: var(--reader-text-active);
     --reader-table-header-ink: var(--reader-text-title);
     --reader-paragraph-gap: 28px;
@@ -377,7 +378,8 @@
             transparent
         );
         --reader-table-header-surface: rgba(255, 255, 255, 0.08);
-        --reader-table-border: rgba(218, 226, 252, 0.52);
+        --reader-table-border: var(--reader-theme-night-border-faint);
+        --reader-table-active-border: rgba(218, 226, 252, 0.52);
         --reader-table-ink: var(--reader-theme-night-active);
         --reader-table-header-ink: var(--reader-theme-night-active);
         --reader-toast-surface: rgba(218, 226, 252, 0.92);

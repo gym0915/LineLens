@@ -189,6 +189,7 @@ p .focus-unit.is-active {
 }
 
 .reader-table.focus-unit.is-active {
+  --reader-table-border: var(--reader-table-active-border);
   padding: 6px;
   opacity: 1;
 }
