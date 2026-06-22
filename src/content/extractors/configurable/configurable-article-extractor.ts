@@ -3,7 +3,26 @@ import { validateArticle, type ValidationResult } from '../../../shared/article-
 import type { ExtractorContext, ExtractorMatch, ReadyResult } from '../../../shared/extractor-types.js';
 import { normalizeText } from '../../../shared/text.js';
 import type { PlatformAdapter, ValidationConfig } from '../../adapters/index.js';
-import { buildCleanTreePrimaryBlocks } from '../../preprocess/clean-tree-main-path.js';
+import { buildCleanTreePrimaryBlocks, type CleanTreePrimaryBlocksResult } from '../../preprocess/clean-tree-main-path.js';
+
+export type ConfigurableArticleExtractionOptions = {
+  id?: string;
+  source?: ArticleSource;
+  canonicalUrl?: string;
+  debugId?: string;
+  legacyBlocks?: ArticleBlock[];
+};
+
+export type ConfigurableArticleExtractionDiagnostics = Pick<
+  CleanTreePrimaryBlocksResult,
+  'fallbackBlockCount' | 'highRiskBlockCount' | 'replacedBlockCount'
+>;
+
+export type ConfigurableArticleExtractionResult = {
+  article: Article;
+  cleanTreeBlocks: ArticleBlock[];
+  diagnostics: ConfigurableArticleExtractionDiagnostics;
+};
 
 export function matchConfigurableArticle(adapter: PlatformAdapter, url: URL): ExtractorMatch | null {
   if (!adapter.enabled) {
@@ -71,6 +90,14 @@ export async function extractConfigurableArticle(
   adapter: PlatformAdapter,
   context: ExtractorContext
 ): Promise<Article> {
+  return (await extractConfigurableArticleWithDiagnostics(adapter, context)).article;
+}
+
+export async function extractConfigurableArticleWithDiagnostics(
+  adapter: PlatformAdapter,
+  context: ExtractorContext,
+  options: ConfigurableArticleExtractionOptions = {}
+): Promise<ConfigurableArticleExtractionResult> {
   const ready = await waitUntilConfigurableArticleReady(adapter, context);
   if (!ready.ready) {
     throw new Error(ready.reason);
@@ -82,20 +109,21 @@ export async function extractConfigurableArticle(
   }
 
   const sourceUrl = context.url.toString();
-  const blocks = buildCleanTreePrimaryBlocks({
+  const blockResult = buildCleanTreePrimaryBlocks({
     sourceRoot: roots.contentRoot,
     adapter,
     sourceUrl,
-    debugId: adapter.id
-  }).blocks;
+    debugId: options.debugId ?? adapter.id,
+    legacyBlocks: options.legacyBlocks
+  });
   const article: Article = {
-    id: configurableArticleId(adapter, context.url),
-    source: configurableArticleSource(adapter),
+    id: options.id ?? configurableArticleId(adapter, context.url),
+    source: options.source ?? configurableArticleSource(adapter),
     sourceUrl,
-    canonicalUrl: sourceUrl,
+    canonicalUrl: options.canonicalUrl ?? sourceUrl,
     title: normalizeText(roots.titleElement.textContent ?? ''),
     extractedAt: context.now?.() ?? Date.now(),
-    blocks
+    blocks: blockResult.blocks
   };
 
   const validation = validateConfigurableArticle(article, adapter.validation);
@@ -103,10 +131,18 @@ export async function extractConfigurableArticle(
     throw new Error(validation.reason);
   }
 
-  return article;
+  return {
+    article,
+    cleanTreeBlocks: blockResult.cleanTreeBlocks,
+    diagnostics: {
+      fallbackBlockCount: blockResult.fallbackBlockCount,
+      highRiskBlockCount: blockResult.highRiskBlockCount,
+      replacedBlockCount: blockResult.replacedBlockCount
+    }
+  };
 }
 
-function locateConfigurableArticleRoots(adapter: PlatformAdapter, context: ExtractorContext): {
+export function locateConfigurableArticleRoots(adapter: PlatformAdapter, context: ExtractorContext): {
   root: ParentNode | null;
   articleRoot: Element | null;
   titleElement: Element | null;

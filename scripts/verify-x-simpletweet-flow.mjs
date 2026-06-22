@@ -7,6 +7,7 @@ const assetRoot = findAssetRoot(projectRoot);
 
 const sourceFiles = {
   article: readFileSync(resolve(projectRoot, 'src/content/extractors/x/article-extractor.ts'), 'utf8'),
+  articleMetadata: readFileSync(resolve(projectRoot, 'src/content/extractors/x/article-metadata.ts'), 'utf8'),
   simpleTweet: readFileSync(resolve(projectRoot, 'src/content/extractors/x/simple-tweet.ts'), 'utf8'),
   cleanTree: readFileSync(resolve(projectRoot, 'src/content/preprocess/clean-tree-block-converter.ts'), 'utf8'),
   platformFixes: readFileSync(resolve(projectRoot, 'src/content/preprocess/apply-platform-fixes.ts'), 'utf8'),
@@ -16,6 +17,7 @@ const sourceFiles = {
   renderer: readFileSync(resolve(projectRoot, 'src/reader/block-renderer.ts'), 'utf8'),
   comparator: readFileSync(resolve(projectRoot, 'src/content/preprocess/clean-tree-main-path.ts'), 'utf8'),
   types: readFileSync(resolve(projectRoot, 'src/shared/article.ts'), 'utf8'),
+  tokensCss: readFileSync(resolve(projectRoot, 'public/styles/tokens.css'), 'utf8'),
   layoutCss: readFileSync(resolve(projectRoot, 'public/styles/layout.css'), 'utf8'),
   css: readFileSync(resolve(projectRoot, 'public/styles/social-card.css'), 'utf8'),
   responsiveCss: readFileSync(resolve(projectRoot, 'public/styles/responsive.css'), 'utf8')
@@ -46,8 +48,8 @@ assert.match(sourceFiles.simpleTweet, /sourceColor = getStyleValue\(badge\.close
 assert.match(sourceFiles.simpleTweet, /titleTextStyle:\s*extractElementTextStyle\(titleElement\)/, 'simpleTweet extractor should preserve article-cover title text style');
 assert.match(sourceFiles.simpleTweet, /excerptTextStyle:\s*extractElementTextStyle\(excerptElement\)/, 'simpleTweet extractor should preserve article-cover excerpt text style');
 assert.match(sourceFiles.simpleTweet, /getArticleCoverAspectRatio/, 'simpleTweet extractor should derive the article-cover image aspect ratio from source DOM');
-assert.match(sourceFiles.article, /extractArticleHeaderMetadata/, 'article extractor should extract title-area author and interaction metadata');
-assert.match(sourceFiles.article, /findHeaderElementAfterTitle\(readView, longform, '\[itemprop="author"\]'/, 'article metadata extraction should use the title-to-longform boundary');
+assert.match(sourceFiles.article, /extractXArticleMetadata/, 'article extractor should delegate title-area author and interaction metadata extraction');
+assert.match(sourceFiles.articleMetadata, /findHeaderElementAfterTitle\(readView, longform, '\[itemprop="author"\]'/, 'article metadata extraction should use the title-to-longform boundary');
 assert.match(sourceFiles.cleanTree, /extractSimpleTweetItemsSync/, 'clean-tree should emit ordered simpleTweet items');
 assert.match(sourceFiles.cleanTree, /extractTweetAiGeneratedText/, 'clean-tree should extract the AI-generated badge text from tweet DOM');
 assert.match(sourceFiles.cleanTree, /extractArticleCoverAuthorProfile/, 'clean-tree should extract article-cover author metadata from the card DOM');
@@ -91,13 +93,17 @@ assert.match(sourceFiles.renderer, /reader-simple-tweet-shell-compact/, 'compact
 assert.match(sourceFiles.renderer, /reader-simple-tweet-actions-secondary/, 'reader should group bookmark and share actions tightly');
 assert.match(sourceFiles.comparator, /left\.items\.length === right\.items\.length/, 'phase4 comparison should use simpleTweet items');
 assert.match(sourceFiles.css, /\.reader-simple-tweet-condensed\s*\{[\s\S]*?grid-template-columns:/, 'reader CSS should define compact condensed media/text layout');
-assert.match(sourceFiles.css, /\.reader-simple-tweet-frame-compact \.reader-simple-tweet-shell-compact\s*\{[\s\S]*?padding: 6px 0 0 4px;/, 'compact shell should add top-left inset for the thumbnail');
-assert.match(sourceFiles.css, /\.reader-simple-tweet-condensed-media \.reader-simple-tweet-media\s*\{[\s\S]*?width: 84px;[\s\S]*?min-height: 84px;/, 'desktop condensed thumbnail should have explicit square size');
+assert.match(sourceFiles.tokensCss, /--reader-social-card-compact-shell-padding:\s*6px 0 0 4px;/, 'compact shell inset token should add top-left inset for the thumbnail');
+assert.match(sourceFiles.css, /\.reader-simple-tweet-frame-compact \.reader-simple-tweet-shell-compact\s*\{[\s\S]*?padding: var\(--reader-social-card-compact-shell-padding\);/, 'compact shell should use the shared inset token for the thumbnail');
+assert.match(sourceFiles.tokensCss, /--reader-social-condensed-media-size:\s*84px;/, 'desktop condensed thumbnail token should keep the explicit square size');
+assert.match(sourceFiles.css, /\.reader-simple-tweet-condensed-media \.reader-simple-tweet-media\s*\{[\s\S]*?width: var\(--reader-social-condensed-media-size\);[\s\S]*?min-height: var\(--reader-social-condensed-media-size\);/, 'desktop condensed thumbnail should use the shared square size token');
 assert.match(sourceFiles.css, /\.reader-simple-tweet-condensed\s*\{[\s\S]*?border: 0;/, 'condensed quoted text should not receive an extra gray inner border');
 assert.match(sourceFiles.css, /\.reader-simple-tweet-video-preview-rounded-square\s*\{[\s\S]*?border-radius: var\(--reader-radius-content\);/, 'condensed preview should render as a rounded square with the shared reader media radius');
-assert.match(sourceFiles.css, /\.reader-simple-tweet-actions-secondary\s*\{[\s\S]*?gap: 4px;/, 'bookmark and share actions should stay close together');
+assert.match(sourceFiles.tokensCss, /--reader-social-card-actions-secondary-gap:\s*4px;/, 'bookmark and share action gap token should stay tight');
+assert.match(sourceFiles.css, /\.reader-simple-tweet-actions-secondary\s*\{[\s\S]*?gap: var\(--reader-social-card-actions-secondary-gap\);/, 'bookmark and share actions should use the tight shared gap token');
 assert.match(sourceFiles.css, /\.reader-simple-tweet-ai-generated\s*\{[\s\S]*?display: inline-flex;/, 'reader CSS should style the AI-generated badge row');
-assert.match(sourceFiles.css, /\.reader-simple-tweet-ai-generated-icon\s*\{[\s\S]*?width: 18px;/, 'reader CSS should size the AI-generated badge icon');
+assert.match(sourceFiles.tokensCss, /--reader-social-card-ai-generated-icon-size:\s*18px;/, 'AI-generated badge icon token should keep the expected size');
+assert.match(sourceFiles.css, /\.reader-simple-tweet-ai-generated-icon\s*\{[\s\S]*?width: var\(--reader-social-card-ai-generated-icon-size\);/, 'reader CSS should size the AI-generated badge icon through the shared token');
 assert.match(sourceFiles.css, /\.reader-simple-tweet-photo-grid\s*\{[\s\S]*?border-radius: var\(--reader-radius-content\);/, 'simpleTweet photo grids should use the shared reader media radius');
 assert.match(sourceFiles.css, /\.reader-simple-tweet-photo-count-2,\s*[\s\S]*?grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/, 'two-photo groups should render as a horizontal two-column grid');
 assert.match(sourceFiles.css, /\.reader-simple-tweet-photo-layout-row\s*\{[\s\S]*?flex-direction: row;/, 'photo layout trees should render row branches');
@@ -109,14 +115,17 @@ assert.match(sourceFiles.css, /\.reader-simple-tweet-photo \.reader-media-frame\
 assert.match(sourceFiles.css, /\.reader-simple-tweet-photo-image\s*\{[\s\S]*?object-fit: cover;/, 'photo layout tree cells should fill the source media tiles');
 assert.match(sourceFiles.css, /\.reader-simple-tweet-photo-image\s*\{[\s\S]*?max-width: none;[\s\S]*?max-height: none;[\s\S]*?object-position: center center;/, 'photo layout tree images should crop from the visual center');
 assert.match(sourceFiles.css, /\.reader-simple-tweet \.reader-video-media\s*\{[\s\S]*?border-radius: var\(--reader-radius-content\);/, 'simpleTweet videos should use the shared reader media radius');
-assert.match(sourceFiles.css, /\.reader-simple-tweet-article-meta-author\s*\{[\s\S]*?margin-top: 10px;/, 'article-cover author metadata should sit under the title block');
+assert.match(sourceFiles.tokensCss, /--reader-social-article-meta-author-margin-top:\s*10px;/, 'article-cover author metadata margin token should keep the expected title spacing');
+assert.match(sourceFiles.css, /\.reader-simple-tweet-article-meta-author\s*\{[\s\S]*?margin-top: var\(--reader-social-article-meta-author-margin-top\);/, 'article-cover author metadata should sit under the title block through the shared token');
 assert.match(sourceFiles.css, /\.reader-simple-tweet-media\s*\{[\s\S]*?aspect-ratio:\s*var\(--reader-media-aspect-ratio, 5 \/ 2\);/, 'simpleTweet media should use extracted source aspect ratio with the existing fallback');
 assert.match(sourceFiles.css, /\.reader-simple-tweet-source\s*\{[\s\S]*?color:\s*var\(--reader-simple-tweet-source-color,/, 'simpleTweet source badge should read the extracted source color variable');
 assert.match(sourceFiles.css, /\.reader-simple-tweet-article-meta-metrics\s*\{[\s\S]*?border-top: 1px solid/, 'article-cover interaction metrics should render as a separate clickable row');
-assert.match(sourceFiles.css, /\.reader-simple-tweet-video-portrait\s*\{[\s\S]*?width: min\(100%, 360px\);/, 'reader CSS should constrain portrait simpleTweet videos to a narrower in-card width');
+assert.match(sourceFiles.tokensCss, /--reader-social-card-video-portrait-max-width:\s*360px;/, 'portrait simpleTweet max-width token should keep the narrower in-card width');
+assert.match(sourceFiles.css, /\.reader-simple-tweet-video-portrait\s*\{[\s\S]*?width: min\(100%, var\(--reader-social-card-video-portrait-max-width\)\);/, 'reader CSS should constrain portrait simpleTweet videos through the shared token');
 assert.match(sourceFiles.css, /\.reader-simple-tweet-video-portrait\s*\{[\s\S]*?margin-left: 0;[\s\S]*?margin-right: auto;/, 'portrait simpleTweet videos should stay left-aligned instead of centered');
 assert.match(sourceFiles.css, /\.reader-simple-tweet-shell\s*\{[\s\S]*?border: 0;/, 'outer simpleTweet shell should not add an extra inner border');
-assert.match(sourceFiles.layoutCss, /\.article-meta-author\s*\{[\s\S]*?margin: 0 0 18px;/, 'article author metadata should render directly below the title');
+assert.match(sourceFiles.tokensCss, /--reader-meta-author-margin-bottom:\s*18px;/, 'article author metadata margin token should keep the expected title spacing');
+assert.match(sourceFiles.layoutCss, /\.article-meta-author\s*\{[\s\S]*?margin: 0 0 var\(--reader-meta-author-margin-bottom\);/, 'article author metadata should render below the title through the shared token');
 assert.match(sourceFiles.layoutCss, /\.article-meta-metrics\s*\{[\s\S]*?border-bottom: 1px solid/, 'article interaction metadata should render as a separated row below the author');
 assert.match(sourceFiles.responsiveCss, /\.reader-simple-tweet-content\s*\{[\s\S]*?padding: 0;/, 'mobile CSS should not restore the old inner content padding');
 

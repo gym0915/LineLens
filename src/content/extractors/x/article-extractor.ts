@@ -10,7 +10,6 @@ import type {
   TableBlock,
   TextAnnotation,
   TextStyle,
-  TweetMetrics,
   VideoBlock
 } from '../../../shared/article.js';
 import { validateArticle } from '../../../shared/article-validator.js';
@@ -24,11 +23,16 @@ import {
   isXArticleUrl
 } from '../../../shared/url.js';
 import { loadSettingsFromLocalStorage } from '../../../shared/settings.js';
-import { detectXArticleDom } from './article-detector.js';
 import { X_ARTICLE_SELECTORS } from './article-selectors.js';
 import * as simpleTweetModel from './simple-tweet.js';
 import { xArticleAdapter } from '../../adapters/x-article-adapter.js';
-import { buildCleanTreePrimaryBlocks } from '../../preprocess/clean-tree-main-path.js';
+import {
+  extractConfigurableArticleWithDiagnostics,
+  locateConfigurableArticleRoots,
+  waitUntilConfigurableArticleReady
+} from '../configurable/index.js';
+import { extractXArticleLegacyBlocks } from './article-legacy-blocks.js';
+import { extractXArticleMetadata } from './article-metadata.js';
 
 const AMPLIFY_VIDEO_ID_PATTERN = /amplify_video(?:_thumb)?\/(\d+)/;
 const X_CODE_COLOR_THEME_PAIRS: Array<{ light: string; dark: string }> = [
@@ -64,19 +68,18 @@ export const xArticleExtractor: ArticleExtractor = {
   },
 
   async waitUntilReady(context) {
-    const root = getRoot(context);
-    return root ? detectXArticleDom(root) : { ready: false, reason: 'missing_document' };
+    return waitUntilConfigurableArticleReady(xArticleAdapter, context);
   },
 
   async extract(context) {
-    const root = getRoot(context);
-    if (!root) {
+    const roots = locateConfigurableArticleRoots(xArticleAdapter, context);
+    if (!roots.root) {
       throw new Error('missing_document');
     }
 
-    const readView = root.querySelector(X_ARTICLE_SELECTORS.readView);
-    const longform = readView?.querySelector(X_ARTICLE_SELECTORS.longform);
-    const title = normalizeText(readView?.querySelector(X_ARTICLE_SELECTORS.title)?.textContent ?? '');
+    const readView = roots.articleRoot;
+    const longform = roots.contentRoot;
+    const title = normalizeText(roots.titleElement?.textContent ?? '');
     const articleId = getXArticleIdFromUrl(context.url);
 
     if (!readView || !longform || !title || !articleId) {
@@ -85,21 +88,28 @@ export const xArticleExtractor: ArticleExtractor = {
 
     const adapter = loadSettingsFromLocalStorage().platformAdapters[xArticleAdapter.id] ?? xArticleAdapter;
     const capturedVideos = await getCapturedVideos();
-    const legacyBlocks = await extractBlocks(longform, articleId, capturedVideos);
-    const blocks = buildCleanTreePrimaryBlocks({
-      sourceRoot: longform,
-      adapter,
-      sourceUrl: context.url.toString(),
+    const legacyBlocks = await extractXArticleLegacyBlocks({
+      longform,
+      articleId,
+      capturedVideos,
+      extractBlocks
+    });
+    const canonicalUrl = `${X_CANONICAL_ORIGIN}/${getXArticleAuthorHandleFromUrl(context.url) ?? 'i'}/article/${articleId}`;
+    const configurableResult = await extractConfigurableArticleWithDiagnostics(adapter, context, {
+      id: articleId,
+      source: 'x-article',
+      canonicalUrl,
       debugId: `x.article:${articleId}`,
       legacyBlocks
-    }).blocks;
+    });
+    const blocks = configurableResult.article.blocks;
     const coverImage = extractCoverImage(readView, articleId);
-    const articleMeta = extractArticleHeaderMetadata(readView, longform);
+    const articleMeta = extractXArticleMetadata(readView, longform);
     const article: Article = {
       id: articleId,
       source: 'x-article',
       sourceUrl: context.url.toString(),
-      canonicalUrl: `${X_CANONICAL_ORIGIN}/${getXArticleAuthorHandleFromUrl(context.url) ?? 'i'}/article/${articleId}`,
+      canonicalUrl,
       authorHandle: getXArticleAuthorHandleFromUrl(context.url),
       ...articleMeta,
       title,
@@ -118,76 +128,6 @@ export const xArticleExtractor: ArticleExtractor = {
 
   validate: validateArticle
 };
-
-function getRoot(context: ExtractorContext): ParentNode | null {
-  return context.root ?? context.document ?? null;
-}
-
-function extractArticleHeaderMetadata(readView: Element, longform: Element): Partial<Article> {
-  const titleElement = readView.querySelector(X_ARTICLE_SELECTORS.title);
-  const authorRoot = findHeaderElementAfterTitle(readView, longform, '[itemprop="author"]', titleElement);
-  const metricsGroup = findHeaderElementAfterTitle(readView, longform, '[role="group"][aria-label]', titleElement);
-  const additionalName = normalizeText(authorRoot?.querySelector('meta[itemprop="additionalName"]')?.getAttribute('content') ?? '');
-  const authorHandle = additionalName ? `@${additionalName.replace(/^@/, '')}` : undefined;
-  const authorName = normalizeText(authorRoot?.querySelector('meta[itemprop="name"]')?.getAttribute('content') ?? '');
-  const authorAvatar =
-    authorRoot?.querySelector<HTMLImageElement>('img')?.currentSrc ||
-    authorRoot?.querySelector<HTMLImageElement>('img')?.src ||
-    authorRoot?.querySelector('meta[itemprop="image"]')?.getAttribute('content') ||
-    '';
-  const time = authorRoot?.parentElement?.querySelector<HTMLTimeElement>('time') ?? readView.querySelector<HTMLTimeElement>('time');
-  const metrics = extractMetricsFromGroup(metricsGroup);
-
-  return {
-    ...(authorName ? { authorName } : {}),
-    ...(authorHandle ? { authorHandle } : {}),
-    ...(authorAvatar ? { authorAvatarUrl: authorAvatar } : {}),
-    ...(authorRoot?.querySelector('[data-testid="icon-verified"], [aria-label="认证账号"], [aria-label="Verified account"]')
-      ? { authorVerified: true }
-      : {}),
-    ...(time?.dateTime ? { publishedAt: time.dateTime } : {}),
-    ...(time?.textContent ? { publishedAtText: normalizeText(time.textContent) } : {}),
-    ...(hasTweetMetrics(metrics) ? { metrics } : {})
-  };
-}
-
-function findHeaderElementAfterTitle(readView: Element, longform: Element, selector: string, titleElement: Element | null): Element | null {
-  const candidates = Array.from(readView.querySelectorAll(selector)).filter((candidate) => !longform.contains(candidate));
-  if (!titleElement) {
-    return candidates[0] ?? null;
-  }
-  return candidates.find((candidate) => Boolean(titleElement.compareDocumentPosition(candidate) & Node.DOCUMENT_POSITION_FOLLOWING)) ?? null;
-}
-
-function extractMetricsFromGroup(group: Element | null): TweetMetrics {
-  if (!group) {
-    return {};
-  }
-
-  return {
-    replies: extractMetricValueFromGroup(group, 'reply'),
-    reposts: extractMetricValueFromGroup(group, 'retweet'),
-    likes: extractMetricValueFromGroup(group, 'like'),
-    views:
-      normalizeText(group.querySelector('a[href*="/analytics"]')?.textContent ?? '') ||
-      parseXMetricLabel(group.getAttribute('aria-label') ?? '', /(?:查看|观看|view)/i),
-    bookmarks: extractMetricValueFromGroup(group, 'bookmark')
-  };
-}
-
-function extractMetricValueFromGroup(group: Element, testId: string): string | undefined {
-  const action = group.querySelector(`[data-testid="${testId}"]`);
-  const value = normalizeText(action?.textContent ?? '') || parseXMetricLabel(action?.getAttribute('aria-label') ?? '');
-  return value || undefined;
-}
-
-function parseXMetricLabel(label: string, hint?: RegExp): string {
-  const text = normalizeText(label);
-  if (hint && !hint.test(text)) {
-    return '';
-  }
-  return text.match(/[\d,.]+(?:\.\d+)?(?:万|[KMB])?/i)?.[0] ?? '';
-}
 
 async function extractBlocks(longform: Element, articleId: string, capturedVideos: CapturedXVideo[]): Promise<ArticleBlock[]> {
   const blocks: ArticleBlock[] = [];

@@ -1749,30 +1749,11 @@ function normalizeListItem(
   const rawText = normalizePreWrapText(getElementDisplayText(element, true));
   const markerMatch = kind === 'ordered' ? getOrderedListMarker(rawText) : null;
   const markerLength = markerMatch?.[0].length ?? 0;
-  const text = markerLength > 0 ? rawText.slice(markerLength).trim() : rawText;
+  const text = kind === 'ordered' && markerLength > 0 ? rawText : rawText;
   const annotations = extractTextAnnotations(element, rawText);
   const textStyle = extractElementTextStyle(element);
 
-  if (markerLength === 0) {
-    return { text, annotations, textStyle };
-  }
-
-  return {
-    text,
-    textStyle,
-    annotations: annotations
-      .filter((annotation) => annotation.endOffset > markerLength)
-      .map((annotation) => ({
-        ...annotation,
-        startOffset: Math.max(0, annotation.startOffset - markerLength),
-        endOffset: Math.max(0, annotation.endOffset - markerLength)
-      }))
-      .filter((annotation) => annotation.startOffset < annotation.endOffset && annotation.startOffset < text.length)
-      .map((annotation) => ({
-        ...annotation,
-        endOffset: Math.min(annotation.endOffset, text.length)
-      }))
-  };
+  return { text, annotations, textStyle };
 }
 
 function getOrderedListMarker(text: string): RegExpMatchArray | null {

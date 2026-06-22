@@ -147,11 +147,24 @@ for (const type of ['paragraph', 'list', 'image']) {
 }
 
 const xArticleExtractorSource = readFileSync(resolve(projectRoot, 'src/content/extractors/x/article-extractor.ts'), 'utf8');
+const adapterTypesSource = readFileSync(resolve(projectRoot, 'src/content/adapters/adapter-types.ts'), 'utf8');
+const specialHandlersPath = resolve(projectRoot, 'src/content/extractors/configurable/special-component-handlers.ts');
+const specialHandlersSource = existsSync(specialHandlersPath) ? readFileSync(specialHandlersPath, 'utf8') : '';
 assert.doesNotMatch(
   xArticleExtractorSource,
-  /configurable-article-extractor/,
-  'Step 3 should not replace the X article extractor main path'
+  /buildCleanTreePrimaryBlocks/,
+  'Step 4 should keep direct clean-tree block building inside configurable extraction'
 );
+assert.match(
+  xArticleExtractorSource,
+  /extractConfigurableArticleWithDiagnostics/,
+  'Step 4 should let X delegate generic clean-tree extraction through configurable extraction'
+);
+assert.match(adapterTypesSource, /export type SpecialComponentHandler/, 'Step 4.4 should declare a SpecialComponentHandler type');
+assert.equal(existsSync(specialHandlersPath), true, 'Step 4.4 should create configurable special-component-handlers.ts');
+assert.match(specialHandlersSource, /registerSpecialComponentHandler/, 'Step 4.4 should expose code-owned handler registration');
+assert.match(specialHandlersSource, /getSpecialComponentHandler/, 'Step 4.4 should resolve handlers by handlerId');
+assert.match(specialHandlersSource, /return null/, 'unknown special component handlers should resolve to null instead of executing user config');
 
 console.log('Configurable article extractor verification passed');
 

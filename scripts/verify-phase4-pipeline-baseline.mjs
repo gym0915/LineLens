@@ -200,8 +200,9 @@ const modularExtractorSource = readFileSync(
   'utf8'
 );
 for (const source of [modularExtractorSource]) {
-  assert.match(source, /buildCleanTreePrimaryBlocks/, 'P4.5 should wire clean tree primary blocks into the modular X extractor path');
-  assert.match(source, /legacyBlocks = await extractBlocks/, 'browser X extractor should keep legacy high-risk blocks until clean-tree video migration is complete');
+  assert.match(source, /extractConfigurableArticleWithDiagnostics/, 'Step 4.3 should wire configurable clean-tree diagnostics into the modular X extractor path');
+  assert.doesNotMatch(source, /buildCleanTreePrimaryBlocks/, 'Step 4.3 should keep direct clean-tree primary block building inside configurable extraction');
+  assert.match(source, /legacyBlocks = await extractXArticleLegacyBlocks/, 'browser X extractor should keep legacy high-risk blocks through the Step 4 legacy boundary until clean-tree video migration is complete');
 }
 const liveExtractorSource = readFileSync(resolve(projectRoot, 'src/content/index.ts'), 'utf8');
 assert.match(liveExtractorSource, /createExtractorRegistry/, 'content entry source should route through the extractor registry');

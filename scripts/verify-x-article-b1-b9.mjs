@@ -287,7 +287,7 @@ assert.match(cleanTreeBlockConverterSource, /function getOrderedListMarker/, 'cl
 assert.match(cleanTreeBlockConverterSource, /kind === 'ordered' && markerLength > 0 \? rawText/, 'clean-tree conversion should keep handwritten ordered-list markers in item text');
 assert.doesNotMatch(platformFixesSource, /isHandwrittenOrderedListItem/, 'platform fixes should not convert handwritten ordered marker text into list blocks');
 assert.doesNotMatch(platformFixesSource, /querySelectorAll\('\[data-block="true"\]'\)[\s\S]*data-linelens-list-kind', 'ordered'/, 'platform fixes should only mark real Draft.js ordered list items');
-assert.match(modularExtractorSource, /legacyBlocks = await extractBlocks/, 'X article browser path should preserve legacy high-risk blocks until clean-tree video migration is complete');
+assert.match(modularExtractorSource, /legacyBlocks = await extractXArticleLegacyBlocks/, 'X article browser path should preserve legacy high-risk blocks through the Step 4 legacy boundary until clean-tree video migration is complete');
 assert.match(articleModelSource, /photos\?: TweetPhoto\[\]/, 'simple tweet model should include optional photo cards');
 assert.match(articleModelSource, /authorName\?: string/, 'simple tweet model should include dynamic author name');
 assert.match(articleModelSource, /metrics\?: TweetMetrics/, 'simple tweet model should include dynamic action metrics');

@@ -1,4 +1,5 @@
 import type { StyleWhitelistConfig } from '../../shared/reader-config.js';
+import type { ArticleBlock } from '../../shared/article.js';
 
 export type PlatformFixId =
   | 'expand-folded-tweet-text'
@@ -67,6 +68,18 @@ export type SpecialComponentConfig = {
   handlerId: string;
   preserveSelectors?: string[];
   removeSelectors?: string[];
+};
+
+export type SpecialComponentHandlerContext = {
+  component: SpecialComponentConfig;
+  sourceUrl: string;
+  debugId: string;
+  index: number;
+};
+
+export type SpecialComponentHandler = {
+  handlerId: string;
+  extract(root: Element, context: SpecialComponentHandlerContext): ArticleBlock | null;
 };
 
 export type PlatformAdapter = {

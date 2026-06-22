@@ -327,6 +327,15 @@ npm run verify:configurable-article-extractor
 
 目标：让 X extractor 复用 configurable extractor 的通用阶段，但继续保留 X 专用 metadata、HLS、simpleTweet、imageGallery 和 high-risk fallback。
 
+**Status:** completed
+
+**Checklist:**
+
+- [x] Task 4.1：抽出 X metadata 与 high-risk 逻辑边界
+- [x] Task 4.2：X extractor 委托 configurable extractor 的 root/title/content/readiness
+- [x] Task 4.3：X extractor 委托 configurable clean-tree 低风险 block path
+- [x] Task 4.4：建立 specialComponents handler registry 的最小接口
+
 ### Task 4.1：抽出 X metadata 与 high-risk 逻辑边界
 
 **Files:**

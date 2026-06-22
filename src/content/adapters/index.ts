@@ -11,6 +11,8 @@ export type {
   ReadinessConfig,
   SemanticMapConfig,
   SpecialComponentConfig,
+  SpecialComponentHandler,
+  SpecialComponentHandlerContext,
   SpecialComponentType,
   TitleStrategy,
   ValidationConfig

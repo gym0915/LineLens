@@ -256,7 +256,7 @@ const normalized = normalizeSettings({
         titleStrategy: 'execute-script',
         emptyContentStrategy: 'template'
       },
-      specialComponents: [{ id: 'unsafe', type: 'social-card', rootSelector: '', handlerId: 'unsafe' }],
+      specialComponents: [{ id: 'unsafe', type: 'social-card', rootSelector: '', handlerId: 'unsafe', extract: 'alert(1)', template: '<script></script>' }],
       script: 'alert(1)'
     }
   }
@@ -308,6 +308,11 @@ assert.deepEqual(
   normalized.platformAdapters['x.article'].specialComponents,
   xArticleAdapter.specialComponents,
   'invalid specialComponents should fall back to adapter defaults'
+);
+assert.equal(
+  normalized.platformAdapters['x.article'].specialComponents?.some((component) => Object.hasOwn(component, 'extract') || Object.hasOwn(component, 'template')),
+  false,
+  'settings should never preserve executable or template fields on specialComponents'
 );
 assert.equal(
   Object.hasOwn(normalized.platformAdapters['x.article'], 'script'),

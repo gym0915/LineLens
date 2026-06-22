@@ -190,7 +190,13 @@ const cleanTreeSource = readFileSync(resolve(projectRoot, 'src/content/preproces
 const platformFixesSource = readFileSync(resolve(projectRoot, 'src/content/preprocess/apply-platform-fixes.ts'), 'utf8');
 const blockConverterSource = readFileSync(resolve(projectRoot, 'src/content/preprocess/clean-tree-block-converter.ts'), 'utf8');
 const mainPathSource = readFileSync(resolve(projectRoot, 'src/content/preprocess/clean-tree-main-path.ts'), 'utf8');
+const configurableExtractorSource = readFileSync(
+  resolve(projectRoot, 'src/content/extractors/configurable/configurable-article-extractor.ts'),
+  'utf8'
+);
 const modularExtractorSource = readFileSync(resolve(projectRoot, 'src/content/extractors/x/article-extractor.ts'), 'utf8');
+const metadataModulePath = resolve(projectRoot, 'src/content/extractors/x/article-metadata.ts');
+const legacyBlocksModulePath = resolve(projectRoot, 'src/content/extractors/x/article-legacy-blocks.ts');
 
 assert.match(cleanTreeSource, /root\.cloneNode\(true\)/, 'clean tree gate should clone before sanitizing');
 assert.match(cleanTreeSource, /applyPlatformFixes\(clonedRoot, context\.adapter, context\)/, 'clean tree gate should run platform fixes before sanitizing');
@@ -226,7 +232,42 @@ assert.match(
 assert.match(mainPathSource, /id: legacyBlock\.id/, 'legacy merge helper should preserve legacy ids when its statistics path is exercised');
 assert.match(mainPathSource, /fallbackBlockCount/, 'main path gate should report fallback count');
 assert.match(mainPathSource, /highRiskBlockCount/, 'main path gate should report high-risk dual-track count');
-assert.match(modularExtractorSource, /buildCleanTreePrimaryBlocks/, 'X article extractor should wire clean tree primary blocks');
+assert.match(
+  configurableExtractorSource,
+  /export async function extractConfigurableArticleWithDiagnostics/,
+  'Step 4.3 should expose configurable extraction diagnostics for clean-tree block migration'
+);
+assert.match(configurableExtractorSource, /cleanTreeBlocks/, 'Step 4.3 configurable extraction should return cleanTreeBlocks');
+assert.match(configurableExtractorSource, /diagnostics/, 'Step 4.3 configurable extraction should return diagnostics');
+assert.match(
+  modularExtractorSource,
+  /extractConfigurableArticleWithDiagnostics\(adapter, context/,
+  'Step 4.3 should route X low-risk block extraction through configurable extraction'
+);
+assert.doesNotMatch(
+  modularExtractorSource,
+  /buildCleanTreePrimaryBlocks/,
+  'X article extractor should not directly wire clean tree primary blocks after Step 4.3'
+);
+assert.equal(existsSync(metadataModulePath), true, 'Step 4.1 should isolate X article metadata extraction in article-metadata.ts');
+assert.equal(existsSync(legacyBlocksModulePath), true, 'Step 4.1 should isolate X legacy block extraction in article-legacy-blocks.ts');
+assert.match(modularExtractorSource, /extractXArticleMetadata/, 'X article extract() should delegate metadata extraction');
+assert.match(modularExtractorSource, /extractXArticleLegacyBlocks/, 'X article extract() should delegate legacy block extraction');
+assert.match(
+  configurableExtractorSource,
+  /export function locateConfigurableArticleRoots/,
+  'Step 4.2 should expose configurable root/title/content location for X orchestration'
+);
+assert.match(
+  modularExtractorSource,
+  /waitUntilConfigurableArticleReady\(xArticleAdapter, context\)/,
+  'Step 4.2 should delegate X readiness to configurable readiness'
+);
+assert.match(
+  modularExtractorSource,
+  /locateConfigurableArticleRoots\(xArticleAdapter, context\)/,
+  'Step 4.2 should delegate X root/title/content lookup to configurable roots'
+);
 
 const report = {
   fixture: 'assets/x-article-full-html.html',
