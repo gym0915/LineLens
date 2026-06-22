@@ -2,13 +2,18 @@ import type { PlatformAdapter } from './adapter-types.js';
 import { xArticleAdapter } from './x-article-adapter.js';
 
 export type {
+  CleanRulesConfig,
+  EmptyContentStrategy,
   PlatformAdapter,
   PlatformAdapterUserConfig,
   PlatformFix,
   PlatformFixId,
+  ReadinessConfig,
   SemanticMapConfig,
   SpecialComponentConfig,
-  SpecialComponentType
+  SpecialComponentType,
+  TitleStrategy,
+  ValidationConfig
 } from './adapter-types.js';
 export { xArticleAdapter } from './x-article-adapter.js';
 

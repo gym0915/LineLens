@@ -62,6 +62,34 @@ assert.match(xArticleAdapter.semanticMap?.quoteSelector ?? '', /blockquote/, 'P4
 assert.match(xArticleAdapter.semanticMap?.orderedListSelector ?? '', /orderedListItem/, 'P4.5 should expose X ordered list semantics through adapter config');
 assert.match(xArticleAdapter.semanticMap?.imageSelector ?? '', /tweetPhoto/, 'P4.5 should expose X image semantics through adapter config');
 assert.match(xArticleAdapter.semanticMap?.codeSelector ?? '', /markdown-code-block/, 'P4.5 should expose X code semantics through adapter config');
+assert.deepEqual(
+  xArticleAdapter.readiness,
+  {
+    minTextLength: 200,
+    minBlockCount: 3,
+    requiredSelectors: [
+      '[data-testid="twitterArticleReadView"]',
+      '[data-testid="twitter-article-title"]',
+      '[data-testid="longformRichTextComponent"]'
+    ]
+  },
+  'Step 2 should expose current X readiness thresholds declaratively without changing runtime behavior'
+);
+assert.deepEqual(
+  xArticleAdapter.validation,
+  {
+    minBlockCount: 3,
+    minTextLength: 200,
+    titleStrategy: 'required',
+    emptyContentStrategy: 'reject'
+  },
+  'Step 2 should expose current article validation defaults declaratively without changing runtime behavior'
+);
+assert.equal(
+  xArticleAdapter.cleanRules?.removeSelectors?.some((selector) => selector.includes('[role="button"]')),
+  true,
+  'Step 2 should expose current interactive clean-rule candidates declaratively'
+);
 assert.equal(
   xArticleAdapter.specialComponents?.some((component) => component.id === 'x.simple-tweet' && component.handlerId === 'x.simple-tweet'),
   true,
@@ -320,7 +348,10 @@ const baselineReport = {
     highRiskBlocksRemainDualTrack: ['video'],
     legacyIdsPreserved: true,
     legacyFallbackAvailable: true,
-    xAdapterSchemaDeclared: true
+    xAdapterSchemaDeclared: true,
+    xAdapterReadinessDeclared: true,
+    xAdapterValidationDeclared: true,
+    xAdapterCleanRulesDeclared: true
   },
   whitelistBaseline,
   whitelistFiltering: {

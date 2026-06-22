@@ -29,6 +29,29 @@ export type SemanticMapConfig = {
   textSelector?: string;
 };
 
+export type CleanRulesConfig = {
+  removeSelectors?: string[];
+  unwrapSelectors?: string[];
+  preserveAttributeNames?: string[];
+};
+
+export type ReadinessConfig = {
+  minTextLength?: number;
+  minBlockCount?: number;
+  requiredSelectors?: string[];
+  stableDomMs?: number;
+};
+
+export type TitleStrategy = 'required' | 'optional' | 'fallback-from-h1';
+export type EmptyContentStrategy = 'reject' | 'allow-media-only';
+
+export type ValidationConfig = {
+  minBlockCount?: number;
+  minTextLength?: number;
+  titleStrategy?: TitleStrategy;
+  emptyContentStrategy?: EmptyContentStrategy;
+};
+
 export type SpecialComponentType =
   | 'social-card'
   | 'video'
@@ -57,6 +80,9 @@ export type PlatformAdapter = {
   titleSelector?: string;
   contentSelector?: string;
   semanticMap?: SemanticMapConfig;
+  cleanRules?: CleanRulesConfig;
+  readiness?: ReadinessConfig;
+  validation?: ValidationConfig;
   fixes: PlatformFix[];
   enabledFixes: PlatformFixId[];
   styleWhitelist: StyleWhitelistConfig;
@@ -69,6 +95,9 @@ export type PlatformAdapterUserConfig = {
   titleSelector?: string;
   contentSelector?: string;
   semanticMap?: Partial<SemanticMapConfig>;
+  cleanRules?: Partial<CleanRulesConfig>;
+  readiness?: Partial<ReadinessConfig>;
+  validation?: Partial<ValidationConfig>;
   enabledFixes?: string[];
   styleWhitelist?: Partial<StyleWhitelistConfig>;
   specialComponents?: SpecialComponentConfig[];

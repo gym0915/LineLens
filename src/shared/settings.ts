@@ -1,10 +1,15 @@
 import {
   BUILT_IN_PLATFORM_ADAPTERS,
+  type CleanRulesConfig,
+  type EmptyContentStrategy,
   type PlatformAdapter,
   type PlatformAdapterUserConfig,
+  type ReadinessConfig,
   type SemanticMapConfig,
   type SpecialComponentConfig,
-  type SpecialComponentType
+  type SpecialComponentType,
+  type TitleStrategy,
+  type ValidationConfig
 } from '../content/adapters/index.js';
 import type { StyleWhitelistConfig } from './reader-config.js';
 
@@ -86,6 +91,9 @@ export function mergePlatformAdapterConfig(adapter: PlatformAdapter, userConfig:
     ...(titleSelector ? { titleSelector } : {}),
     ...(contentSelector ? { contentSelector } : {}),
     semanticMap: mergeSemanticMapConfig(adapter.semanticMap, userConfig.semanticMap),
+    cleanRules: mergeCleanRulesConfig(adapter.cleanRules, userConfig.cleanRules),
+    readiness: mergeReadinessConfig(adapter.readiness, userConfig.readiness),
+    validation: mergeValidationConfig(adapter.validation, userConfig.validation),
     enabledFixes,
     styleWhitelist: mergeStyleWhitelistConfig(adapter.styleWhitelist, userConfig.styleWhitelist),
     specialComponents: mergeSpecialComponentsConfig(adapter.specialComponents, userConfig.specialComponents)
@@ -131,6 +139,85 @@ function mergeStyleWhitelistConfig(defaults: StyleWhitelistConfig, override: Par
       ? normalizeStringArray(override.customColorSelectors)
       : [...(defaults.customColorSelectors ?? [])]
   };
+}
+
+function mergeCleanRulesConfig(defaults: CleanRulesConfig | undefined, override: Partial<CleanRulesConfig> | undefined): CleanRulesConfig | undefined {
+  if (!isPlainObject(override)) {
+    return cloneCleanRulesConfig(defaults);
+  }
+
+  const removeSelectors = Object.hasOwn(override, 'removeSelectors')
+    ? normalizeSelectorArray(override.removeSelectors) ?? defaults?.removeSelectors
+    : defaults?.removeSelectors;
+  const unwrapSelectors = Object.hasOwn(override, 'unwrapSelectors')
+    ? normalizeSelectorArray(override.unwrapSelectors) ?? defaults?.unwrapSelectors
+    : defaults?.unwrapSelectors;
+  const preserveAttributeNames = Object.hasOwn(override, 'preserveAttributeNames')
+    ? normalizeStringArrayOrUndefined(override.preserveAttributeNames) ?? defaults?.preserveAttributeNames
+    : defaults?.preserveAttributeNames;
+
+  return compactConfig({
+    ...(removeSelectors ? { removeSelectors: [...removeSelectors] } : {}),
+    ...(unwrapSelectors ? { unwrapSelectors: [...unwrapSelectors] } : {}),
+    ...(preserveAttributeNames ? { preserveAttributeNames: [...preserveAttributeNames] } : {})
+  });
+}
+
+function cloneCleanRulesConfig(config: CleanRulesConfig | undefined): CleanRulesConfig | undefined {
+  if (!config) {
+    return undefined;
+  }
+
+  return compactConfig({
+    ...(config.removeSelectors ? { removeSelectors: [...config.removeSelectors] } : {}),
+    ...(config.unwrapSelectors ? { unwrapSelectors: [...config.unwrapSelectors] } : {}),
+    ...(config.preserveAttributeNames ? { preserveAttributeNames: [...config.preserveAttributeNames] } : {})
+  });
+}
+
+function mergeReadinessConfig(defaults: ReadinessConfig | undefined, override: Partial<ReadinessConfig> | undefined): ReadinessConfig | undefined {
+  if (!isPlainObject(override)) {
+    return cloneReadinessConfig(defaults);
+  }
+
+  return compactConfig({
+    minTextLength: Object.hasOwn(override, 'minTextLength') ? normalizePositiveNumber(override.minTextLength) ?? defaults?.minTextLength : defaults?.minTextLength,
+    minBlockCount: Object.hasOwn(override, 'minBlockCount') ? normalizePositiveNumber(override.minBlockCount) ?? defaults?.minBlockCount : defaults?.minBlockCount,
+    requiredSelectors: Object.hasOwn(override, 'requiredSelectors')
+      ? normalizeSelectorArray(override.requiredSelectors) ?? defaults?.requiredSelectors
+      : defaults?.requiredSelectors,
+    stableDomMs: Object.hasOwn(override, 'stableDomMs') ? normalizePositiveNumber(override.stableDomMs) ?? defaults?.stableDomMs : defaults?.stableDomMs
+  });
+}
+
+function cloneReadinessConfig(config: ReadinessConfig | undefined): ReadinessConfig | undefined {
+  if (!config) {
+    return undefined;
+  }
+
+  return compactConfig({
+    ...config,
+    ...(config.requiredSelectors ? { requiredSelectors: [...config.requiredSelectors] } : {})
+  });
+}
+
+function mergeValidationConfig(defaults: ValidationConfig | undefined, override: Partial<ValidationConfig> | undefined): ValidationConfig | undefined {
+  if (!isPlainObject(override)) {
+    return cloneValidationConfig(defaults);
+  }
+
+  return compactConfig({
+    minBlockCount: Object.hasOwn(override, 'minBlockCount') ? normalizePositiveNumber(override.minBlockCount) ?? defaults?.minBlockCount : defaults?.minBlockCount,
+    minTextLength: Object.hasOwn(override, 'minTextLength') ? normalizePositiveNumber(override.minTextLength) ?? defaults?.minTextLength : defaults?.minTextLength,
+    titleStrategy: Object.hasOwn(override, 'titleStrategy') ? normalizeTitleStrategy(override.titleStrategy) ?? defaults?.titleStrategy : defaults?.titleStrategy,
+    emptyContentStrategy: Object.hasOwn(override, 'emptyContentStrategy')
+      ? normalizeEmptyContentStrategy(override.emptyContentStrategy) ?? defaults?.emptyContentStrategy
+      : defaults?.emptyContentStrategy
+  });
+}
+
+function cloneValidationConfig(config: ValidationConfig | undefined): ValidationConfig | undefined {
+  return config ? { ...config } : undefined;
 }
 
 function mergeSpecialComponentsConfig(defaults: SpecialComponentConfig[] | undefined, override: unknown): SpecialComponentConfig[] | undefined {
@@ -205,15 +292,41 @@ function normalizeStringArray(value: unknown): string[] {
     : [];
 }
 
+function normalizeStringArrayOrUndefined(value: unknown): string[] | undefined {
+  const values = normalizeStringArray(value);
+  return values.length > 0 ? values : undefined;
+}
+
 function normalizeSelectorArray(value: unknown): string[] | undefined {
   const selectors = normalizeStringArray(value);
   return selectors.length > 0 ? selectors : undefined;
+}
+
+function normalizePositiveNumber(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : undefined;
 }
 
 function normalizeSpecialComponentType(value: unknown): SpecialComponentType | undefined {
   return typeof value === 'string' && SPECIAL_COMPONENT_TYPES.includes(value as SpecialComponentType)
     ? value as SpecialComponentType
     : undefined;
+}
+
+function normalizeTitleStrategy(value: unknown): TitleStrategy | undefined {
+  return typeof value === 'string' && TITLE_STRATEGIES.includes(value as TitleStrategy)
+    ? value as TitleStrategy
+    : undefined;
+}
+
+function normalizeEmptyContentStrategy(value: unknown): EmptyContentStrategy | undefined {
+  return typeof value === 'string' && EMPTY_CONTENT_STRATEGIES.includes(value as EmptyContentStrategy)
+    ? value as EmptyContentStrategy
+    : undefined;
+}
+
+function compactConfig<T extends Record<string, unknown>>(config: T): T | undefined {
+  const entries = Object.entries(config).filter(([, value]) => value !== undefined);
+  return entries.length > 0 ? Object.fromEntries(entries) as T : undefined;
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -242,4 +355,15 @@ const SPECIAL_COMPONENT_TYPES: SpecialComponentType[] = [
   'image-gallery',
   'embed',
   'custom-card'
+];
+
+const TITLE_STRATEGIES: TitleStrategy[] = [
+  'required',
+  'optional',
+  'fallback-from-h1'
+];
+
+const EMPTY_CONTENT_STRATEGIES: EmptyContentStrategy[] = [
+  'reject',
+  'allow-media-only'
 ];

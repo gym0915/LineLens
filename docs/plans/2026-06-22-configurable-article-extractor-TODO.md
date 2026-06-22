@@ -140,6 +140,15 @@ npm run verify:phase4-x-article-boundaries
 
 目标：把“删除广告/按钮/推荐区/评论区”“DOM 是否 ready”“Article 是否有效”从硬编码策略推进到 adapter 可配置策略。
 
+**Status:** completed
+
+**Checklist:**
+
+- [x] Task 2.1：新增类型定义
+- [x] Task 2.2：给 xArticleAdapter 写当前事实配置
+- [x] Task 2.3：settings merge 支持新字段
+- [x] Task 2.4：把 readiness / validation verifier 先接到配置，不改变 runtime
+
 ### Task 2.1：新增类型定义
 
 **Files:**
@@ -229,6 +238,14 @@ npm run verify:m3-adapters-settings
 ## Step 3：建立 configurableArticleExtractor 骨架
 
 目标：新增通用 extractor 模块，先在 verifier 中使用，不立即替换 X 主路径。
+
+**Status:** completed
+
+**Checklist:**
+
+- [x] Task 3.1：新增 configurable extractor 文件
+- [x] Task 3.2：为最小通用页面写 verifier
+- [x] Task 3.3：验证 X adapter 可被 configurable extractor 读取
 
 ### Task 3.1：新增 configurable extractor 文件
 

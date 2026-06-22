@@ -30,6 +30,31 @@ assert.equal(xArticleAdapter.titleSelector, '[data-testid="twitter-article-title
 assert.equal(xArticleAdapter.contentSelector, '[data-testid="longformRichTextComponent"]', 'X adapter should expose the longform selector');
 assert.equal(xArticleAdapter.fixes.some((fix) => fix.id === 'expand-folded-tweet-text'), true, 'X adapter should expose known extractor fixes');
 assert.equal(xArticleAdapter.styleWhitelist.preserveProps.includes('font-weight'), true, 'X adapter should expose content style whitelist');
+assert.deepEqual(
+  xArticleAdapter.readiness?.requiredSelectors,
+  [
+    '[data-testid="twitterArticleReadView"]',
+    '[data-testid="twitter-article-title"]',
+    '[data-testid="longformRichTextComponent"]'
+  ],
+  'X adapter readiness.requiredSelectors should express current DOM readiness gates'
+);
+assert.equal(xArticleAdapter.readiness?.minBlockCount, 3, 'X adapter readiness.minBlockCount should match the current detector threshold');
+assert.equal(xArticleAdapter.readiness?.minTextLength, 200, 'X adapter readiness.minTextLength should match the current detector threshold');
+assert.equal(xArticleAdapter.validation?.minBlockCount, 3, 'X adapter validation.minBlockCount should match article validator defaults');
+assert.equal(xArticleAdapter.validation?.minTextLength, 200, 'X adapter validation.minTextLength should match article validator defaults');
+assert.equal(xArticleAdapter.validation?.titleStrategy, 'required', 'X adapter validation.titleStrategy should express current required title behavior');
+assert.equal(xArticleAdapter.validation?.emptyContentStrategy, 'reject', 'X adapter validation.emptyContentStrategy should express current empty content rejection');
+assert.equal(
+  xArticleAdapter.cleanRules?.removeSelectors?.some((selector) => selector.includes('script')),
+  true,
+  'X adapter cleanRules.removeSelectors should express script-like shell removal'
+);
+assert.equal(
+  xArticleAdapter.cleanRules?.removeSelectors?.some((selector) => selector.includes('[role="button"]')),
+  true,
+  'X adapter cleanRules.removeSelectors should express interactive shell removal'
+);
 
 assert.equal(xArticleAdapter.semanticMap?.blockSelector, '[data-block="true"]', 'X adapter should expose block selector semantics');
 assert.equal(xArticleAdapter.semanticMap?.paragraphSelector, '[data-block="true"]', 'X adapter should expose paragraph selector semantics');
@@ -108,6 +133,23 @@ const mergedAdapter = mergePlatformAdapterConfig(xArticleAdapter, {
     headingSelector: 'article h1',
     quoteSelector: ''
   },
+  cleanRules: {
+    removeSelectors: ['.ad-slot', '', ' [data-promoted] '],
+    unwrapSelectors: ['.article-body-wrapper'],
+    preserveAttributeNames: ['data-article-id']
+  },
+  readiness: {
+    minTextLength: 500,
+    minBlockCount: 5,
+    requiredSelectors: ['article', ' h1 '],
+    stableDomMs: 250
+  },
+  validation: {
+    minBlockCount: 4,
+    minTextLength: 450,
+    titleStrategy: 'fallback-from-h1',
+    emptyContentStrategy: 'allow-media-only'
+  },
   specialComponents: replacementSpecialComponents,
   styleWhitelist: {
     preserveProps: ['font-style'],
@@ -118,6 +160,41 @@ assert.equal(mergedAdapter.rootSelector, 'article[data-custom-root]', 'user conf
 assert.deepEqual(mergedAdapter.enabledFixes, ['normalize-handwritten-ordered-list'], 'user config should override enabled fixes declaratively');
 assert.equal(mergedAdapter.semanticMap?.headingSelector, 'article h1', 'semanticMap should support field-level selector overrides');
 assert.equal(mergedAdapter.semanticMap?.quoteSelector, xArticleAdapter.semanticMap?.quoteSelector, 'empty semanticMap selectors should be ignored');
+assert.deepEqual(
+  mergedAdapter.cleanRules?.removeSelectors,
+  ['.ad-slot', '[data-promoted]'],
+  'cleanRules.removeSelectors should accept only non-empty selector strings'
+);
+assert.deepEqual(
+  mergedAdapter.cleanRules?.unwrapSelectors,
+  ['.article-body-wrapper'],
+  'cleanRules.unwrapSelectors should merge sanitized selector arrays'
+);
+assert.deepEqual(
+  mergedAdapter.cleanRules?.preserveAttributeNames,
+  ['data-article-id'],
+  'cleanRules.preserveAttributeNames should merge sanitized string arrays'
+);
+assert.deepEqual(
+  mergedAdapter.readiness,
+  {
+    minTextLength: 500,
+    minBlockCount: 5,
+    requiredSelectors: ['article', 'h1'],
+    stableDomMs: 250
+  },
+  'readiness config should merge sanitized positive thresholds and selector arrays'
+);
+assert.deepEqual(
+  mergedAdapter.validation,
+  {
+    minBlockCount: 4,
+    minTextLength: 450,
+    titleStrategy: 'fallback-from-h1',
+    emptyContentStrategy: 'allow-media-only'
+  },
+  'validation config should merge sanitized positive thresholds and enum values'
+);
 assert.deepEqual(mergedAdapter.specialComponents, replacementSpecialComponents, 'specialComponents should replace defaults when the user provides a valid array');
 assert.deepEqual(
   mergedAdapter.styleWhitelist.preserveProps,
@@ -161,6 +238,24 @@ const normalized = normalizeSettings({
         unknownSelector: 'script'
       },
       enabledFixes: ['unknown-fix', 'normalize-handwritten-ordered-list'],
+      cleanRules: {
+        removeSelectors: ['', 42, 'script'],
+        unwrapSelectors: [],
+        preserveAttributeNames: ['', 'data-safe']
+      },
+      readiness: {
+        minTextLength: -1,
+        minBlockCount: Number.POSITIVE_INFINITY,
+        requiredSelectors: ['', 'main'],
+        stableDomMs: 0,
+        script: 'alert(1)'
+      },
+      validation: {
+        minBlockCount: 0,
+        minTextLength: NaN,
+        titleStrategy: 'execute-script',
+        emptyContentStrategy: 'template'
+      },
       specialComponents: [{ id: 'unsafe', type: 'social-card', rootSelector: '', handlerId: 'unsafe' }],
       script: 'alert(1)'
     }
@@ -173,6 +268,41 @@ assert.deepEqual(
   normalized.platformAdapters['x.article'].enabledFixes,
   ['normalize-handwritten-ordered-list'],
   'illegal fix ids should be ignored'
+);
+assert.deepEqual(
+  normalized.platformAdapters['x.article'].cleanRules?.removeSelectors,
+  ['script'],
+  'settings should keep only valid cleanRules selector entries'
+);
+assert.deepEqual(
+  normalized.platformAdapters['x.article'].cleanRules?.unwrapSelectors,
+  xArticleAdapter.cleanRules?.unwrapSelectors,
+  'empty cleanRules arrays should fall back to defaults'
+);
+assert.deepEqual(
+  normalized.platformAdapters['x.article'].cleanRules?.preserveAttributeNames,
+  ['data-safe'],
+  'settings should keep only valid cleanRules string entries'
+);
+assert.equal(
+  normalized.platformAdapters['x.article'].readiness?.minTextLength,
+  xArticleAdapter.readiness?.minTextLength,
+  'invalid readiness numbers should fall back to defaults'
+);
+assert.deepEqual(
+  normalized.platformAdapters['x.article'].readiness?.requiredSelectors,
+  ['main'],
+  'readiness.requiredSelectors should keep only valid selectors'
+);
+assert.equal(
+  Object.hasOwn(normalized.platformAdapters['x.article'].readiness ?? {}, 'script'),
+  false,
+  'readiness config should not allow arbitrary scripts'
+);
+assert.deepEqual(
+  normalized.platformAdapters['x.article'].validation,
+  xArticleAdapter.validation,
+  'invalid validation thresholds and enum values should fall back to defaults'
 );
 assert.deepEqual(
   normalized.platformAdapters['x.article'].specialComponents,
@@ -193,6 +323,15 @@ const localStorageSettings = loadSettingsFromLocalStorage(fakeStorage({
         semanticMap: {
           imageSelector: 'article img'
         },
+        cleanRules: {
+          removeSelectors: ['.paywall']
+        },
+        readiness: {
+          minBlockCount: 8
+        },
+        validation: {
+          titleStrategy: 'optional'
+        },
         styleWhitelist: {
           preserveProps: ['font-style'],
           preserveColorFor: ['inline-emphasis']
@@ -205,6 +344,21 @@ assert.equal(
   localStorageSettings.platformAdapters['x.article'].semanticMap?.imageSelector,
   'article img',
   'localStorage settings should replace X semanticMap fields'
+);
+assert.deepEqual(
+  localStorageSettings.platformAdapters['x.article'].cleanRules?.removeSelectors,
+  ['.paywall'],
+  'localStorage settings should replace cleanRules fields'
+);
+assert.equal(
+  localStorageSettings.platformAdapters['x.article'].readiness?.minBlockCount,
+  8,
+  'localStorage settings should replace readiness fields'
+);
+assert.equal(
+  localStorageSettings.platformAdapters['x.article'].validation?.titleStrategy,
+  'optional',
+  'localStorage settings should replace validation enum fields'
 );
 assert.deepEqual(
   localStorageSettings.platformAdapters['x.article'].styleWhitelist.preserveProps,

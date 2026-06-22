@@ -162,7 +162,7 @@ function sanitizeElementTree(root: Element, adapter: PlatformAdapter): {
     preserveListSemantics(element);
 
     for (const attribute of Array.from(element.attributes)) {
-      if (shouldPreserveAttribute(attribute.name)) {
+      if (shouldPreserveAttribute(attribute.name, adapter)) {
         preservedAttributeCount += 1;
         continue;
       }
@@ -206,8 +206,12 @@ function shouldRemoveElement(element: Element): boolean {
   return testId !== null && INTERACTIVE_TEST_IDS.has(testId);
 }
 
-function shouldPreserveAttribute(name: string): boolean {
+function shouldPreserveAttribute(name: string, adapter: PlatformAdapter): boolean {
   const normalizedName = name.toLowerCase();
+  if (adapter.cleanRules?.preserveAttributeNames?.map((attributeName) => attributeName.toLowerCase()).includes(normalizedName)) {
+    return true;
+  }
+
   if (PRESERVED_ATTRIBUTE_NAMES.has(normalizedName)) {
     return true;
   }

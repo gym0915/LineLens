@@ -24,6 +24,56 @@ export const xArticleAdapter: PlatformAdapter = {
     linkSelector: 'a[href], [role="link"]',
     textSelector: '[data-text]'
   },
+  cleanRules: {
+    removeSelectors: [
+      'script',
+      'style',
+      'noscript',
+      'button',
+      'input',
+      'textarea',
+      'select',
+      'option',
+      'svg',
+      '[role="button"]',
+      '[data-testid="bookmark"]',
+      '[data-testid="like"]',
+      '[data-testid="reply"]',
+      '[data-testid="retweet"]',
+      '[data-testid="unlike"]'
+    ],
+    unwrapSelectors: [],
+    preserveAttributeNames: [
+      'alt',
+      'aria-label',
+      'contenteditable',
+      'datetime',
+      'dir',
+      'href',
+      'lang',
+      'rel',
+      'role',
+      'src',
+      'style',
+      'target',
+      'title'
+    ]
+  },
+  readiness: {
+    minTextLength: 200,
+    minBlockCount: 3,
+    requiredSelectors: [
+      '[data-testid="twitterArticleReadView"]',
+      '[data-testid="twitter-article-title"]',
+      '[data-testid="longformRichTextComponent"]'
+    ]
+  },
+  validation: {
+    minBlockCount: 3,
+    minTextLength: 200,
+    titleStrategy: 'required',
+    emptyContentStrategy: 'reject'
+  },
   fixes: [
     {
       id: 'expand-folded-tweet-text',
