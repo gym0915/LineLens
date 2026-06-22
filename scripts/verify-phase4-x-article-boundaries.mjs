@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -11,7 +11,7 @@ import { X_ARTICLE_SELECTORS } from '../dist/content/extractors/x/article-select
 import { buildCleanTreePrimaryBlocks } from '../dist/content/preprocess/clean-tree-main-path.js';
 
 const projectRoot = resolve(fileURLToPath(new URL('..', import.meta.url)));
-const workspaceRoot = resolve(projectRoot, '..', '..', '..');
+const workspaceRoot = findWorkspaceRoot(projectRoot);
 const sampleName = "The web wasn't built for browser agents, here's how we built a harness to make it work. .html";
 const samplePath = resolve(workspaceRoot, 'assets2', sampleName);
 const html = readFileSync(samplePath, 'utf8');
@@ -111,3 +111,21 @@ console.log(
     2
   )
 );
+
+function findWorkspaceRoot(startDir) {
+  let current = startDir;
+  for (let depth = 0; depth < 8; depth += 1) {
+    if (existsSync(resolve(current, 'assets2'))) {
+      return current;
+    }
+
+    const parent = resolve(current, '..');
+    if (parent === current) {
+      break;
+    }
+
+    current = parent;
+  }
+
+  throw new Error(`Unable to locate workspace assets2 directory from ${startDir}`);
+}
