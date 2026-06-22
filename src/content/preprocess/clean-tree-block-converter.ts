@@ -1493,12 +1493,22 @@ function tweetPhotoElementToGalleryItem(element: HTMLElement): ImageGalleryBlock
 }
 
 function getImageGalleryAspectRatio(element: Element): number | undefined {
+  const descendantPreservedRatio = getDescendantPreservedMediaAspectRatio(element);
+  if (descendantPreservedRatio) {
+    return descendantPreservedRatio;
+  }
+
   const descendantRatio = getDescendantPaddingBottomAspectRatio(element);
   if (descendantRatio) {
     return descendantRatio;
   }
 
   for (let current: Element | null = element; current; current = current.parentElement) {
+    const preservedRatio = getPreservedMediaAspectRatio(current);
+    if (preservedRatio) {
+      return preservedRatio;
+    }
+
     const paddingRatio = getPaddingBottomAspectRatio(current);
     if (paddingRatio) {
       return paddingRatio;
@@ -1506,6 +1516,22 @@ function getImageGalleryAspectRatio(element: Element): number | undefined {
   }
 
   return undefined;
+}
+
+function getDescendantPreservedMediaAspectRatio(element: Element): number | undefined {
+  for (const child of Array.from(element.querySelectorAll<HTMLElement>('[data-linelens-media-aspect-ratio]'))) {
+    const ratio = getPreservedMediaAspectRatio(child);
+    if (ratio) {
+      return ratio;
+    }
+  }
+
+  return undefined;
+}
+
+function getPreservedMediaAspectRatio(element: Element): number | undefined {
+  const ratio = Number(element.getAttribute('data-linelens-media-aspect-ratio'));
+  return Number.isFinite(ratio) && ratio > 0 ? ratio : undefined;
 }
 
 function getDescendantPaddingBottomAspectRatio(element: Element): number | undefined {

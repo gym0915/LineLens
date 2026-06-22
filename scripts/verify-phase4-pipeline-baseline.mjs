@@ -46,6 +46,7 @@ assert.equal(typeof getPlatformFixOrder, 'function', 'P4.3 should expose a deter
 assert.equal(typeof convertCleanTreeToBlocks, 'function', 'P4.4 should expose a clean tree block converter entry');
 assert.equal(typeof mergeCleanTreePrimaryBlocks, 'function', 'P4.5 should expose a clean tree primary merge entry');
 assertSemanticMapDrivesCleanTreeBlockConversion();
+assertXSingleImageUsesPreservedFrameAspectRatio();
 assert.deepEqual(getPlatformFixOrder(xArticleAdapter), [
   'expand-folded-tweet-text',
   'normalize-handwritten-ordered-list',
@@ -465,6 +466,68 @@ function assertSemanticMapDrivesCleanTreeBlockConversion() {
       blockTypes,
       ['heading', 'quote', 'list', 'list', 'image', 'code', 'table'],
       'semanticMap selectors should preserve fixture block order'
+    );
+  } finally {
+    globalThis.document = previousGlobals.document;
+    globalThis.window = previousGlobals.window;
+    globalThis.Element = previousGlobals.Element;
+    globalThis.HTMLElement = previousGlobals.HTMLElement;
+    globalThis.Node = previousGlobals.Node;
+  }
+}
+
+function assertXSingleImageUsesPreservedFrameAspectRatio() {
+  const dom = new JSDOM(`
+    <main data-fixture-root>
+      <section data-block="true" contenteditable="false">
+        <div>
+          <a href="/0xileri/article/2058611697187782908/media/2058608975096995840">
+            <div>
+              <div style="padding-bottom: 133.333%;"></div>
+              <div>
+                <div aria-label="图像" data-testid="tweetPhoto">
+                  <div style="background-image: url(&quot;https://pbs.twimg.com/media/HJGl9LQWYAAmCXM?format=jpg&amp;name=large&quot;);"></div>
+                  <img alt="图像" src="https://pbs.twimg.com/media/HJGl9LQWYAAmCXM?format=jpg&amp;name=large">
+                </div>
+              </div>
+            </div>
+          </a>
+        </div>
+      </section>
+    </main>
+  `, { url: 'https://x.com/0xileri/article/2058611697187782908' });
+  const previousGlobals = {
+    document: globalThis.document,
+    window: globalThis.window,
+    Element: globalThis.Element,
+    HTMLElement: globalThis.HTMLElement,
+    Node: globalThis.Node
+  };
+
+  globalThis.document = dom.window.document;
+  globalThis.window = dom.window;
+  globalThis.Element = dom.window.Element;
+  globalThis.HTMLElement = dom.window.HTMLElement;
+  globalThis.Node = dom.window.Node;
+
+  try {
+    const root = dom.window.document.querySelector('[data-fixture-root]');
+    const context = {
+      adapter: xArticleAdapter,
+      debugId: 'x-single-image-frame-ratio',
+      platform: 'x',
+      sourceUrl: 'https://x.com/0xileri/article/2058611697187782908'
+    };
+    const cleanTree = cloneContentTree(root, context);
+    const preservedFrame = cleanTree.root.querySelector('[data-linelens-media-aspect-ratio="0.75"]');
+    assert(preservedFrame, 'platform fixes should preserve the X single-image padding-bottom frame ratio');
+
+    const blocks = convertCleanTreeToBlocks(cleanTree.root, context);
+    const imageBlock = blocks.find((block) => block.type === 'image');
+    assert.equal(
+      imageBlock?.aspectRatio,
+      0.75,
+      'single-image Reader aspect ratio should use the X frame ratio, not the natural image ratio'
     );
   } finally {
     globalThis.document = previousGlobals.document;

@@ -39,8 +39,12 @@ for (const source of [extractor, cleanTreeConverter]) {
   assert.match(source, /function getDescendantPaddingBottomAspectRatio/, 'gallery aspect ratio should inspect descendant padding-bottom nodes');
   assert.match(source, /querySelectorAll<HTMLElement>\('\[style\*="padding-bottom"\]'\)/, 'gallery aspect ratio should search nested ratio placeholders');
   assert.match(source, /return roundAspectRatio\(100 \/ paddingBottom\)/, 'gallery aspect ratio should convert padding-bottom percent to width divided by height');
-  assert.match(source, /function getImageGalleryAspectRatio\(element: Element\): number \| undefined \{\s*const descendantRatio = getDescendantPaddingBottomAspectRatio\(element\)/, 'gallery aspect ratio should prefer the component-local ratio placeholder before walking ancestors');
 }
+assert.match(extractor, /function getImageGalleryAspectRatio\(element: Element\): number \| undefined \{\s*const descendantRatio = getDescendantPaddingBottomAspectRatio\(element\)/, 'legacy gallery aspect ratio should prefer the component-local ratio placeholder before walking ancestors');
+assert.match(cleanTreeConverter, /function getDescendantPreservedMediaAspectRatio/, 'clean-tree gallery aspect ratio should inspect preserved platform media ratios');
+assert.match(cleanTreeConverter, /querySelectorAll<HTMLElement>\('\[data-linelens-media-aspect-ratio\]'\)/, 'clean-tree gallery aspect ratio should search nested preserved media ratio metadata');
+assert.match(cleanTreeConverter, /const descendantPreservedRatio = getDescendantPreservedMediaAspectRatio\(element\)/, 'clean-tree gallery aspect ratio should prefer preserved media ratio metadata before padding fallback');
+assert.match(cleanTreeConverter, /const descendantRatio = getDescendantPaddingBottomAspectRatio\(element\)/, 'clean-tree gallery aspect ratio should keep padding-bottom fallback after preserved metadata');
 
 assert.match(articleTypes, /displaySrc\?: string/, 'tweetPhoto-backed media types should preserve a visible background-image URL');
 assert.match(simpleTweetExtractor, /const displaySrc = getTweetPhotoBackgroundUrl\(element\)/, 'simpleTweet tweetPhoto extraction should read the X background-image URL separately');
