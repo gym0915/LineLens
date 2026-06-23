@@ -1,6 +1,6 @@
 import type { Article, ArticleBlock, ArticleSource } from '../../../shared/article.js';
 import { validateArticle, type ValidationResult } from '../../../shared/article-validator.js';
-import type { ExtractorContext, ExtractorMatch, ReadyResult } from '../../../shared/extractor-types.js';
+import type { ArticleExtractor, ExtractorContext, ExtractorMatch, ReadyResult } from '../../../shared/extractor-types.js';
 import { normalizeText } from '../../../shared/text.js';
 import type { PlatformAdapter, ValidationConfig } from '../../adapters/index.js';
 import { buildCleanTreePrimaryBlocks, type CleanTreePrimaryBlocksResult } from '../../preprocess/clean-tree-main-path.js';
@@ -23,6 +23,42 @@ export type ConfigurableArticleExtractionResult = {
   cleanTreeBlocks: ArticleBlock[];
   diagnostics: ConfigurableArticleExtractionDiagnostics;
 };
+
+export type AdapterDrivenArticleExtractorOptions = {
+  excludeAdapterIds?: string[];
+};
+
+export function createAdapterDrivenArticleExtractor(
+  adapters: PlatformAdapter[],
+  options: AdapterDrivenArticleExtractorOptions = {}
+): ArticleExtractor {
+  const excluded = new Set(options.excludeAdapterIds ?? []);
+  const activeAdapters = () => adapters.filter((adapter) => !excluded.has(adapter.id));
+
+  return {
+    id: 'adapter.article',
+    platform: 'adapter',
+    contentType: 'article',
+    match(context) {
+      return resolveAdapterMatch(activeAdapters(), context.url)?.match ?? null;
+    },
+    async waitUntilReady(context) {
+      const resolved = resolveAdapterMatch(activeAdapters(), context.url);
+      if (!resolved) {
+        return { ready: false, reason: 'unsupported_url' };
+      }
+      return waitUntilConfigurableArticleReady(resolved.adapter, context);
+    },
+    async extract(context) {
+      const resolved = resolveAdapterMatch(activeAdapters(), context.url);
+      if (!resolved) {
+        throw new Error('unsupported_url');
+      }
+      return extractConfigurableArticle(resolved.adapter, context);
+    },
+    validate: validateArticle
+  };
+}
 
 export function matchConfigurableArticle(adapter: PlatformAdapter, url: URL): ExtractorMatch | null {
   if (!adapter.enabled) {
@@ -57,7 +93,7 @@ export async function waitUntilConfigurableArticleReady(
     return { ready: false, reason: 'missing_article_root' };
   }
 
-  if (!roots.titleElement || !normalizeText(roots.titleElement.textContent ?? '')) {
+  if (!resolveConfigurableTitle(adapter, roots.articleRoot, roots.titleElement)) {
     return { ready: false, reason: 'missing_title' };
   }
 
@@ -104,8 +140,12 @@ export async function extractConfigurableArticleWithDiagnostics(
   }
 
   const roots = locateConfigurableArticleRoots(adapter, context);
-  if (!roots.articleRoot || !roots.contentRoot || !roots.titleElement) {
+  if (!roots.articleRoot || !roots.contentRoot) {
     throw new Error('article_not_ready');
+  }
+  const title = resolveConfigurableTitle(adapter, roots.articleRoot, roots.titleElement);
+  if (!title && adapter.validation?.titleStrategy !== 'optional') {
+    throw new Error('missing_title');
   }
 
   const sourceUrl = context.url.toString();
@@ -119,9 +159,12 @@ export async function extractConfigurableArticleWithDiagnostics(
   const article: Article = {
     id: options.id ?? configurableArticleId(adapter, context.url),
     source: options.source ?? configurableArticleSource(adapter),
+    adapterId: adapter.id,
+    platform: adapter.platform,
+    contentType: adapter.contentType,
     sourceUrl,
     canonicalUrl: options.canonicalUrl ?? sourceUrl,
-    title: normalizeText(roots.titleElement.textContent ?? ''),
+    title,
     extractedAt: context.now?.() ?? Date.now(),
     blocks: blockResult.blocks
   };
@@ -161,6 +204,23 @@ export function locateConfigurableArticleRoots(adapter: PlatformAdapter, context
   };
 }
 
+function resolveConfigurableTitle(adapter: PlatformAdapter, articleRoot: Element, titleElement: Element | null): string {
+  const selectedTitle = normalizeText(titleElement?.textContent ?? '');
+  if (selectedTitle) {
+    return selectedTitle;
+  }
+
+  if (adapter.validation?.titleStrategy === 'fallback-from-h1') {
+    return normalizeText(articleRoot.querySelector('h1')?.textContent ?? '');
+  }
+
+  if (adapter.validation?.titleStrategy === 'optional') {
+    return '';
+  }
+
+  return '';
+}
+
 function validateConfigurableArticle(article: Article, config: ValidationConfig | undefined): ValidationResult {
   if (!config) {
     return validateArticle(article);
@@ -196,6 +256,18 @@ function configurableArticleId(adapter: PlatformAdapter, url: URL): string {
 
 function configurableArticleSource(adapter: PlatformAdapter): ArticleSource {
   return adapter.platform === 'x' ? 'x-article' : 'fixture';
+}
+
+function resolveAdapterMatch(adapters: PlatformAdapter[], url: URL): { adapter: PlatformAdapter; match: ExtractorMatch } | null {
+  const matches = adapters
+    .map((adapter) => {
+      const match = matchConfigurableArticle(adapter, url);
+      return match ? { adapter, match } : null;
+    })
+    .filter((candidate): candidate is { adapter: PlatformAdapter; match: ExtractorMatch } => candidate !== null)
+    .sort((a, b) => b.match.confidence - a.match.confidence);
+
+  return matches[0] ?? null;
 }
 
 function hostMatches(hostname: string, hosts: string[]): boolean {

@@ -1,4 +1,5 @@
 export {
+  createAdapterDrivenArticleExtractor,
   extractConfigurableArticle,
   extractConfigurableArticleWithDiagnostics,
   locateConfigurableArticleRoots,
@@ -6,6 +7,7 @@ export {
   waitUntilConfigurableArticleReady
 } from './configurable-article-extractor.js';
 export type {
+  AdapterDrivenArticleExtractorOptions,
   ConfigurableArticleExtractionDiagnostics,
   ConfigurableArticleExtractionOptions,
   ConfigurableArticleExtractionResult

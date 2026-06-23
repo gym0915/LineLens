@@ -1,4 +1,5 @@
 import type { PlatformAdapter } from './adapter-types.js';
+import { fixtureArticleAdapter } from './fixture-article-adapter.js';
 import { xArticleAdapter } from './x-article-adapter.js';
 
 export type {
@@ -17,9 +18,10 @@ export type {
   TitleStrategy,
   ValidationConfig
 } from './adapter-types.js';
+export { fixtureArticleAdapter } from './fixture-article-adapter.js';
 export { xArticleAdapter } from './x-article-adapter.js';
 
-export const BUILT_IN_PLATFORM_ADAPTERS: PlatformAdapter[] = [xArticleAdapter];
+export const BUILT_IN_PLATFORM_ADAPTERS: PlatformAdapter[] = [xArticleAdapter, fixtureArticleAdapter];
 
 export function resolvePlatformAdapter(url: URL, adapters: PlatformAdapter[] = BUILT_IN_PLATFORM_ADAPTERS): PlatformAdapter | null {
   return (

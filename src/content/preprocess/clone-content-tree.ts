@@ -151,9 +151,15 @@ function sanitizeElementTree(root: Element, adapter: PlatformAdapter): {
 
   const elements = Array.from(root.querySelectorAll('*'));
   for (const element of elements) {
-    if (shouldRemoveElement(element)) {
+    if (shouldRemoveElement(element, adapter)) {
       element.remove();
       removedNodeCount += 1;
+    }
+  }
+
+  for (const element of Array.from(root.querySelectorAll('*'))) {
+    if (matchesAnySelector(element, adapter.cleanRules?.unwrapSelectors)) {
+      unwrapElement(element);
     }
   }
 
@@ -192,7 +198,11 @@ function preserveListSemantics(element: Element): void {
   }
 }
 
-function shouldRemoveElement(element: Element): boolean {
+function shouldRemoveElement(element: Element, adapter: PlatformAdapter): boolean {
+  if (matchesAnySelector(element, adapter.cleanRules?.removeSelectors)) {
+    return true;
+  }
+
   const tagName = element.tagName.toUpperCase();
   if (REMOVED_TAG_NAMES.has(tagName)) {
     return true;
@@ -204,6 +214,32 @@ function shouldRemoveElement(element: Element): boolean {
 
   const testId = element.getAttribute('data-testid');
   return testId !== null && INTERACTIVE_TEST_IDS.has(testId);
+}
+
+function matchesAnySelector(element: Element, selectors: string[] | undefined): boolean {
+  for (const selector of selectors ?? []) {
+    try {
+      if (selector && element.matches(selector)) {
+        return true;
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  return false;
+}
+
+function unwrapElement(element: Element): void {
+  const parent = element.parentNode;
+  if (!parent) {
+    return;
+  }
+
+  while (element.firstChild) {
+    parent.insertBefore(element.firstChild, element);
+  }
+  element.remove();
 }
 
 function shouldPreserveAttribute(name: string, adapter: PlatformAdapter): boolean {

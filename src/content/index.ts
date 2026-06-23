@@ -1,4 +1,6 @@
 import { createExtractorRegistry, type RegistryMatch } from './extractor-registry.js';
+import { BUILT_IN_PLATFORM_ADAPTERS } from './adapters/index.js';
+import { createAdapterDrivenArticleExtractor } from './extractors/configurable/index.js';
 import { xArticleExtractor } from './extractors/x/article-extractor.js';
 import type { ArticleExtractor, ExtractorContext } from '../shared/extractor-types.js';
 import type { ExtensionMessage } from '../shared/messages.js';
@@ -8,7 +10,12 @@ const READY_CHECK_INTERVAL_MS = 250;
 const LOG_PREFIX = '[LineLens Content]';
 const AMPLIFY_VIDEO_ID_PATTERN = /amplify_video(?:_thumb)?\/(\d+)/;
 
-const registry = createExtractorRegistry([xArticleExtractor]);
+const registry = createExtractorRegistry([
+  xArticleExtractor,
+  createAdapterDrivenArticleExtractor(BUILT_IN_PLATFORM_ADAPTERS, {
+    excludeAdapterIds: [xArticleExtractor.id]
+  })
+]);
 
 let activeReadinessCleanup: (() => void) | undefined;
 let activePosterCleanup: (() => void) | undefined;

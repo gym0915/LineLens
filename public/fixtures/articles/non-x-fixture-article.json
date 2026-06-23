@@ -1,0 +1,77 @@
+{
+  "id": "non-x-fixture-article",
+  "source": "fixture",
+  "adapterId": "fixture.article",
+  "platform": "fixture",
+  "contentType": "article",
+  "sourceUrl": "https://fixture.linelens.local/article/1",
+  "canonicalUrl": "https://fixture.linelens.local/article/1",
+  "title": "Fixture News Article",
+  "extractedAt": 246813579,
+  "blocks": [
+    {
+      "id": "fixture-block-1",
+      "type": "paragraph",
+      "text": "Opening paragraph with source link for annotation checks.",
+      "annotations": [
+        {
+          "startOffset": 23,
+          "endOffset": 34,
+          "href": "https://example.com/source"
+        }
+      ]
+    },
+    {
+      "id": "fixture-block-2",
+      "type": "heading",
+      "level": 2,
+      "text": "Section heading"
+    },
+    {
+      "id": "fixture-block-3",
+      "type": "quote",
+      "text": "Quote content for the fixture adapter."
+    },
+    {
+      "id": "fixture-block-4",
+      "type": "list",
+      "kind": "ordered",
+      "items": [
+        "First ordered item",
+        "Second ordered item"
+      ]
+    },
+    {
+      "id": "fixture-block-5",
+      "type": "image",
+      "src": "https://example.com/image.jpg",
+      "alt": "Fixture image",
+      "aspectRatio": 1.7777777778
+    },
+    {
+      "id": "fixture-block-6",
+      "type": "code",
+      "language": "js",
+      "text": "const ok = true;"
+    },
+    {
+      "id": "fixture-block-7",
+      "type": "table",
+      "columnCount": 2,
+      "rows": [
+        {
+          "cells": [
+            { "text": "Name", "header": true },
+            { "text": "Value", "header": true }
+          ]
+        },
+        {
+          "cells": [
+            { "text": "kind" },
+            { "text": "fixture" }
+          ]
+        }
+      ]
+    }
+  ]
+}

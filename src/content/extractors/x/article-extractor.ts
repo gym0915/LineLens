@@ -1311,10 +1311,9 @@ function getGalleryFlexMetrics(element: Element): Pick<ImageGalleryLayoutNode, '
 }
 
 function getMediaAspectRatio(media: HTMLMediaElement, container: Element): number | undefined {
-  const video = media as HTMLVideoElement;
-  const intrinsicRatio = toValidAspectRatio(video.videoWidth, video.videoHeight);
-  if (intrinsicRatio) {
-    return intrinsicRatio;
+  const descendantRatio = getDescendantPaddingBottomAspectRatio(container);
+  if (descendantRatio) {
+    return descendantRatio;
   }
 
   for (let element: Element | null = container; element; element = element.parentElement) {
@@ -1322,6 +1321,12 @@ function getMediaAspectRatio(media: HTMLMediaElement, container: Element): numbe
     if (paddingRatio) {
       return paddingRatio;
     }
+  }
+
+  const video = media as HTMLVideoElement;
+  const intrinsicRatio = toValidAspectRatio(video.videoWidth, video.videoHeight);
+  if (intrinsicRatio) {
+    return intrinsicRatio;
   }
 
   return undefined;
@@ -1540,8 +1545,10 @@ function getPaddingBottomAspectRatio(element: Element): number | undefined {
 }
 
 function getInlinePaddingBottomPercent(element: Element): number | undefined {
-  const paddingBottom = (element as HTMLElement).style?.paddingBottom || element.getAttribute('style') || '';
-  const match = /(?:padding-bottom:\s*)?([0-9.]+)%/i.exec(paddingBottom);
+  const inlinePaddingBottom = (element as HTMLElement).style?.paddingBottom;
+  const match = inlinePaddingBottom
+    ? /^([0-9.]+)%$/i.exec(inlinePaddingBottom.trim())
+    : /(?:^|;)\s*padding-bottom:\s*([0-9.]+)%/i.exec(element.getAttribute('style') ?? '');
   if (!match) {
     return undefined;
   }

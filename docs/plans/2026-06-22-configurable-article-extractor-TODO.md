@@ -14,9 +14,10 @@
 
 - [x] 主分支已移除微信 adapter，当前内置 adapter 只有 x.article。
 - [x] PlatformAdapter 已有 semanticMap 与 specialComponents 字段。
-- [ ] semanticMap 目前还是声明式配置，尚未驱动 clean-tree-block-converter 的候选选择。
+- [x] semanticMap 已驱动 clean-tree-block-converter 的候选选择，不再只是声明式配置。
 - [x] specialComponents 目前只声明 x.simple-tweet 与 x.video-or-gif，还没有 handler registry。
 - [x] src/content/index.ts 已是 content runtime orchestration，不应该重新放回平台业务逻辑。
+- [x] `fixture.article` 已完成非 X 本地 adapter 验收：adapter-driven generic extractor 能输出 paragraph / heading / quote / list / image / code / table，并可进入 Reader fixture 渲染链路。
 
 ## 非目标
 

@@ -3,9 +3,8 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { JSDOM } from 'jsdom';
 
-const workspaceRoot = resolve(new URL('../..', import.meta.url).pathname);
 const projectRoot = resolve(new URL('..', import.meta.url).pathname);
-const fixturePath = resolve(workspaceRoot, 'assets2/how i make AI videos (a beginner’s breakdown).html');
+const fixturePath = resolve(projectRoot, 'assets2/how i make AI videos (a beginner’s breakdown).html');
 
 const sourceDom = new JSDOM(readFileSync(fixturePath, 'utf8'), {
   url: 'https://x.com/0xileri/article/2058611697187782908'
@@ -70,8 +69,8 @@ assert.ok(
 const css = readFileSync(resolve(projectRoot, 'public/styles/social-card.css'), 'utf8');
 assert.match(
   css,
-  /\.reader-simple-tweet-condensed-media \.reader-simple-tweet-photo-grid\s*\{[\s\S]*?width: 84px;[\s\S]*?aspect-ratio: 1 \/ 1;/,
-  'condensed photo thumbnails should share the same square media sizing as video previews'
+  /\.reader-simple-tweet-condensed-media \.reader-simple-tweet-photo-grid\s*\{[\s\S]*?width: var\(--reader-social-condensed-media-size\);[\s\S]*?min-height: var\(--reader-social-condensed-media-size\);[\s\S]*?aspect-ratio: 1 \/ 1;/,
+  'condensed photo thumbnails should share the same tokenized square media sizing as video previews'
 );
 
 console.log('SimpleTweet quoted photo layout verification passed.');

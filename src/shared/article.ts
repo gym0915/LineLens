@@ -3,6 +3,9 @@ export type ArticleSource = 'fixture' | 'x-article';
 export type Article = {
   id: string;
   source: ArticleSource;
+  adapterId?: string;
+  platform?: string;
+  contentType?: 'article' | 'post' | 'thread' | 'answer';
   sourceUrl: string;
   canonicalUrl: string;
   authorName?: string;

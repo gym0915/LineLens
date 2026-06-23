@@ -1561,8 +1561,10 @@ function getPaddingBottomAspectRatio(element: Element): number | undefined {
 }
 
 function getInlinePaddingBottomPercent(element: Element): number | undefined {
-  const paddingBottom = (element as HTMLElement).style?.paddingBottom || element.getAttribute('style') || '';
-  const match = /(?:padding-bottom:\s*)?([0-9.]+)%/i.exec(paddingBottom);
+  const inlinePaddingBottom = (element as HTMLElement).style?.paddingBottom;
+  const match = inlinePaddingBottom
+    ? /^([0-9.]+)%$/i.exec(inlinePaddingBottom.trim())
+    : /(?:^|;)\s*padding-bottom:\s*([0-9.]+)%/i.exec(element.getAttribute('style') ?? '');
   if (!match) {
     return undefined;
   }
