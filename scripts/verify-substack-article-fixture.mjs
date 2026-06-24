@@ -6,6 +6,7 @@ import { JSDOM } from 'jsdom';
 
 import {
   extractConfigurableArticle,
+  extractConfigurableArticleWithDiagnostics,
   waitUntilConfigurableArticleReady
 } from '../dist/content/extractors/configurable/index.js';
 import { resolvePlatformAdapter } from '../dist/content/adapters/index.js';
@@ -35,17 +36,29 @@ assert.deepEqual(
   'Substack fixture should satisfy configurable article readiness'
 );
 
-const article = await extractConfigurableArticle(adapter, {
+const result = await extractConfigurableArticleWithDiagnostics(adapter, {
   url: sourceUrl,
   root: dom.window.document,
   now: () => 1782220000000
 });
+const article = result.article;
 const counts = countBlocks(article.blocks);
 
 assert.equal(article.source, 'substack-article');
 assert.equal(article.adapterId, 'substack.article');
 assert.equal(article.platform, 'substack');
 assert.equal(article.title, '[AINews] Midjourney Medical: scan your organs like you step on a scale');
+assert.deepEqual(
+  result.diagnostics,
+  {
+    adapterId: 'substack.article',
+    platform: 'substack',
+    fallbackBlockCount: 0,
+    highRiskBlockCount: 0,
+    replacedBlockCount: 0
+  },
+  'Substack configurable extraction should expose zero-fallback adapter diagnostics'
+);
 assert.equal(counts.paragraph, 19);
 assert.equal(counts.image, 1);
 assert.equal(counts.heading, 20);
@@ -105,6 +118,14 @@ const embedUnit = focusResult.units.find((unit) => unit.blockId === embed.id);
 assert.equal(embedUnit?.type, 'block', 'FocusUnit should treat Substack embed as one block unit');
 assert.equal(embedUnit?.blockType, 'embed', 'FocusUnit should preserve embed blockType');
 assert.equal(focusResult.elements.get(embedUnit?.unitId ?? '')?.classList.contains('reader-social-embed'), true);
+
+installDom(readFileSync(fixturePath, 'utf8'), sourceUrl.toString());
+const articleFromPublicApi = await extractConfigurableArticle(adapter, {
+  url: sourceUrl,
+  root: globalThis.document,
+  now: () => 1782220000000
+});
+assert.equal(articleFromPublicApi.id, article.id, 'public configurable extraction API should still return unchanged Substack Article JSON');
 
 console.log('Substack article fixture verification passed');
 

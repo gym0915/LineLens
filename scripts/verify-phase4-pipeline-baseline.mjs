@@ -55,7 +55,7 @@ assert.deepEqual(getPlatformFixOrder(xArticleAdapter), [
   'preserve-x-media-caption',
   'preserve-x-media-layout'
 ]);
-assert.deepEqual(CLEAN_TREE_PRIMARY_BLOCK_TYPES, ['paragraph', 'heading', 'quote', 'list', 'image', 'code', 'table', 'simple-tweet', 'image-gallery']);
+assert.deepEqual(CLEAN_TREE_PRIMARY_BLOCK_TYPES, ['paragraph', 'heading', 'quote', 'list', 'image', 'code', 'table', 'simple-tweet', 'image-gallery', 'embed']);
 assert.deepEqual(HIGH_RISK_DUAL_TRACK_BLOCK_TYPES, ['video']);
 assert.equal(xArticleAdapter.semanticMap?.blockSelector, '[data-block="true"]', 'P4.5 should expose X block semantics through adapter config');
 assert.match(xArticleAdapter.semanticMap?.headingSelector ?? '', /longform-header-one/, 'P4.5 should expose X heading semantics through adapter config');
@@ -173,7 +173,7 @@ const blockConverterSource = readFileSync(
 );
 assert.match(blockConverterSource, /export function convertCleanTreeToBlocks/, 'P4.4 should define clean tree to block conversion entry');
 assert.match(blockConverterSource, /enabledBlockTypes/, 'P4.4 should allow block type level rollout');
-assert.match(blockConverterSource, /'paragraph', 'heading', 'quote', 'list', 'image', 'code', 'table', 'simple-tweet', 'image-gallery'/, 'P4.4 should include code, table, simple-tweet, and image-gallery after X Article migrations');
+assert.match(blockConverterSource, /'paragraph', 'heading', 'quote', 'list', 'image', 'code', 'table', 'simple-tweet', 'image-gallery', 'embed'/, 'P4.4 should include code, table, simple-tweet, image-gallery, and embed after article migrations');
 assert.match(blockConverterSource, /extractTextAnnotations/, 'P4.4 should preserve inline annotations');
 assert.match(blockConverterSource, /annotation\.bold = true/, 'P4.4 should preserve bold annotations');
 assert.match(blockConverterSource, /annotation\.href = href/, 'P4.4 should preserve link annotations');
@@ -345,7 +345,7 @@ const baselineReport = {
     videoHlsCandidateMetadata: true
   },
   blockConversion: {
-    lowRiskBlockTypes: ['paragraph', 'heading', 'quote', 'list', 'image', 'code', 'table', 'simple-tweet', 'image-gallery'],
+    lowRiskBlockTypes: ['paragraph', 'heading', 'quote', 'list', 'image', 'code', 'table', 'simple-tweet', 'image-gallery', 'embed'],
     preservesInlineSemantics: ['bold', 'link', 'emoji'],
     highRiskBlocksRemainDualTrack: ['video'],
     legacyIdsPreserved: true,

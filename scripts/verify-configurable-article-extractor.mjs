@@ -5,11 +5,15 @@ import { resolve } from 'node:path';
 import { JSDOM } from 'jsdom';
 
 import {
+  createAdapterDrivenArticleExtractor,
   extractConfigurableArticle,
+  extractConfigurableArticleWithDiagnostics,
   matchConfigurableArticle,
   waitUntilConfigurableArticleReady
 } from '../dist/content/extractors/configurable/index.js';
-import { xArticleAdapter } from '../dist/content/adapters/index.js';
+import { BUILT_IN_PLATFORM_ADAPTERS, xArticleAdapter } from '../dist/content/adapters/index.js';
+import { createExtractorRegistry } from '../dist/content/extractor-registry.js';
+import { xArticleExtractor } from '../dist/content/extractors/x/article-extractor.js';
 
 const projectRoot = resolve(import.meta.dirname, '..');
 const workspaceRoot = findWorkspaceRoot(projectRoot);
@@ -81,6 +85,33 @@ const genericHtml = [
 
 const genericUrl = new URL('https://example.com/story/123');
 const genericDom = installDom(genericHtml, genericUrl.toString());
+const runtimeRegistry = createExtractorRegistry([
+  xArticleExtractor,
+  createAdapterDrivenArticleExtractor(BUILT_IN_PLATFORM_ADAPTERS, {
+    excludeAdapterIds: [xArticleExtractor.id]
+  })
+]);
+
+const fixtureRuntimeMatch = runtimeRegistry.match({
+  url: new URL('https://fixture.linelens.local/article/1'),
+  root: genericDom.window.document
+});
+assert.equal(fixtureRuntimeMatch?.extractor.id, 'adapter.article', 'fixture.article should enter runtime through adapter.article');
+assert.equal(fixtureRuntimeMatch?.result.extractorId, 'fixture.article', 'fixture.article should preserve the matched adapter id');
+
+const substackRuntimeMatch = runtimeRegistry.match({
+  url: new URL('https://substack.com/inbox/post/202529490'),
+  root: genericDom.window.document
+});
+assert.equal(substackRuntimeMatch?.extractor.id, 'adapter.article', 'substack.article should enter runtime through adapter.article');
+assert.equal(substackRuntimeMatch?.result.extractorId, 'substack.article', 'substack.article should preserve the matched adapter id');
+
+const xRuntimeMatch = runtimeRegistry.match({
+  url: new URL('https://x.com/example/article/123456789'),
+  root: genericDom.window.document
+});
+assert.equal(xRuntimeMatch?.extractor.id, 'x.article', 'x.article should keep the X wrapper as the highest-confidence runtime match');
+assert.equal(xRuntimeMatch?.result.extractorId, 'x.article', 'x.article should preserve the matched extractor id');
 
 assert.equal(
   matchConfigurableArticle(genericAdapter, genericUrl)?.extractorId,
@@ -107,12 +138,24 @@ assert.deepEqual(
 );
 
 installDom(genericHtml, genericUrl.toString());
-const genericArticle = await extractConfigurableArticle(genericAdapter, {
+const genericResult = await extractConfigurableArticleWithDiagnostics(genericAdapter, {
   url: genericUrl,
   root: globalThis.document,
   now: () => 123456789
 });
+const genericArticle = genericResult.article;
 const genericTypes = genericArticle.blocks.map((block) => block.type);
+assert.deepEqual(
+  genericResult.diagnostics,
+  {
+    adapterId: 'fixture.article',
+    platform: 'fixture',
+    fallbackBlockCount: 0,
+    highRiskBlockCount: 0,
+    replacedBlockCount: 0
+  },
+  'fixture configurable extraction should expose zero-fallback adapter diagnostics'
+);
 assert.equal(genericArticle.id, 'fixture.article:https://example.com/story/123', 'configurable article should have deterministic id metadata');
 assert.equal(genericArticle.source, 'fixture', 'non-X configurable article should use fixture source metadata');
 assert.equal(genericArticle.sourceUrl, genericUrl.toString(), 'configurable article should preserve sourceUrl metadata');
@@ -130,18 +173,32 @@ assert.equal(
   'generic paragraph should preserve link annotations'
 );
 
+installDom(genericHtml, genericUrl.toString());
+const genericArticleFromPublicApi = await extractConfigurableArticle(genericAdapter, {
+  url: genericUrl,
+  root: globalThis.document,
+  now: () => 123456789
+});
+assert.equal(genericArticleFromPublicApi.id, genericArticle.id, 'public configurable extraction API should still return the Article JSON only');
+
 const xHtml = readFileSync(resolve(workspaceRoot, 'assets/x-article-full-html.html'), 'utf8');
 const xUrl = new URL('https://x.com/example/article/123456789');
 const xDom = installDom(xHtml, xUrl.toString());
-const xArticle = await extractConfigurableArticle(xArticleAdapter, {
+const xResult = await extractConfigurableArticleWithDiagnostics(xArticleAdapter, {
   url: xUrl,
   root: xDom.window.document,
   now: () => 987654321
 });
+const xArticle = xResult.article;
 const xTypes = new Set(xArticle.blocks.map((block) => block.type));
 assert.equal(matchConfigurableArticle(xArticleAdapter, xUrl)?.extractorId, 'x.article', 'X adapter should match through configurable matcher');
 assert.equal(xArticle.source, 'x-article', 'X configurable extraction should preserve X source metadata');
 assert.equal(xArticle.title.length > 0, true, 'X configurable extraction should read title from adapter selectors');
+assert.equal(xResult.diagnostics.adapterId, 'x.article', 'X configurable diagnostics should expose adapter id');
+assert.equal(xResult.diagnostics.platform, 'x', 'X configurable diagnostics should expose platform id');
+assert.equal(Number.isInteger(xResult.diagnostics.fallbackBlockCount), true, 'X configurable diagnostics should expose fallback count');
+assert.equal(Number.isInteger(xResult.diagnostics.highRiskBlockCount), true, 'X configurable diagnostics should expose high-risk count');
+assert.equal(Number.isInteger(xResult.diagnostics.replacedBlockCount), true, 'X configurable diagnostics should expose replaced count');
 for (const type of ['paragraph', 'list', 'image']) {
   assert.equal(xTypes.has(type), true, `X configurable extraction should expose low-risk ${type} blocks`);
 }

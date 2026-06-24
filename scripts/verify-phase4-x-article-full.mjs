@@ -79,7 +79,7 @@ assert.deepEqual(getPlatformFixOrder(xArticleAdapter), [
   'preserve-x-media-caption',
   'preserve-x-media-layout'
 ]);
-assert.deepEqual(CLEAN_TREE_PRIMARY_BLOCK_TYPES, ['paragraph', 'heading', 'quote', 'list', 'image', 'code', 'table', 'simple-tweet', 'image-gallery']);
+assert.deepEqual(CLEAN_TREE_PRIMARY_BLOCK_TYPES, ['paragraph', 'heading', 'quote', 'list', 'image', 'code', 'table', 'simple-tweet', 'image-gallery', 'embed']);
 assert.deepEqual(HIGH_RISK_DUAL_TRACK_BLOCK_TYPES, ['video']);
 
 const xDefaultCleanTreeBlockCounts = {

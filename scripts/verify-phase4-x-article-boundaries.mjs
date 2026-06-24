@@ -8,7 +8,11 @@ import { JSDOM } from 'jsdom';
 import { xArticleAdapter } from '../dist/content/adapters/index.js';
 import { extractXArticleLegacyBlocksForDebug } from '../dist/content/extractors/x/article-extractor.js';
 import { X_ARTICLE_SELECTORS } from '../dist/content/extractors/x/article-selectors.js';
-import { buildCleanTreePrimaryBlocks } from '../dist/content/preprocess/clean-tree-main-path.js';
+import {
+  buildCleanTreePrimaryBlocks,
+  CLEAN_TREE_PRIMARY_BLOCK_TYPES,
+  HIGH_RISK_DUAL_TRACK_BLOCK_TYPES
+} from '../dist/content/preprocess/clean-tree-main-path.js';
 
 const projectRoot = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const workspaceRoot = findWorkspaceRoot(projectRoot);
@@ -44,6 +48,17 @@ const result = buildCleanTreePrimaryBlocks({
   debugId: 'phase4-boundaries',
   legacyBlocks
 });
+
+assert.deepEqual(
+  CLEAN_TREE_PRIMARY_BLOCK_TYPES,
+  ['paragraph', 'heading', 'quote', 'list', 'image', 'code', 'table', 'simple-tweet', 'image-gallery', 'embed'],
+  'clean tree primary block types should include migrated low-risk and embed blocks'
+);
+assert.deepEqual(
+  HIGH_RISK_DUAL_TRACK_BLOCK_TYPES,
+  ['video'],
+  'video should stay on the high-risk dual-track path in this refactor'
+);
 
 const cleanParagraphs = result.cleanTreeBlocks.filter((block) => block.type === 'paragraph');
 const cleanLists = result.cleanTreeBlocks.filter((block) => block.type === 'list');

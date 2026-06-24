@@ -16,7 +16,10 @@ export type ConfigurableArticleExtractionOptions = {
 export type ConfigurableArticleExtractionDiagnostics = Pick<
   CleanTreePrimaryBlocksResult,
   'fallbackBlockCount' | 'highRiskBlockCount' | 'replacedBlockCount'
->;
+> & {
+  adapterId: string;
+  platform: PlatformAdapter['platform'];
+};
 
 export type ConfigurableArticleExtractionResult = {
   article: Article;
@@ -178,6 +181,8 @@ export async function extractConfigurableArticleWithDiagnostics(
     article,
     cleanTreeBlocks: blockResult.cleanTreeBlocks,
     diagnostics: {
+      adapterId: adapter.id,
+      platform: adapter.platform,
       fallbackBlockCount: blockResult.fallbackBlockCount,
       highRiskBlockCount: blockResult.highRiskBlockCount,
       replacedBlockCount: blockResult.replacedBlockCount

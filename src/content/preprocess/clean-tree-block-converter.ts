@@ -1837,11 +1837,25 @@ function normalizeListItem(
   const rawText = normalizePreWrapText(getElementDisplayText(element, true));
   const markerMatch = kind === 'ordered' ? getOrderedListMarker(rawText) : null;
   const markerLength = markerMatch?.[0].length ?? 0;
-  const text = kind === 'ordered' && markerLength > 0 ? rawText : rawText;
-  const annotations = extractTextAnnotations(element, rawText);
+  const text = kind === 'ordered' && markerLength > 0 ? rawText.slice(markerLength).trimStart() : rawText;
+  const annotations = shiftTextAnnotations(extractTextAnnotations(element, rawText), markerLength);
   const textStyle = extractElementTextStyle(element);
 
   return { text, annotations, textStyle };
+}
+
+function shiftTextAnnotations(annotations: TextAnnotation[], offset: number): TextAnnotation[] {
+  if (offset === 0) {
+    return annotations;
+  }
+
+  return annotations
+    .map((annotation) => ({
+      ...annotation,
+      startOffset: Math.max(0, annotation.startOffset - offset),
+      endOffset: Math.max(0, annotation.endOffset - offset)
+    }))
+    .filter((annotation) => annotation.endOffset > annotation.startOffset);
 }
 
 function getOrderedListMarker(text: string): RegExpMatchArray | null {

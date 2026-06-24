@@ -3,6 +3,7 @@ import {
   BUILT_IN_PLATFORM_ADAPTERS,
   fixtureArticleAdapter,
   resolvePlatformAdapter,
+  substackArticleAdapter,
   xArticleAdapter
 } from '../dist/content/adapters/index.js';
 import {
@@ -17,13 +18,21 @@ import { resolveSemanticSelectors } from '../dist/content/preprocess/semantic-ma
 
 const xUrl = new URL('https://x.com/example/article/123456789');
 const twitterUrl = new URL('https://twitter.com/example/article/123456789');
+const substackInboxUrl = new URL('https://substack.com/inbox/post/202529490');
+const latentSpaceUrl = new URL('https://www.latent.space/p/how-to-think-about-agent-browsers');
 const fixtureUrl = new URL('https://fixture.linelens.local/article/1');
 const futurePlatformUrl = new URL('https://future.example.com/article/123');
 const unsupportedUrl = new URL('https://example.com/story');
 
-assert.deepEqual(BUILT_IN_PLATFORM_ADAPTERS.map((adapter) => adapter.id), ['x.article', 'fixture.article'], 'built-in adapters should include X plus the local fixture platform');
+assert.deepEqual(
+  BUILT_IN_PLATFORM_ADAPTERS.map((adapter) => adapter.id),
+  ['x.article', 'substack.article', 'fixture.article'],
+  'built-in adapters should include X, Substack, and the local fixture platform'
+);
 assert.equal(resolvePlatformAdapter(xUrl)?.id, 'x.article', 'resolver should match x.com article URLs');
 assert.equal(resolvePlatformAdapter(twitterUrl)?.id, 'x.article', 'resolver should match twitter.com article URLs');
+assert.equal(resolvePlatformAdapter(substackInboxUrl)?.id, 'substack.article', 'resolver should match substack.com inbox article URLs');
+assert.equal(resolvePlatformAdapter(latentSpaceUrl)?.id, 'substack.article', 'resolver should match Substack custom-domain article URLs');
 assert.equal(resolvePlatformAdapter(fixtureUrl)?.id, 'fixture.article', 'resolver should match the local fixture article URLs');
 assert.equal(resolvePlatformAdapter(futurePlatformUrl), null, 'resolver should not match removed future-platform drafts');
 assert.equal(resolvePlatformAdapter(unsupportedUrl), null, 'resolver should reject unsupported hosts');
@@ -113,10 +122,26 @@ assert.equal(
   'X adapter should declare the video/GIF special component'
 );
 
+assert.equal(substackArticleAdapter.articleSource, 'substack-article', 'Substack adapter should expose article source metadata');
+assert.equal(substackArticleAdapter.rootSelector, 'article.newsletter-post.post-viewer-post', 'Substack adapter should expose the article root selector');
+assert.equal(substackArticleAdapter.contentSelector, '.available-content .body.markup', 'Substack adapter should expose the body markup selector');
+assert.equal(
+  substackArticleAdapter.specialComponents?.some(
+    (component) => component.id === 'substack.twitter-embed' && component.handlerId === 'substack.twitter-embed' && component.type === 'embed'
+  ),
+  true,
+  'Substack adapter should declare Twitter2ToDOM as a platform embed component'
+);
+
 assert.equal(LINE_LENS_SETTINGS_STORAGE_KEY, 'linelens.settings.v1', 'settings storage key should be versioned');
 assert.equal(DEFAULT_SETTINGS.schemaVersion, 1, 'settings schema should be versioned');
-assert.deepEqual(Object.keys(DEFAULT_SETTINGS.platformAdapters), ['x.article', 'fixture.article'], 'default settings should carry X and fixture adapter config');
+assert.deepEqual(
+  Object.keys(DEFAULT_SETTINGS.platformAdapters),
+  ['x.article', 'substack.article', 'fixture.article'],
+  'default settings should carry X, Substack, and fixture adapter config'
+);
 assert.equal(DEFAULT_SETTINGS.platformAdapters['x.article'].enabled, true, 'X adapter should be enabled by default');
+assert.equal(DEFAULT_SETTINGS.platformAdapters['substack.article'].enabled, true, 'Substack adapter should be enabled by default');
 assert.equal(DEFAULT_SETTINGS.platformAdapters['fixture.article'].enabled, true, 'fixture adapter should be enabled for local validation');
 assert.equal(fixtureArticleAdapter.validation?.titleStrategy, 'required', 'fixture adapter should exercise configurable title validation');
 assert.deepEqual(fixtureArticleAdapter.cleanRules?.unwrapSelectors, ['.content-wrapper'], 'fixture adapter should exercise cleanRules unwrap semantics');
