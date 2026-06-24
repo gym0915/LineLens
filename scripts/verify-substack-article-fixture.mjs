@@ -69,6 +69,10 @@ assert.equal(counts['simple-tweet'] ?? 0, 0);
 
 const embed = article.blocks.find((block) => block.type === 'embed');
 assert.ok(embed, 'Twitter2ToDOM should produce a generic embed block');
+const embedIndex = article.blocks.indexOf(embed);
+assert.equal(embedIndex, 4, 'Twitter2ToDOM should stay in its source DOM position instead of being appended');
+assert.match(article.blocks[embedIndex - 1]?.type === 'paragraph' ? article.blocks[embedIndex - 1].text : '', /Overall the\s+vibe was/);
+assert.match(article.blocks[embedIndex + 1]?.type === 'paragraph' ? article.blocks[embedIndex + 1].text : '', /On to the facts you\s+must know/);
 assert.equal(embed.provider, 'x');
 assert.equal(embed.href, 'https://x.com/iScienceLuvr/status/2067375098466869673');
 assert.equal(embed.authorName, 'Tanishq Mathew Abraham, Ph.D.');

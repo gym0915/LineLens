@@ -375,6 +375,7 @@ function readAsset(fileName) {
 function assertSemanticMapDrivesCleanTreeBlockConversion() {
   const dom = new JSDOM(`
     <main data-fixture-root>
+      <p data-semantic-block data-kind="paragraph">Mapped paragraph with <a href="https://example.com/ref">link text</a>.</p>
       <section data-semantic-block data-kind="heading" data-linelens-heading-level="3">Mapped Heading</section>
       <aside data-semantic-block data-kind="quote">Mapped quote</aside>
       <div data-semantic-block data-kind="ordered">Ordered item</div>
@@ -427,7 +428,36 @@ function assertSemanticMapDrivesCleanTreeBlockConversion() {
       sourceUrl: 'https://example.com/article'
     });
     const blockTypes = blocks.map((block) => block.type);
+    const standardBlockSnapshot = blocks.map((block) => {
+      switch (block.type) {
+        case 'paragraph':
+          return {
+            type: block.type,
+            text: block.text,
+            annotationHrefs: block.annotations?.map((annotation) => annotation.href).filter(Boolean) ?? []
+          };
+        case 'heading':
+          return { type: block.type, text: block.text, level: block.level };
+        case 'quote':
+          return { type: block.type, text: block.text };
+        case 'list':
+          return { type: block.type, kind: block.kind, items: block.items };
+        case 'image':
+          return { type: block.type, src: block.src, alt: block.alt };
+        case 'code':
+          return { type: block.type, text: block.text, language: block.language };
+        case 'table':
+          return { type: block.type, rows: block.rows.map((row) => row.cells.map((cell) => cell.text)) };
+        default:
+          return { type: block.type };
+      }
+    });
 
+    assert.equal(
+      blocks.some((block) => block.type === 'paragraph' && block.text === 'Mapped paragraph with link text.'),
+      true,
+      'semanticMap.paragraphSelector should drive clean-tree paragraph detection'
+    );
     assert.equal(
       blocks.some((block) => block.type === 'heading' && block.text === 'Mapped Heading' && block.level === 3),
       true,
@@ -465,8 +495,32 @@ function assertSemanticMapDrivesCleanTreeBlockConversion() {
     );
     assert.deepEqual(
       blockTypes,
-      ['heading', 'quote', 'list', 'list', 'image', 'code', 'table'],
+      ['paragraph', 'heading', 'quote', 'list', 'list', 'image', 'code', 'table'],
       'semanticMap selectors should preserve fixture block order'
+    );
+    assert.deepEqual(
+      standardBlockSnapshot,
+      [
+        {
+          type: 'paragraph',
+          text: 'Mapped paragraph with link text.',
+          annotationHrefs: ['https://example.com/ref']
+        },
+        { type: 'heading', text: 'Mapped Heading', level: 3 },
+        { type: 'quote', text: 'Mapped quote' },
+        { type: 'list', kind: 'ordered', items: ['Ordered item'] },
+        { type: 'list', kind: 'unordered', items: ['Unordered item'] },
+        { type: 'image', src: 'https://example.com/mapped.png', alt: 'Mapped image' },
+        { type: 'code', text: 'const mapped = true;', language: 'js' },
+        {
+          type: 'table',
+          rows: [
+            ['Name', 'Value'],
+            ['mapped', 'yes']
+          ]
+        }
+      ],
+      'standard block converter output should stay stable while converter modules are split'
     );
   } finally {
     globalThis.document = previousGlobals.document;

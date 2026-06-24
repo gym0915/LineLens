@@ -105,8 +105,8 @@ assert.match(
 );
 assert.match(
   readerCss,
-  /\.reader-simple-tweet-frame\s*\{[\s\S]*?display: grid;[\s\S]*?grid-template-columns: 48px minmax\(0, 1fr\);/,
-  'reader CSS should use the original-style left avatar plus right content layout'
+  /\.reader-simple-tweet-frame\s*\{[\s\S]*?display: grid;[\s\S]*?grid-template-columns:\s*var\(--reader-social-card-avatar-size\) minmax\(0, 1fr\);/,
+  'reader CSS should use the tokenized left avatar plus right content layout'
 );
 assert.match(
   readerCss,

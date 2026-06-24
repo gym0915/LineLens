@@ -1,3 +1,5 @@
+import '../substack/index.js';
+
 export {
   createAdapterDrivenArticleExtractor,
   extractConfigurableArticle,
