@@ -20,12 +20,13 @@ import type {
 } from '../../shared/article.js';
 import type { CleanTreeContext } from './clone-content-tree.js';
 import { resolveSemanticSelectors, type ResolvedSemanticSelectors } from './semantic-map-selectors.js';
+import { getSpecialComponentHandler } from '../extractors/configurable/special-component-handlers.js';
 
 export type CleanTreeBlockConversionOptions = {
   enabledBlockTypes?: Array<ArticleBlock['type']>;
 };
 
-const DEFAULT_ENABLED_BLOCK_TYPES: Array<ArticleBlock['type']> = ['paragraph', 'heading', 'quote', 'list', 'image', 'code', 'table', 'simple-tweet', 'image-gallery'];
+const DEFAULT_ENABLED_BLOCK_TYPES: Array<ArticleBlock['type']> = ['paragraph', 'heading', 'quote', 'list', 'image', 'code', 'table', 'simple-tweet', 'image-gallery', 'embed'];
 const X_CANONICAL_ORIGIN = 'https://x.com';
 const X_CODE_COLOR_THEME_PAIRS: Array<{ light: string; dark: string }> = [
   { light: 'rgb(247, 249, 249)', dark: 'rgb(22, 24, 28)' },
@@ -78,6 +79,11 @@ function convertElementToBlock(
   consumedElements: Set<Element>,
   semanticSelectors: ResolvedSemanticSelectors
 ): ArticleBlock | null {
+  const specialComponentBlock = convertSpecialComponentElement(element, context, index, enabledBlockTypes, consumedElements);
+  if (specialComponentBlock) {
+    return specialComponentBlock;
+  }
+
   if (isSimpleTweetElement(element) && enabledBlockTypes.has('simple-tweet')) {
     return convertSimpleTweetElement(element, context, index, consumedElements);
   }
@@ -194,14 +200,85 @@ function convertImageElement(element: Element, context: CleanTreeContext, index:
   if (!src) {
     return null;
   }
+  const imageMetadata = extractGenericImageMetadata(image ?? element);
 
   return {
     id: cleanTreeBlockId(context, index),
     type: 'image',
     src,
+    ...(image?.getAttribute('srcset') ? { srcset: image.getAttribute('srcset') ?? undefined } : {}),
+    ...(image?.getAttribute('sizes') ? { sizes: image.getAttribute('sizes') ?? undefined } : {}),
     alt: image?.getAttribute('alt') ?? element.getAttribute('alt') ?? undefined,
-    href: element.closest('a')?.getAttribute('href') ?? undefined
+    href: element.closest('a')?.getAttribute('href') ?? undefined,
+    ...imageMetadata
   };
+}
+
+function extractGenericImageMetadata(element: Element): Pick<ImageBlock, 'aspectRatio' | 'objectFit' | 'objectPosition'> {
+  const width = Number(element.getAttribute('width') ?? '');
+  const height = Number(element.getAttribute('height') ?? '');
+  const urlMetadata = parseSubstackImageUrlMetadata(element.getAttribute('src') ?? '');
+  const aspectRatio = toValidAspectRatio(width, height) ?? urlMetadata.aspectRatio;
+  return {
+    ...(aspectRatio ? { aspectRatio } : {}),
+    ...(urlMetadata.objectFit ? { objectFit: urlMetadata.objectFit } : {}),
+    ...(urlMetadata.objectPosition ? { objectPosition: urlMetadata.objectPosition } : {})
+  };
+}
+
+function parseSubstackImageUrlMetadata(src: string): Pick<ImageBlock, 'aspectRatio' | 'objectFit' | 'objectPosition'> {
+  const decoded = decodeURIComponent(src);
+  const width = getUrlDimension(decoded, 'w');
+  const height = getUrlDimension(decoded, 'h');
+  const cropMode = getUrlToken(decoded, 'c');
+  const gravity = getUrlToken(decoded, 'g');
+  return {
+    ...(toValidAspectRatio(width, height) ? { aspectRatio: toValidAspectRatio(width, height) } : {}),
+    ...(cropMode === 'fill' ? { objectFit: 'cover' as const } : {}),
+    ...(cropMode === 'limit' ? { objectFit: 'contain' as const } : {}),
+    ...(gravity === 'auto' ? { objectPosition: 'center center' } : {})
+  };
+}
+
+function getUrlDimension(src: string, key: 'w' | 'h'): number {
+  const match = new RegExp(`(?:^|[,/])${key}_(\\d+)`).exec(src);
+  const value = Number(match?.[1] ?? '');
+  return Number.isFinite(value) && value > 0 ? value : 0;
+}
+
+function getUrlToken(src: string, key: string): string {
+  return new RegExp(`(?:^|[,/])${key}_([a-z]+)`, 'i').exec(src)?.[1]?.toLowerCase() ?? '';
+}
+
+function convertSpecialComponentElement(
+  element: Element,
+  context: CleanTreeContext,
+  index: number,
+  enabledBlockTypes: Set<ArticleBlock['type']>,
+  consumedElements: Set<Element>
+): ArticleBlock | null {
+  const component = context.adapter.specialComponents?.find((candidate) => element.matches(candidate.rootSelector));
+  if (!component || !enabledBlockTypes.has(component.type as ArticleBlock['type'])) {
+    return null;
+  }
+
+  const handler = getSpecialComponentHandler(component.handlerId);
+  if (!handler) {
+    return null;
+  }
+
+  const block = handler.extract(element, {
+    component,
+    sourceUrl: context.sourceUrl,
+    debugId: context.debugId,
+    index
+  });
+  if (!block) {
+    return null;
+  }
+
+  consumedElements.add(element);
+  return block;
 }
 
 function tweetPhotoElementToImageBlock(element: HTMLElement, context: CleanTreeContext, index: number): ImageBlock | null {
@@ -959,7 +1036,7 @@ function extractTextAnnotations(element: Element, fullText = normalizeText(eleme
   const normalizeSegment = fullText.includes('\n') ? normalizePreWrapText : normalizeText;
   let searchCursor = 0;
 
-  for (const textElement of Array.from(element.querySelectorAll('[data-text="true"], a[href], [role="link"], [data-linelens-emoji-image-url]'))) {
+  for (const textElement of Array.from(element.querySelectorAll('[data-text="true"], a[href], [role="link"], strong, b, em, i, u, [style*="font-weight"], [style*="font-style"], [style*="text-decoration"], [data-linelens-emoji-image-url]'))) {
     const text = normalizeSegment(textElement.textContent ?? '');
     if (text === '') {
       continue;
@@ -981,6 +1058,9 @@ function extractTextAnnotations(element: Element, fullText = normalizeText(eleme
 
     if (isBoldElement(textElement)) {
       annotation.bold = true;
+    }
+    if (isItalicElement(textElement)) {
+      annotation.fontStyle = 'italic';
     }
     if (linkElement !== null) {
       const href = linkElement.getAttribute('href');
@@ -1011,12 +1091,17 @@ function hasTextAnnotationSignal(annotation: TextAnnotation): boolean {
       annotation.fontSize ||
       annotation.lineHeight ||
       annotation.textAlign ||
-      annotation.fontStyle
+      annotation.fontStyle ||
+      annotation.textDecoration
   );
 }
 
 function isBoldElement(element: Element): boolean {
   return Boolean(element.closest('strong, b, [style*="font-weight: bold"], [style*="font-weight: 700"]'));
+}
+
+function isItalicElement(element: Element): boolean {
+  return Boolean(element.closest('em, i, [style*="font-style: italic"]'));
 }
 
 function buildBlockCandidateSelector(selectors: ResolvedSemanticSelectors, context: CleanTreeContext): string {
@@ -1302,13 +1387,14 @@ function extractElementTextStyle(element: Element | null): TextStyle {
   });
 }
 
-function extractTextAnnotationStyle(element: Element | null): Pick<TextAnnotation, 'color' | 'fontSize' | 'lineHeight' | 'textAlign' | 'fontStyle'> {
+function extractTextAnnotationStyle(element: Element | null): Pick<TextAnnotation, 'color' | 'fontSize' | 'lineHeight' | 'textAlign' | 'fontStyle' | 'textDecoration'> {
   return compactStyle({
     color: getStyleValue(element, 'color'),
     fontSize: getStyleValue(element, 'fontSize'),
     lineHeight: getStyleValue(element, 'lineHeight'),
     textAlign: getStyleValue(element, 'textAlign'),
-    fontStyle: getStyleValue(element, 'fontStyle')
+    fontStyle: getStyleValue(element, 'fontStyle'),
+    textDecoration: getStyleValue(element, 'textDecoration')
   });
 }
 

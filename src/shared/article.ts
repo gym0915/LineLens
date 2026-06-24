@@ -1,4 +1,4 @@
-export type ArticleSource = 'fixture' | 'x-article';
+export type ArticleSource = 'fixture' | 'x-article' | 'substack-article';
 
 export type Article = {
   id: string;
@@ -66,6 +66,8 @@ export type ImageBlock = {
   id: string;
   type: 'image';
   src: string;
+  srcset?: string;
+  sizes?: string;
   displaySrc?: string;
   alt?: string;
   href?: string;
@@ -78,6 +80,8 @@ export type ImageBlock = {
 
 export type ImageGalleryItem = {
   src: string;
+  srcset?: string;
+  sizes?: string;
   displaySrc?: string;
   alt?: string;
   href?: string;
@@ -114,6 +118,8 @@ export type ImageGalleryBlock = {
 
 export type TweetPhoto = {
   src: string;
+  srcset?: string;
+  sizes?: string;
   displaySrc?: string;
   alt?: string;
   href?: string;
@@ -419,6 +425,23 @@ export type EmbedBlock = {
   label: string;
   text?: string;
   href?: string;
+  provider?: 'x' | 'youtube' | 'substack' | 'generic';
+  title?: string;
+  authorName?: string;
+  authorHandle?: string;
+  authorAvatarUrl?: string;
+  publishedAt?: string;
+  publishedAtText?: string;
+  metrics?: TweetMetrics;
+  media?: Array<{
+    type: 'image';
+    src: string;
+    href?: string;
+    alt?: string;
+    aspectRatio?: number;
+    objectFit?: 'cover' | 'contain';
+    objectPosition?: string;
+  }>;
 };
 
 export type TextAnnotation = {
@@ -433,6 +456,7 @@ export type TextAnnotation = {
   lineHeight?: string;
   textAlign?: string;
   fontStyle?: string;
+  textDecoration?: string;
 };
 
 export type TextStyle = {

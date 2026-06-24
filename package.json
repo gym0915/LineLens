@@ -22,6 +22,7 @@
     "verify:video-fullscreen": "npm run build && node scripts/verify-video-fullscreen.mjs",
     "verify:m3-adapters-settings": "npm run build && node scripts/verify-m3-adapters-settings.mjs",
     "verify:configurable-article-extractor": "npm run build && node scripts/verify-configurable-article-extractor.mjs",
+    "verify:substack-article-fixture": "npm run build && node scripts/verify-substack-article-fixture.mjs",
     "verify:phase4": "npm run verify:phase4-pipeline-baseline && npm run verify:phase4-x-article-full",
     "verify:phase4-pipeline-baseline": "npm run build && node scripts/verify-phase4-pipeline-baseline.mjs",
     "verify:phase4-x-article-full": "npm run build && node scripts/verify-phase4-x-article-full.mjs",

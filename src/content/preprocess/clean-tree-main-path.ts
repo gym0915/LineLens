@@ -12,7 +12,8 @@ export const CLEAN_TREE_PRIMARY_BLOCK_TYPES: Array<ArticleBlock['type']> = [
   'code',
   'table',
   'simple-tweet',
-  'image-gallery'
+  'image-gallery',
+  'embed'
 ];
 
 export const HIGH_RISK_DUAL_TRACK_BLOCK_TYPES: Array<ArticleBlock['type']> = [
@@ -211,6 +212,13 @@ function areEquivalentBlocks(left: ArticleBlock, right: ArticleBlock): boolean {
         right.type === 'image-gallery' &&
         left.items.length === right.items.length &&
         left.items.every((item, index) => item.src === right.items[index]?.src)
+      );
+    case 'embed':
+      return (
+        right.type === 'embed' &&
+        normalizeText(left.label) === normalizeText(right.label) &&
+        normalizeText(left.text ?? '') === normalizeText(right.text ?? '') &&
+        normalizeText(left.href ?? '') === normalizeText(right.href ?? '')
       );
     default:
       return false;

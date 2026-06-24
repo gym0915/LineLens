@@ -24,17 +24,42 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://x.com/*", "https://twitter.com/*"],
+      "matches": [
+        "https://x.com/*",
+        "https://twitter.com/*",
+        "https://substack.com/inbox/post/*",
+        "https://substack.com/home/post/*",
+        "https://substack.com/p/*",
+        "https://*.substack.com/p/*",
+        "https://www.latent.space/p/*",
+        "https://latent.space/p/*"
+      ],
       "js": ["content.js"],
       "run_at": "document_idle"
     }
   ],
   "permissions": ["action", "storage", "tabs", "webNavigation", "scripting", "webRequest"],
-  "host_permissions": ["https://x.com/*", "https://twitter.com/*", "https://video.twimg.com/*", "https://pbs.twimg.com/*"],
+  "host_permissions": [
+    "https://x.com/*",
+    "https://twitter.com/*",
+    "https://video.twimg.com/*",
+    "https://pbs.twimg.com/*",
+    "https://substack.com/*",
+    "https://*.substack.com/*",
+    "https://www.latent.space/*",
+    "https://latent.space/*"
+  ],
   "web_accessible_resources": [
     {
       "resources": ["reader.html"],
-      "matches": ["https://x.com/*", "https://twitter.com/*"]
+      "matches": [
+        "https://x.com/*",
+        "https://twitter.com/*",
+        "https://substack.com/*",
+        "https://*.substack.com/*",
+        "https://www.latent.space/*",
+        "https://latent.space/*"
+      ]
     }
   ]
 }

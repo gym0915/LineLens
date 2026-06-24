@@ -1,5 +1,5 @@
 import type { StyleWhitelistConfig } from '../../shared/reader-config.js';
-import type { ArticleBlock } from '../../shared/article.js';
+import type { ArticleBlock, ArticleSource } from '../../shared/article.js';
 
 export type PlatformFixId =
   | 'expand-folded-tweet-text'
@@ -86,6 +86,7 @@ export type PlatformAdapter = {
   id: string;
   platform: string;
   contentType: 'article' | 'post' | 'thread' | 'answer';
+  articleSource?: ArticleSource;
   hosts: string[];
   urlPatterns?: RegExp[];
   enabled: boolean;

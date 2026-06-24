@@ -193,7 +193,10 @@ export function locateConfigurableArticleRoots(adapter: PlatformAdapter, context
 } {
   const root = context.root ?? context.document ?? null;
   const articleRoot = root?.querySelector(adapter.rootSelector) ?? null;
-  const titleElement = articleRoot && adapter.titleSelector ? articleRoot.querySelector(adapter.titleSelector) : null;
+  const titleElement =
+    articleRoot && adapter.titleSelector
+      ? articleRoot.querySelector(adapter.titleSelector) ?? root?.querySelector(adapter.titleSelector) ?? null
+      : null;
   const contentRoot = articleRoot && adapter.contentSelector ? articleRoot.querySelector(adapter.contentSelector) : articleRoot;
 
   return {
@@ -255,6 +258,10 @@ function configurableArticleId(adapter: PlatformAdapter, url: URL): string {
 }
 
 function configurableArticleSource(adapter: PlatformAdapter): ArticleSource {
+  if (adapter.articleSource) {
+    return adapter.articleSource;
+  }
+
   return adapter.platform === 'x' ? 'x-article' : 'fixture';
 }
 
