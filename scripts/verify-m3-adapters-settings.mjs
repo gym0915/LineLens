@@ -7,6 +7,15 @@ import {
   xArticleAdapter
 } from '../dist/content/adapters/index.js';
 import {
+  DEFAULT_READER_SETTINGS,
+  READER_COLUMN_WIDTH_SETTINGS,
+  READER_FOCUS_GRANULARITY_SETTINGS,
+  READER_FONT_SCALE_SETTINGS,
+  READER_LINE_HEIGHT_SETTINGS,
+  READER_READING_MODE_SETTINGS,
+  READER_THEME_SETTINGS
+} from '../dist/shared/reader-config.js';
+import {
   DEFAULT_SETTINGS,
   LINE_LENS_SETTINGS_STORAGE_KEY,
   loadSettingsFromLocalStorage,
@@ -143,6 +152,21 @@ assert.deepEqual(
 assert.equal(DEFAULT_SETTINGS.platformAdapters['x.article'].enabled, true, 'X adapter should be enabled by default');
 assert.equal(DEFAULT_SETTINGS.platformAdapters['substack.article'].enabled, true, 'Substack adapter should be enabled by default');
 assert.equal(DEFAULT_SETTINGS.platformAdapters['fixture.article'].enabled, true, 'fixture adapter should be enabled for local validation');
+assert.deepEqual(
+  DEFAULT_SETTINGS.reader,
+  DEFAULT_READER_SETTINGS,
+  'default settings should include Reader settings without requiring the UI to exist'
+);
+assert.deepEqual(
+  READER_THEME_SETTINGS,
+  ['system', 'warm-white', 'warm-yellow', 'soft-rose', 'soft-blue', 'soft-sage', 'soft-lavender', 'soft-peach', 'cool-gray'],
+  'Reader settings should reserve known theme choices'
+);
+assert.deepEqual(READER_FONT_SCALE_SETTINGS, ['small', 'medium', 'large'], 'Reader settings should reserve font size choices');
+assert.deepEqual(READER_LINE_HEIGHT_SETTINGS, ['compact', 'comfortable', 'spacious'], 'Reader settings should reserve line-height choices');
+assert.deepEqual(READER_COLUMN_WIDTH_SETTINGS, ['narrow', 'standard', 'wide'], 'Reader settings should reserve column width choices');
+assert.deepEqual(READER_FOCUS_GRANULARITY_SETTINGS, ['sentence', 'paragraph', 'block'], 'Reader settings should reserve FocusUnit granularity choices');
+assert.deepEqual(READER_READING_MODE_SETTINGS, ['focus', 'continuous'], 'Reader settings should reserve reading mode choices');
 assert.equal(fixtureArticleAdapter.validation?.titleStrategy, 'required', 'fixture adapter should exercise configurable title validation');
 assert.deepEqual(fixtureArticleAdapter.cleanRules?.unwrapSelectors, ['.content-wrapper'], 'fixture adapter should exercise cleanRules unwrap semantics');
 
@@ -239,6 +263,14 @@ assert.deepEqual(
 );
 
 const mergedSettings = mergeSettings(DEFAULT_SETTINGS, {
+  reader: {
+    theme: 'cool-gray',
+    fontScale: 'large',
+    lineHeight: 'spacious',
+    columnWidth: 'wide',
+    focusGranularity: 'paragraph',
+    readingMode: 'continuous'
+  },
   platformAdapters: {
     'x.article': {
       titleSelector: '[data-custom-title]',
@@ -258,9 +290,31 @@ assert.equal(
   'article p',
   'settings merge should apply user semanticMap overrides'
 );
+assert.deepEqual(
+  mergedSettings.reader,
+  {
+    theme: 'cool-gray',
+    fontScale: 'large',
+    lineHeight: 'spacious',
+    columnWidth: 'wide',
+    focusGranularity: 'paragraph',
+    readingMode: 'continuous'
+  },
+  'settings merge should apply Reader setting overrides without mounting UI'
+);
 
 const normalized = normalizeSettings({
   schemaVersion: 999,
+  reader: {
+    theme: 'script',
+    fontScale: 'huge',
+    lineHeight: '<template>',
+    columnWidth: 999,
+    focusGranularity: 'source-dom',
+    readingMode: 'ai-summary',
+    script: 'alert(1)',
+    template: '<script></script>'
+  },
   platformAdapters: {
     'x.article': {
       rootSelector: '',
@@ -293,6 +347,9 @@ const normalized = normalizeSettings({
   }
 });
 assert.equal(normalized.schemaVersion, 1, 'invalid schema versions should fall back to v1');
+assert.deepEqual(normalized.reader, DEFAULT_READER_SETTINGS, 'invalid Reader settings should fall back to defaults');
+assert.equal(Object.hasOwn(normalized.reader, 'script'), false, 'Reader settings should not allow arbitrary scripts');
+assert.equal(Object.hasOwn(normalized.reader, 'template'), false, 'Reader settings should not allow HTML templates');
 assert.equal(normalized.platformAdapters['x.article'].rootSelector, xArticleAdapter.rootSelector, 'empty selectors should fall back');
 assert.equal(normalized.platformAdapters['x.article'].semanticMap?.headingSelector, xArticleAdapter.semanticMap?.headingSelector, 'empty semantic selectors should fall back');
 assert.deepEqual(
@@ -354,6 +411,14 @@ assert.equal(
 const localStorageSettings = loadSettingsFromLocalStorage(fakeStorage({
   [LINE_LENS_SETTINGS_STORAGE_KEY]: JSON.stringify({
     schemaVersion: 1,
+    reader: {
+      theme: 'soft-sage',
+      fontScale: 'small',
+      lineHeight: 'compact',
+      columnWidth: 'narrow',
+      focusGranularity: 'block',
+      readingMode: 'focus'
+    },
     platformAdapters: {
       'x.article': {
         semanticMap: {
@@ -380,6 +445,18 @@ assert.equal(
   localStorageSettings.platformAdapters['x.article'].semanticMap?.imageSelector,
   'article img',
   'localStorage settings should replace X semanticMap fields'
+);
+assert.deepEqual(
+  localStorageSettings.reader,
+  {
+    theme: 'soft-sage',
+    fontScale: 'small',
+    lineHeight: 'compact',
+    columnWidth: 'narrow',
+    focusGranularity: 'block',
+    readingMode: 'focus'
+  },
+  'localStorage settings should preserve sanitized Reader settings'
 );
 assert.deepEqual(
   localStorageSettings.platformAdapters['x.article'].cleanRules?.removeSelectors,

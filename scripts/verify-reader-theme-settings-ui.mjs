@@ -1,6 +1,16 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import {
+  DEFAULT_READER_SETTINGS,
+  READER_COLUMN_WIDTH_SETTINGS,
+  READER_FOCUS_GRANULARITY_SETTINGS,
+  READER_FONT_SCALE_SETTINGS,
+  READER_LINE_HEIGHT_SETTINGS,
+  READER_READING_MODE_SETTINGS,
+  READER_THEME_SETTINGS
+} from '../dist/shared/reader-config.js';
+import { DEFAULT_SETTINGS, normalizeSettings } from '../dist/shared/settings.js';
 
 const repoRoot = resolve(import.meta.dirname, '..');
 
@@ -9,94 +19,94 @@ function read(path) {
 }
 
 const readerApp = read('src/reader/reader-app.ts');
-const tokensCss = read('public/styles/tokens.css');
 const overlaysCss = read('public/styles/overlays.css');
+const settingsSource = read('src/shared/settings.ts');
+const readerConfigSource = read('src/shared/reader-config.ts');
 
-for (const token of [
-  ['--reader-theme-warm-white-bg', '#faf9f5'],
-  ['--reader-theme-warm-yellow-bg', '#fff8da'],
-  ['--reader-theme-soft-rose-bg', '#f9e8ec'],
-  ['--reader-theme-soft-blue-bg', '#e2ecf5'],
-  ['--reader-theme-soft-sage-bg', '#e3eddf'],
-  ['--reader-theme-soft-lavender-bg', '#ede4f2'],
-  ['--reader-theme-soft-peach-bg', '#feeadd'],
-  ['--reader-theme-cool-gray-bg', '#e6e8eb']
+assert.deepEqual(DEFAULT_SETTINGS.reader, DEFAULT_READER_SETTINGS, 'Reader settings should be part of the default settings schema');
+assert.deepEqual(
+  READER_THEME_SETTINGS,
+  ['system', 'warm-white', 'warm-yellow', 'soft-rose', 'soft-blue', 'soft-sage', 'soft-lavender', 'soft-peach', 'cool-gray'],
+  'Reader theme schema should reserve system plus token-backed themes'
+);
+assert.deepEqual(READER_FONT_SCALE_SETTINGS, ['small', 'medium', 'large'], 'Reader font-size schema should be reserved as data');
+assert.deepEqual(READER_LINE_HEIGHT_SETTINGS, ['compact', 'comfortable', 'spacious'], 'Reader line-height schema should be reserved as data');
+assert.deepEqual(READER_COLUMN_WIDTH_SETTINGS, ['narrow', 'standard', 'wide'], 'Reader column-width schema should be reserved as data');
+assert.deepEqual(READER_FOCUS_GRANULARITY_SETTINGS, ['sentence', 'paragraph', 'block'], 'Reader FocusUnit granularity schema should be reserved as data');
+assert.deepEqual(READER_READING_MODE_SETTINGS, ['focus', 'continuous'], 'Reader reading-mode schema should be reserved as data');
+
+assert.deepEqual(
+  normalizeSettings({
+    schemaVersion: 1,
+    reader: {
+      theme: 'soft-blue',
+      fontScale: 'large',
+      lineHeight: 'spacious',
+      columnWidth: 'wide',
+      focusGranularity: 'paragraph',
+      readingMode: 'continuous'
+    }
+  }).reader,
+  {
+    theme: 'soft-blue',
+    fontScale: 'large',
+    lineHeight: 'spacious',
+    columnWidth: 'wide',
+    focusGranularity: 'paragraph',
+    readingMode: 'continuous'
+  },
+  'valid Reader settings should be normalized as declarative data'
+);
+assert.deepEqual(
+  normalizeSettings({
+    schemaVersion: 1,
+    reader: {
+      theme: 'custom-css',
+      fontScale: 'calc(100vw)',
+      lineHeight: '<template>',
+      columnWidth: () => 'wide',
+      focusGranularity: 'source-dom',
+      readingMode: 'summary-panel',
+      script: 'alert(1)',
+      template: '<script></script>'
+    }
+  }).reader,
+  DEFAULT_READER_SETTINGS,
+  'invalid Reader settings should fall back without preserving scripts or templates'
+);
+
+for (const forbiddenUiSymbol of [
+  'createReaderThemeSettings(',
+  'createReaderThemeSwitch(',
+  'reader-settings-panel',
+  'reader-settings-button',
+  'reader-theme-switch',
+  'dataset.readerTheme'
 ]) {
-  assert(tokensCss.includes(token[0] + ': ' + token[1] + ';'), token[0] + ' should use the requested theme color');
+  assert(!readerApp.includes(forbiddenUiSymbol), `P3 should reserve Reader settings schema without mounting UI: ${forbiddenUiSymbol}`);
 }
 
-for (const token of [
-  '--reader-theme-bg',
-  '--reader-settings-button-size',
-  '--reader-settings-panel-width',
-  '--reader-theme-switch-width',
-  '--reader-theme-switch-height',
-  '--reader-theme-switch-gap',
-  '--reader-theme-switch-thumb-size',
-  '--reader-settings-divider',
-  '--reader-settings-control-height',
-  '--reader-settings-focus-outline',
-  '--reader-settings-menu-animation-duration'
-]) {
-  assert(tokensCss.includes(token + ':'), token + ' should live in reader design tokens');
-}
-
-assert(readerApp.includes('READER_THEME_OPTIONS'), 'Theme options should be centralized in reader-app');
-assert(readerApp.includes('createReaderThemeSettings('), 'Reader should mount a settings UI shell');
-assert(readerApp.includes('applyReaderTheme('), 'Reader should apply selected theme through one function');
-assert(readerApp.includes('createReaderThemeSwitch('), 'Reader should mount theme switch outside the settings panel');
-assert(readerApp.includes('reader-theme-switch'), 'Reader should expose the standalone theme switch');
-assert(readerApp.includes('createMoonIcon('), 'Theme switch should expose a moon state');
-assert(readerApp.includes('createSunIcon('), 'Theme switch should expose a sun state');
-assert(readerApp.includes('reader-settings-button'), 'Reader should expose a bottom-right settings button');
-assert(readerApp.includes('reader-settings-panel'), 'Reader should expose a settings panel');
-assert(readerApp.includes('reader-settings-divider'), 'Reader settings should include section dividers');
-assert(!readerApp.includes('reader-settings-swatch'), 'Theme swatches should be removed from the settings panel');
-assert(readerApp.includes('reader-settings-clarity'), 'Reader should expose clarity controls');
-assert(readerApp.includes('reader-settings-fonts'), 'Reader should expose font controls');
-assert(readerApp.includes('READER_CLARITY_OPTIONS'), 'Clarity options should be centralized');
-assert(readerApp.includes('READER_FONT_OPTIONS'), 'Font options should be centralized');
-assert(readerApp.includes('createSliderSettingsIcon('), 'Settings button should use the slider icon from the reference');
-assert(readerApp.includes('aria-pressed'), 'Interactive setting choices should expose active state');
-assert(readerApp.includes('dataset.readerTheme'), 'Theme selection should update the semantic reader theme dataset');
-assert(!readerApp.includes('warm-yellow'), 'Standalone switch should only expose the first and last theme choices');
-assert(!/#(?:faf9f5|fff8da|f9e8ec|e2ecf5|e3eddf|ede4f2|feeadd|e6e8eb)/i.test(readerApp), 'Reader app should not hard-code theme colors');
-
-for (const selector of [
+for (const forbiddenStyleSelector of [
   '.reader-settings',
   '.reader-theme-switch',
-  '.reader-theme-switch-input',
-  '.reader-theme-switch-slider',
-  '.reader-theme-switch-thumb',
-  '.reader-settings-button',
   '.reader-settings-panel',
-  '.reader-settings-title',
-  '.reader-settings-divider',
-  '.reader-settings-clarity',
-  '.reader-settings-clarity-option',
-  '.reader-settings-fonts',
-  '.reader-settings-font-option'
+  '.reader-settings-button'
 ]) {
-  assert(overlaysCss.includes(selector + ' {'), selector + ' should be styled in overlays.css');
+  assert(!overlaysCss.includes(forbiddenStyleSelector), `P3 should not add visible Reader settings UI styles: ${forbiddenStyleSelector}`);
 }
 
-assert(overlaysCss.includes('bottom: var(--reader-settings-offset);'), 'Settings entry should use offset token');
-assert(overlaysCss.includes('right: calc(var(--reader-settings-offset) + var(--reader-settings-button-size) + var(--reader-theme-switch-gap));'), 'Theme switch should sit to the left of the settings button');
-assert(overlaysCss.includes('bottom: calc(var(--reader-settings-offset) + (var(--reader-settings-button-size) / 2));'), 'Theme switch should align to the settings button vertical center');
-assert(overlaysCss.includes('transform: translateY(50%);'), 'Theme switch should center itself from its midpoint');
-assert(overlaysCss.includes('width: var(--reader-settings-panel-width);'), 'Settings panel should use width token');
-assert(overlaysCss.includes('width: var(--reader-theme-switch-width);'), 'Theme switch should use switch width token');
-assert(overlaysCss.includes('height: var(--reader-theme-switch-height);'), 'Theme switch should use switch height token');
-assert(tokensCss.includes('--reader-theme-switch-width: 54px;'), 'Theme switch should be noticeably smaller than the first pass');
-assert(tokensCss.includes('--reader-theme-switch-height: 28px;'), 'Theme switch height should be reduced');
-assert(tokensCss.includes('--reader-theme-switch-icon-inset:'), 'Theme switch icon placement should be tokenized');
-assert(overlaysCss.includes('transform: translateX(var(--reader-theme-switch-thumb-shift));'), 'Theme switch thumb should slide through a tokenized distance');
-assert(overlaysCss.includes('.reader-theme-switch.is-cool-gray .reader-theme-switch-thumb') && overlaysCss.includes('transform: translateX(0);'), 'Night switch state should keep the thumb on the left like the reference');
-assert(overlaysCss.includes('z-index: 2;'), 'Theme switch icons should sit above the thumb on the pill track');
-assert(!overlaysCss.includes('.reader-settings-swatch'), 'Settings swatch styles should be removed');
-assert(overlaysCss.includes('animation: reader-settings-panel-enter var(--reader-settings-menu-animation-duration)'), 'Settings panel should animate on open');
-assert(overlaysCss.includes('@keyframes reader-settings-panel-enter'), 'Settings panel should define its popover animation');
-assert(overlaysCss.includes('height: var(--reader-settings-control-height);'), 'Settings controls should use control height token');
-assert(!/#(?:faf9f5|fff8da|f9e8ec|e2ecf5|e3eddf|ede4f2|feeadd|e6e8eb)/i.test(overlaysCss), 'Overlay CSS should not hard-code theme colors');
+for (const requiredSourceToken of [
+  'ReaderSettingsConfig',
+  'DEFAULT_READER_SETTINGS',
+  'READER_THEME_SETTINGS',
+  'READER_FONT_SCALE_SETTINGS',
+  'READER_LINE_HEIGHT_SETTINGS',
+  'READER_COLUMN_WIDTH_SETTINGS',
+  'READER_FOCUS_GRANULARITY_SETTINGS',
+  'READER_READING_MODE_SETTINGS'
+]) {
+  assert(readerConfigSource.includes(requiredSourceToken), `${requiredSourceToken} should live in reader-config.ts`);
+}
+assert(settingsSource.includes('mergeReaderSettingsConfig'), 'settings normalization should merge Reader settings in shared settings');
 
 console.log('verify:reader-theme-settings-ui passed');

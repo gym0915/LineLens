@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { renderArticleShell } from '../dist/reader/block-renderer.js';
 import { buildFocusUnits } from '../dist/reader/focus-unit-builder.js';
@@ -137,18 +137,37 @@ globalThis.document = {
 };
 
 const sourceRoot = resolve(import.meta.dirname, '..', 'src', 'reader');
+const sharedRoot = resolve(import.meta.dirname, '..', 'src', 'shared');
 const rendererSource = [
   readFileSync(resolve(sourceRoot, 'block-renderer.ts'), 'utf8'),
   readFileSync(resolve(sourceRoot, 'renderers/text-block-renderer.ts'), 'utf8'),
   readFileSync(resolve(sourceRoot, 'renderers/simple-tweet-renderer.ts'), 'utf8')
 ].join('\n');
+const readerSource = collectTypeScriptSources(sourceRoot);
 const focusBuilderSource = readFileSync(resolve(sourceRoot, 'focus-unit-builder.ts'), 'utf8');
+const focusTypeSource = readFileSync(resolve(sharedRoot, 'focus.ts'), 'utf8');
 const focusCss = readFileSync(resolve(import.meta.dirname, '..', 'public', 'styles', 'focus.css'), 'utf8');
 
 assert.match(rendererSource, /reader-text-renderer\.js'/, 'reader renderers should import the unified text renderer');
 assert.match(focusBuilderSource, /from '\.\/reader-text-renderer\.js'/, 'focus-unit builder should import the unified text renderer');
 assert.doesNotMatch(rendererSource, /function appendAnnotatedText/, 'block renderer should not keep a private annotation renderer');
 assert.doesNotMatch(focusBuilderSource, /function appendAnnotatedText/, 'focus-unit builder should not keep a private annotation renderer');
+for (const platformSelector of [
+  'twitterArticleReadView',
+  'twitter-article-title',
+  'longformRichTextComponent',
+  'Twitter2ToDOM',
+  '.body.markup',
+  'newsletter-post'
+]) {
+  assert(
+    !readerSource.includes(platformSelector),
+    `Reader renderer/app source should not depend on platform DOM selector: ${platformSelector}`
+  );
+}
+for (const focusField of ['blockId', 'unitId', 'startOffset', 'endOffset', 'textRole']) {
+  assert(focusTypeSource.includes(focusField), `FocusUnit should keep ${focusField} metadata for Reader extensions`);
+}
 
 const sampleSpan = createReaderTextSpan(
   'Go 😎 now',
@@ -259,6 +278,23 @@ function walk(node) {
     }
   }
   return elements;
+}
+
+function collectTypeScriptSources(directory) {
+  let source = '';
+  for (const entry of readdirSync(directory)) {
+    const absolutePath = resolve(directory, entry);
+    const stats = statSync(absolutePath);
+    if (stats.isDirectory()) {
+      source += collectTypeScriptSources(absolutePath);
+      continue;
+    }
+    if (entry.endsWith('.ts')) {
+      source += readFileSync(absolutePath, 'utf8');
+      source += '\n';
+    }
+  }
+  return source;
 }
 
 function matchesSelector(element, selector) {

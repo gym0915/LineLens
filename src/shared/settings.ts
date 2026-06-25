@@ -11,23 +11,37 @@ import {
   type TitleStrategy,
   type ValidationConfig
 } from '../content/adapters/index.js';
-import type { StyleWhitelistConfig } from './reader-config.js';
+import {
+  DEFAULT_READER_SETTINGS,
+  READER_COLUMN_WIDTH_SETTINGS,
+  READER_FOCUS_GRANULARITY_SETTINGS,
+  READER_FONT_SCALE_SETTINGS,
+  READER_LINE_HEIGHT_SETTINGS,
+  READER_READING_MODE_SETTINGS,
+  READER_THEME_SETTINGS,
+  type ReaderSettingsConfig,
+  type ReaderSettingsUserConfig,
+  type StyleWhitelistConfig
+} from './reader-config.js';
 
 export const LINE_LENS_SETTINGS_STORAGE_KEY = 'linelens.settings.v1';
 
 export type LineLensSettings = {
   schemaVersion: 1;
   platformAdapters: Record<string, PlatformAdapter>;
+  reader: ReaderSettingsConfig;
 };
 
 export type LineLensUserSettings = {
   schemaVersion?: unknown;
   platformAdapters?: Record<string, PlatformAdapterUserConfig | unknown>;
+  reader?: ReaderSettingsUserConfig | unknown;
 };
 
 export const DEFAULT_SETTINGS: LineLensSettings = {
   schemaVersion: 1,
-  platformAdapters: Object.fromEntries(BUILT_IN_PLATFORM_ADAPTERS.map((adapter) => [adapter.id, adapter]))
+  platformAdapters: Object.fromEntries(BUILT_IN_PLATFORM_ADAPTERS.map((adapter) => [adapter.id, adapter])),
+  reader: DEFAULT_READER_SETTINGS
 };
 
 export function loadSettingsFromLocalStorage(storage?: Storage | null): LineLensSettings {
@@ -71,7 +85,8 @@ export function mergeSettings(defaults: LineLensSettings, userSettings: LineLens
 
   return {
     schemaVersion: 1,
-    platformAdapters
+    platformAdapters,
+    reader: mergeReaderSettingsConfig(defaults.reader, userSettings.reader)
   };
 }
 
@@ -240,6 +255,21 @@ function mergeSpecialComponentsConfig(defaults: SpecialComponentConfig[] | undef
   return normalized;
 }
 
+function mergeReaderSettingsConfig(defaults: ReaderSettingsConfig, override: unknown): ReaderSettingsConfig {
+  if (!isPlainObject(override)) {
+    return { ...defaults };
+  }
+
+  return {
+    theme: normalizeStringEnum(override.theme, READER_THEME_SETTINGS) ?? defaults.theme,
+    fontScale: normalizeStringEnum(override.fontScale, READER_FONT_SCALE_SETTINGS) ?? defaults.fontScale,
+    lineHeight: normalizeStringEnum(override.lineHeight, READER_LINE_HEIGHT_SETTINGS) ?? defaults.lineHeight,
+    columnWidth: normalizeStringEnum(override.columnWidth, READER_COLUMN_WIDTH_SETTINGS) ?? defaults.columnWidth,
+    focusGranularity: normalizeStringEnum(override.focusGranularity, READER_FOCUS_GRANULARITY_SETTINGS) ?? defaults.focusGranularity,
+    readingMode: normalizeStringEnum(override.readingMode, READER_READING_MODE_SETTINGS) ?? defaults.readingMode
+  };
+}
+
 function normalizeSpecialComponentConfig(input: unknown): SpecialComponentConfig | null {
   if (!isPlainObject(input)) {
     return null;
@@ -310,6 +340,10 @@ function normalizeSpecialComponentType(value: unknown): SpecialComponentType | u
   return typeof value === 'string' && SPECIAL_COMPONENT_TYPES.includes(value as SpecialComponentType)
     ? value as SpecialComponentType
     : undefined;
+}
+
+function normalizeStringEnum<const T extends readonly string[]>(value: unknown, allowedValues: T): T[number] | undefined {
+  return typeof value === 'string' && allowedValues.includes(value) ? value : undefined;
 }
 
 function normalizeTitleStrategy(value: unknown): TitleStrategy | undefined {
