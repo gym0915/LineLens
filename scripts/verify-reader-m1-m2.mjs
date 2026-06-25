@@ -137,11 +137,15 @@ globalThis.document = {
 };
 
 const sourceRoot = resolve(import.meta.dirname, '..', 'src', 'reader');
-const rendererSource = readFileSync(resolve(sourceRoot, 'block-renderer.ts'), 'utf8');
+const rendererSource = [
+  readFileSync(resolve(sourceRoot, 'block-renderer.ts'), 'utf8'),
+  readFileSync(resolve(sourceRoot, 'renderers/text-block-renderer.ts'), 'utf8'),
+  readFileSync(resolve(sourceRoot, 'renderers/simple-tweet-renderer.ts'), 'utf8')
+].join('\n');
 const focusBuilderSource = readFileSync(resolve(sourceRoot, 'focus-unit-builder.ts'), 'utf8');
 const focusCss = readFileSync(resolve(import.meta.dirname, '..', 'public', 'styles', 'focus.css'), 'utf8');
 
-assert.match(rendererSource, /from '\.\/reader-text-renderer\.js'/, 'block renderer should import the unified text renderer');
+assert.match(rendererSource, /reader-text-renderer\.js'/, 'reader renderers should import the unified text renderer');
 assert.match(focusBuilderSource, /from '\.\/reader-text-renderer\.js'/, 'focus-unit builder should import the unified text renderer');
 assert.doesNotMatch(rendererSource, /function appendAnnotatedText/, 'block renderer should not keep a private annotation renderer');
 assert.doesNotMatch(focusBuilderSource, /function appendAnnotatedText/, 'focus-unit builder should not keep a private annotation renderer');

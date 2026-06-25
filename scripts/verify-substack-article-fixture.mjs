@@ -45,6 +45,8 @@ const article = result.article;
 const counts = countBlocks(article.blocks);
 
 assert.equal(article.source, 'substack-article');
+assert.equal(article.sourceKind, 'platform');
+assert.equal(article.sourceProvider, 'substack');
 assert.equal(article.adapterId, 'substack.article');
 assert.equal(article.platform, 'substack');
 assert.equal(article.title, '[AINews] Midjourney Medical: scan your organs like you step on a scale');

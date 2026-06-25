@@ -7,7 +7,10 @@ const backgroundSource = readFileSync(resolve(rootDir, 'src/background/index.ts'
 const extractorSource = readFileSync(resolve(rootDir, 'src/content/extractors/x/article-extractor.ts'), 'utf8');
 const articleModelSource = readFileSync(resolve(rootDir, 'src/shared/article.ts'), 'utf8');
 const messageModelSource = readFileSync(resolve(rootDir, 'src/shared/messages.ts'), 'utf8');
-const readerRendererSource = readFileSync(resolve(rootDir, 'src/reader/block-renderer.ts'), 'utf8');
+const readerRendererSource = [
+  readFileSync(resolve(rootDir, 'src/reader/block-renderer.ts'), 'utf8'),
+  readFileSync(resolve(rootDir, 'src/reader/renderers/video-renderer.ts'), 'utf8')
+].join('\n');
 const readerAppSource = readFileSync(resolve(rootDir, 'src/reader/reader-app.ts'), 'utf8');
 const readerHtml = readFileSync(resolve(rootDir, 'public/reader.html'), 'utf8');
 

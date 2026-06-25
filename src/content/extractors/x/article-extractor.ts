@@ -108,6 +108,11 @@ export const xArticleExtractor: ArticleExtractor = {
     const article: Article = {
       id: articleId,
       source: 'x-article',
+      sourceKind: 'platform',
+      sourceProvider: 'x',
+      adapterId: xArticleAdapter.id,
+      platform: xArticleAdapter.platform,
+      contentType: xArticleAdapter.contentType,
       sourceUrl: context.url.toString(),
       canonicalUrl,
       authorHandle: getXArticleAuthorHandleFromUrl(context.url),

@@ -1,6 +1,8 @@
 {
   "id": "non-x-fixture-article",
   "source": "fixture",
+  "sourceKind": "fixture",
+  "sourceProvider": "fixture",
   "adapterId": "fixture.article",
   "platform": "fixture",
   "contentType": "article",

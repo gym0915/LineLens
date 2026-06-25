@@ -162,6 +162,23 @@ const openCalls = [];
 const runtimeMessages = [];
 const imagePreloadRequests = [];
 const documentBody = new ElementLike('body');
+const readerControlSource = [
+  'src/reader/reader-app.ts',
+  'src/reader/controllers/keyboard-controller.ts',
+  'src/reader/controllers/click-controller.ts',
+  'src/reader/controllers/media-preview-controller.ts',
+  'src/reader/controllers/code-copy-controller.ts',
+  'src/reader/controllers/progress-ui.ts'
+]
+  .map((path) => readSourceIfPresent(path))
+  .join('\n');
+
+assert(/addEventListener\('click'/.test(readerControlSource), 'Reader app/control layer should keep a click interaction entrypoint');
+assert(/addEventListener\('keydown'/.test(readerControlSource), 'Reader app/control layer should keep a keyboard interaction entrypoint');
+assert(/ArrowLeft/.test(readerControlSource) && /ArrowRight/.test(readerControlSource), 'Reader keyboard controls should keep left/right navigation');
+assert(/Home/.test(readerControlSource) && /End/.test(readerControlSource), 'Reader keyboard controls should keep Home/End navigation');
+assert(/reader-media-preview/.test(readerControlSource), 'Reader control layer should keep the media preview entrypoint');
+assert(/reader-progress/.test(readerControlSource), 'Reader control layer should keep the progress UI entrypoint');
 
 class ImagePreloadLike {
   constructor() {
@@ -812,6 +829,11 @@ async function flushAsyncWork() {
 
 function textUnit(unitId) {
   return { id: unitId, type: 'reading-text', blockId: unitId.split('-u')[0], unitId, text: unitId, startOffset: 0, endOffset: unitId.length };
+}
+
+function readSourceIfPresent(path) {
+  const fullPath = resolve(new URL('..', import.meta.url).pathname, path);
+  return existsSync(fullPath) ? readFileSync(fullPath, 'utf8') : '';
 }
 
 function matchesSelector(element, selector) {

@@ -1,7 +1,9 @@
 export type {
   Article,
   ArticleBlock,
+  ArticleSourceKind,
   ArticleSource,
+  LegacyArticleSource,
   CodeBlockThemeColors,
   CodeBlockStyle,
   CodeThemeColorPair,

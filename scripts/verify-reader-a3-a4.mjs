@@ -94,6 +94,17 @@ class ElementLike extends NodeLike {
     this.parent = null;
   }
 
+  play() {
+    this.paused = false;
+    return Promise.resolve();
+  }
+
+  pause() {
+    this.paused = true;
+  }
+
+  load() {}
+
   querySelector(selector) {
     return querySelector(this, selector);
   }
@@ -114,6 +125,7 @@ globalThis.document = {
     return new TextNodeLike(text);
   }
 };
+globalThis.window = {};
 
 const root = new URL('..', import.meta.url).pathname;
 const fixtureDir = resolveFixtureDir(root);
@@ -157,6 +169,51 @@ for (const block of mediaArticle.blocks) {
   const element = rendered.querySelector(`[data-block-id="${block.id}"]`);
   assert(element, `block ${block.id} should have data-block-id`);
   assert(element.dataset.blockType === block.type, `block ${block.id} should have block type`);
+}
+
+const blockContractArticle = {
+  ...mediaArticle,
+  blocks: [
+    { id: 'contract-heading', type: 'heading', level: 2, text: 'Heading contract' },
+    { id: 'contract-paragraph', type: 'paragraph', text: 'Paragraph contract' },
+    { id: 'contract-quote', type: 'quote', text: 'Quote contract' },
+    { id: 'contract-list', type: 'list', kind: 'unordered', items: ['List contract'] },
+    { id: 'contract-link', type: 'link', text: 'Link contract', href: 'https://example.com' },
+    { id: 'contract-code', type: 'code', language: 'ts', text: 'const value = 1;' },
+    { id: 'contract-table', type: 'table', rows: [{ cells: [{ text: 'A', header: true }] }, { cells: [{ text: 'B' }] }] },
+    { id: 'contract-image', type: 'image', src: 'https://example.com/image.jpg', alt: 'Image contract' },
+    {
+      id: 'contract-gallery',
+      type: 'image-gallery',
+      items: [{ src: 'https://example.com/gallery.jpg', alt: 'Gallery contract' }]
+    },
+    {
+      id: 'contract-video',
+      type: 'video',
+      src: 'https://example.com/video.mp4',
+      poster: 'https://example.com/poster.jpg'
+    },
+    {
+      id: 'contract-tweet',
+      type: 'simple-tweet',
+      source: 'X Tweet',
+      title: 'Tweet contract',
+      excerpt: 'Tweet contract body',
+      href: 'https://x.com/example/status/1'
+    },
+    {
+      id: 'contract-embed',
+      type: 'embed',
+      title: 'Embed contract',
+      href: 'https://example.com/embed'
+    }
+  ]
+};
+const blockContractRendered = renderArticleShell(blockContractArticle);
+for (const block of blockContractArticle.blocks) {
+  const element = blockContractRendered.querySelector(`[data-block-id="${block.id}"]`);
+  assert(element, `${block.type} should keep data-block-id after renderer splitting`);
+  assert(element.dataset.blockType === block.type, `${block.type} should keep data-block-type after renderer splitting`);
 }
 
 assert(rendered.querySelector('[data-block-id="h1"]')?.tagName === 'H2', 'heading should render as h2');
@@ -359,7 +416,11 @@ const markdownCodeRendered = renderArticleShell({
 const markdownCodeElement = markdownCodeRendered.querySelector('[data-block-id="markdown-code"]');
 assert(findByClass(markdownCodeElement, 'reader-code-token-punctuation')?.textContent === '#', 'markdown code block should highlight heading markers');
 assert(findByClass(markdownCodeElement, 'reader-code-token-heading')?.textContent === ' Principles', 'markdown code block should highlight heading text');
-const readerAppSource = readFileSync(resolve(root, 'src/reader/reader-app.ts'), 'utf8');
+const readerAppSource = [
+  readFileSync(resolve(root, 'src/reader/reader-app.ts'), 'utf8'),
+  readFileSync(resolve(root, 'src/reader/controllers/click-controller.ts'), 'utf8'),
+  readFileSync(resolve(root, 'src/reader/controllers/code-copy-controller.ts'), 'utf8')
+].join('\n');
 assert(/target instanceof Element/.test(readerAppSource), 'copy event delegation should also work when clicking svg child nodes');
 assert(/button\[data-copy-code\]/.test(readerAppSource), 'copy event delegation should target the copy button from svg descendants');
 assert(/copyCodeWithFallback/.test(readerAppSource), 'copy should include a fallback path when navigator.clipboard is unavailable');
@@ -652,19 +713,28 @@ assert(/\.reader-media-preview\.is-loading \.reader-media-preview-image\s*\{[\s\
 assert(/\.reader-media-preview-status\s*\{[\s\S]*?background:\s*transparent;/.test(css), 'reader media preview loading status should render as plain text');
 assert(css.includes('.reader-media-preview-close:hover'), 'reader media preview close button should expose hover feedback');
 assert(css.includes('.reader-media-preview-nav:not(:disabled):hover'), 'reader media preview nav buttons should expose hover feedback');
-assert(css.includes('var(--reader-highlight-surface) 16%'), 'reader media preview nav buttons should use the same base color strength as the close button');
-assert(/\.reader-media-preview-nav\s*\{[\s\S]*?font-size:\s*28px;[\s\S]*?font-weight:\s*300;/.test(css), 'reader media preview nav symbols should match close button icon styling');
+assert(/var\(--reader-media-preview-btn-surface,\s*var\(--reader-highlight-surface\)\)\s*16%/.test(css), 'reader media preview nav buttons should use the same base color strength as the close button');
+assert(
+  /\.reader-media-preview-nav\s*\{[\s\S]*?font-size:\s*var\(--reader-media-preview-control-icon-size\);[\s\S]*?font-weight:\s*var\(--reader-media-preview-control-weight\);/.test(css),
+  'reader media preview nav symbols should match close button icon styling'
+);
 assert(css.includes('.reader-media-preview-nav:disabled'), 'reader media preview should style unavailable nav directions');
 assert(css.includes('display: none'), 'reader media preview should hide unavailable nav direction buttons');
 assert(css.includes('z-index: 84'), 'reader media preview controls should render above the preview image content');
 assert(css.includes('@keyframes reader-media-preview-enter-from-left'), 'reader media preview should define left-enter animation for keyboard navigation');
 assert(css.includes('@keyframes reader-media-preview-enter-from-right'), 'reader media preview should define right-enter animation for keyboard navigation');
-assert(css.includes('animation: reader-media-preview-enter-from-left 400ms ease-out both'), 'left preview navigation animation should use 400ms ease-out motion');
-assert(css.includes('animation: reader-media-preview-enter-from-right 400ms ease-out both'), 'right preview navigation animation should use 400ms ease-out motion');
+assert(
+  css.includes('animation: reader-media-preview-enter-from-left var(--reader-media-preview-image-enter-duration) ease-out both'),
+  'left preview navigation animation should use tokenized ease-out motion'
+);
+assert(
+  css.includes('animation: reader-media-preview-enter-from-right var(--reader-media-preview-image-enter-duration) ease-out both'),
+  'right preview navigation animation should use tokenized ease-out motion'
+);
 assert(css.includes('translateX(calc(-50vw - 50%))'), 'left preview navigation animation should enter from outside the browser viewport');
 assert(css.includes('translateX(calc(50vw + 50%))'), 'right preview navigation animation should enter from outside the browser viewport');
-assert(css.includes('transform: translateX(-8px)'), 'left preview navigation animation should add a damped slowdown before center');
-assert(css.includes('transform: translateX(8px)'), 'right preview navigation animation should add a damped slowdown before center');
+assert(css.includes('transform: translateX(calc(-1 * var(--reader-media-preview-image-enter-nudge)))'), 'left preview navigation animation should add a damped slowdown before center');
+assert(css.includes('transform: translateX(var(--reader-media-preview-image-enter-nudge))'), 'right preview navigation animation should add a damped slowdown before center');
 assert(css.includes('.reader-article a'), 'all anchors inside the reader should inherit focus color');
 assert(css.includes('.focus-unit a'), 'inline paragraph links should share hyperlink styling');
 assert(css.includes('.reader-list-item--source-marker'), 'source-marker ordered list items should have alignment styles');

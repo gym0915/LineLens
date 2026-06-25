@@ -22,6 +22,14 @@ export function validateArticle(article: Article): ValidationResult {
     return { valid: false, reason: 'missing_title' };
   }
 
+  if (!normalizeText(article.sourceUrl)) {
+    return { valid: false, reason: 'missing_source_url' };
+  }
+
+  if (!normalizeText(article.canonicalUrl)) {
+    return { valid: false, reason: 'missing_canonical_url' };
+  }
+
   if (!Array.isArray(article.blocks) || article.blocks.length < MIN_BLOCK_COUNT) {
     return { valid: false, reason: 'insufficient_blocks' };
   }

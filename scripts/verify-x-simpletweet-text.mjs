@@ -8,7 +8,11 @@ const workspaceRoot = findWorkspaceRoot(rootDir);
 const articleModelSource = readFileSync(resolve(rootDir, 'src/shared/article.ts'), 'utf8');
 const extractorSource = readFileSync(resolve(rootDir, 'src/content/extractors/x/article-extractor.ts'), 'utf8');
 const simpleTweetSource = readFileSync(resolve(rootDir, 'src/content/extractors/x/simple-tweet.ts'), 'utf8');
-const readerRendererSource = readFileSync(resolve(rootDir, 'src/reader/block-renderer.ts'), 'utf8');
+const readerRendererSource = [
+  readFileSync(resolve(rootDir, 'src/reader/block-renderer.ts'), 'utf8'),
+  readFileSync(resolve(rootDir, 'src/reader/renderers/simple-tweet-renderer.ts'), 'utf8'),
+  readFileSync(resolve(rootDir, 'src/reader/renderers/icons.ts'), 'utf8')
+].join('\n');
 const readerCss = readReaderCss();
 const packageJson = JSON.parse(readFileSync(resolve(rootDir, 'package.json'), 'utf8'));
 const simpleTweetTextFixture = readFileSync(resolve(workspaceRoot, 'assets/x-article-simpletweet-text.html'), 'utf8');

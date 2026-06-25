@@ -1,5 +1,5 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import { FocusEngine } from '../dist/reader/focus-engine.js';
 import { mountReaderApp } from '../dist/reader/reader-app.js';
 
@@ -140,6 +140,9 @@ globalThis.document = {
   createElement(tagName) {
     return new ElementLike(tagName);
   },
+  createElementNS(_namespace, tagName) {
+    return new ElementLike(tagName);
+  },
   createTextNode(text) {
     return new TextNodeLike(text);
   },
@@ -182,9 +185,7 @@ engine.setAnchorMode('anchored');
 assert(engine.state?.anchorMode === 'anchored', 'FocusEngine should reserve anchored mode state');
 engine.alignActiveToViewport({ behavior: 'auto', block: 'center' });
 
-const article = JSON.parse(
-  readFileSync(join(new URL('..', import.meta.url).pathname, 'fixtures/articles/media-and-quote.json'), 'utf8')
-);
+const article = JSON.parse(readFileSync(join(resolveFixtureDir(new URL('..', import.meta.url).pathname), 'media-and-quote.json'), 'utf8'));
 const root = new ElementLike('main');
 mountReaderApp(root, article);
 
@@ -220,13 +221,26 @@ activeBefore.rect = { left: 31, top: 220, width: 321, height: 45 };
 windowListeners.get('resize')?.at(-1)?.();
 assert(focus.style.getPropertyValue('--highlight-y') === '220px', 'Font/style layout refresh path should keep rect sync');
 
-const css = readFileSync(join(new URL('..', import.meta.url).pathname, 'public/reader.css'), 'utf8');
+const css = readReaderCss();
 assert(css.includes('--reader-page-padding-bottom: 50vh'), 'Reader should reserve at least 50vh bottom padding');
 
 console.log('Reader A8/A9 verification passed.');
 
 function textUnit(unitId) {
   return { id: unitId, type: 'reading-text', blockId: unitId.split('-u')[0], unitId, text: unitId, startOffset: 0, endOffset: unitId.length };
+}
+
+function readReaderCss() {
+  const rootDir = new URL('..', import.meta.url).pathname;
+  const publicDir = join(rootDir, 'public');
+  const stylesDir = join(publicDir, 'styles');
+  return [
+    readFileSync(join(publicDir, 'reader.css'), 'utf8'),
+    ...readdirSync(stylesDir)
+      .filter((fileName) => fileName.endsWith('.css'))
+      .sort()
+      .map((fileName) => readFileSync(join(stylesDir, fileName), 'utf8'))
+  ].join('\n');
 }
 
 function matchesSelector(element, selector) {
@@ -259,6 +273,19 @@ function walk(rootElement) {
     stack.unshift(...current.children);
   }
   return result;
+}
+
+function resolveFixtureDir(rootDir) {
+  const candidates = [
+    join(rootDir, 'fixtures', 'articles'),
+    resolve(rootDir, '..', '..', 'fixtures', 'articles')
+  ];
+  const fixtureDir = candidates.find((candidate) => existsSync(candidate));
+  if (!fixtureDir) {
+    throw new Error(`Unable to locate reader fixtures from ${rootDir}`);
+  }
+
+  return fixtureDir;
 }
 
 function assert(condition, message) {

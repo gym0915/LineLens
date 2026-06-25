@@ -1,8 +1,12 @@
-export type ArticleSource = 'fixture' | 'x-article' | 'substack-article';
+export type LegacyArticleSource = 'fixture' | 'x-article' | 'substack-article';
+export type ArticleSource = LegacyArticleSource | (string & {});
+export type ArticleSourceKind = 'fixture' | 'platform' | 'imported';
 
 export type Article = {
   id: string;
   source: ArticleSource;
+  sourceKind?: ArticleSourceKind;
+  sourceProvider?: string;
   adapterId?: string;
   platform?: string;
   contentType?: 'article' | 'post' | 'thread' | 'answer';

@@ -8,7 +8,7 @@ function read(path) {
   return readFileSync(resolve(repoRoot, path), 'utf8');
 }
 
-const readerApp = read('src/reader/reader-app.ts');
+const readerApp = [read('src/reader/reader-app.ts'), read('src/reader/controllers/progress-ui.ts')].join('\n');
 const tokensCss = read('public/styles/tokens.css');
 const overlaysCss = read('public/styles/overlays.css');
 

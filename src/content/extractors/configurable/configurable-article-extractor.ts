@@ -162,6 +162,8 @@ export async function extractConfigurableArticleWithDiagnostics(
   const article: Article = {
     id: options.id ?? configurableArticleId(adapter, context.url),
     source: options.source ?? configurableArticleSource(adapter),
+    sourceKind: adapter.id === 'fixture.article' ? 'fixture' : 'platform',
+    sourceProvider: adapter.platform,
     adapterId: adapter.id,
     platform: adapter.platform,
     contentType: adapter.contentType,
@@ -267,7 +269,13 @@ function configurableArticleSource(adapter: PlatformAdapter): ArticleSource {
     return adapter.articleSource;
   }
 
-  return adapter.platform === 'x' ? 'x-article' : 'fixture';
+  if (adapter.id === 'fixture.article') {
+    return 'fixture';
+  }
+  if (adapter.platform === 'x') {
+    return 'x-article';
+  }
+  return adapter.id;
 }
 
 function resolveAdapterMatch(adapters: PlatformAdapter[], url: URL): { adapter: PlatformAdapter; match: ExtractorMatch } | null {

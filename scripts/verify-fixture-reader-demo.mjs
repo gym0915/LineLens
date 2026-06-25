@@ -16,6 +16,8 @@ installDom();
 const article = await loadFixtureArticle(fixtureId);
 assert.equal(article.id, fixtureId);
 assert.equal(article.source, 'fixture');
+assert.equal(article.sourceKind, 'fixture');
+assert.equal(article.sourceProvider, 'fixture');
 assert.equal(article.adapterId, 'fixture.article');
 assert.equal(article.platform, 'fixture');
 assert.equal(article.contentType, 'article');

@@ -18,7 +18,13 @@ const files = {
   types: read('src/shared/article.ts'),
   parser: read('src/content/extractors/x/block-layout-tree.ts'),
   extractor: read('src/content/extractors/x/simple-tweet.ts'),
-  renderer: read('src/reader/block-renderer.ts')
+  renderer: [
+    read('src/reader/block-renderer.ts'),
+    read('src/reader/renderers/simple-tweet-renderer.ts'),
+    read('src/reader/renderers/icons.ts'),
+    read('src/reader/renderers/video-renderer.ts'),
+    read('src/reader/renderers/media-frame.ts')
+  ].join('\n')
 };
 
 const fixtures = {

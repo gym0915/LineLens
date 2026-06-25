@@ -15,7 +15,13 @@ const sourceFiles = {
   cloneTree: readFileSync(resolve(projectRoot, 'src/content/preprocess/clone-content-tree.ts'), 'utf8'),
   adapterTypes: readFileSync(resolve(projectRoot, 'src/content/adapters/adapter-types.ts'), 'utf8'),
   xAdapter: readFileSync(resolve(projectRoot, 'src/content/adapters/x-article-adapter.ts'), 'utf8'),
-  renderer: readFileSync(resolve(projectRoot, 'src/reader/block-renderer.ts'), 'utf8'),
+  renderer: [
+    readFileSync(resolve(projectRoot, 'src/reader/block-renderer.ts'), 'utf8'),
+    readFileSync(resolve(projectRoot, 'src/reader/renderers/simple-tweet-renderer.ts'), 'utf8'),
+    readFileSync(resolve(projectRoot, 'src/reader/renderers/icons.ts'), 'utf8'),
+    readFileSync(resolve(projectRoot, 'src/reader/renderers/video-renderer.ts'), 'utf8'),
+    readFileSync(resolve(projectRoot, 'src/reader/renderers/media-frame.ts'), 'utf8')
+  ].join('\n'),
   comparator: readFileSync(resolve(projectRoot, 'src/content/preprocess/clean-tree-main-path.ts'), 'utf8'),
   types: readFileSync(resolve(projectRoot, 'src/shared/article.ts'), 'utf8'),
   tokensCss: readFileSync(resolve(projectRoot, 'public/styles/tokens.css'), 'utf8'),

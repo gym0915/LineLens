@@ -14,7 +14,11 @@ const extractor = read('src/content/extractors/x/article-extractor.ts');
 const articleTypes = read('src/shared/article.ts');
 const simpleTweetExtractor = read('src/content/extractors/x/simple-tweet.ts');
 const cleanTreeConverter = read('src/content/preprocess/clean-tree-block-converter.ts');
-const renderer = read('src/reader/block-renderer.ts');
+const renderer = [
+  read('src/reader/block-renderer.ts'),
+  read('src/reader/renderers/gallery-renderer.ts'),
+  read('src/reader/renderers/media-frame.ts')
+].join('\n');
 const mediaCss = read('public/styles/media.css');
 
 const userGalleryFixture = [
