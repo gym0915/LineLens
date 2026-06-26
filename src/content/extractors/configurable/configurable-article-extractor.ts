@@ -4,6 +4,7 @@ import type { ArticleExtractor, ExtractorContext, ExtractorMatch, ReadyResult } 
 import { normalizeText } from '../../../shared/text.js';
 import type { PlatformAdapter, ValidationConfig } from '../../adapters/index.js';
 import { buildCleanTreePrimaryBlocks, type CleanTreePrimaryBlocksResult } from '../../preprocess/clean-tree-main-path.js';
+import { waitForStableDom } from './dom-readiness.js';
 
 export type ConfigurableArticleExtractionOptions = {
   id?: string;
@@ -120,6 +121,13 @@ export async function waitUntilConfigurableArticleReady(
 
   if (adapter.readiness?.minTextLength && textLength < adapter.readiness.minTextLength) {
     return { ready: false, reason: 'content_not_stable' };
+  }
+
+  if (adapter.readiness?.stableDomMs) {
+    const stable = await waitForStableDom(roots.contentRoot, adapter.readiness.stableDomMs);
+    if (!stable) {
+      return { ready: false, reason: 'content_not_stable' };
+    }
   }
 
   return { ready: true };

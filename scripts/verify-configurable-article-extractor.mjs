@@ -130,6 +130,34 @@ assert.deepEqual(
   'configurable readiness should use adapter root/title/content/readiness config'
 );
 
+const stableDomAdapter = {
+  ...genericAdapter,
+  readiness: {
+    ...genericAdapter.readiness,
+    stableDomMs: 40
+  }
+};
+const unstableDom = installDom(genericHtml, genericUrl.toString());
+const unstableReady = waitUntilConfigurableArticleReady(stableDomAdapter, { url: genericUrl, root: unstableDom.window.document });
+unstableDom.window.setTimeout(() => {
+  const paragraph = unstableDom.window.document.createElement('p');
+  paragraph.setAttribute('data-block', '');
+  paragraph.setAttribute('data-kind', 'paragraph');
+  paragraph.textContent = 'Late arriving paragraph inside the stable window.';
+  unstableDom.window.document.querySelector('[data-content]')?.append(paragraph);
+}, 5);
+assert.deepEqual(
+  await unstableReady,
+  { ready: false, reason: 'content_not_stable' },
+  'stableDomMs readiness should reject content that changes inside the stable window'
+);
+await new Promise((resolve) => unstableDom.window.setTimeout(resolve, 50));
+assert.deepEqual(
+  await waitUntilConfigurableArticleReady(stableDomAdapter, { url: genericUrl, root: unstableDom.window.document }),
+  { ready: true },
+  'stableDomMs readiness should pass after the content root remains stable'
+);
+
 const missingTitleDom = installDom('<article data-article-root><section data-content><p data-block>Missing title body text long enough.</p></section></article>', genericUrl.toString());
 assert.deepEqual(
   await waitUntilConfigurableArticleReady(genericAdapter, { url: genericUrl, root: missingTitleDom.window.document }),
