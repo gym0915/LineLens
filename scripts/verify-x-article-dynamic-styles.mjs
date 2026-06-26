@@ -113,6 +113,7 @@ const sourceFiles = {
   xCodeTheme: readFileSync(resolve(projectRoot, 'src/content/extractors/x/code-theme.ts'), 'utf8'),
   renderer: [
     readFileSync(resolve(projectRoot, 'src/reader/block-renderer.ts'), 'utf8'),
+    readFileSync(resolve(projectRoot, 'src/reader/renderers/article-header-renderer.ts'), 'utf8'),
     readFileSync(resolve(projectRoot, 'src/reader/renderers/code-block-renderer.ts'), 'utf8'),
     readFileSync(resolve(projectRoot, 'src/reader/renderers/table-block-renderer.ts'), 'utf8')
   ].join('\n'),

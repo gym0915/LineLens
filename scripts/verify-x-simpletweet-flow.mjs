@@ -19,6 +19,7 @@ const sourceFiles = {
   xAdapter: readFileSync(resolve(projectRoot, 'src/content/adapters/x-article-adapter.ts'), 'utf8'),
   renderer: [
     readFileSync(resolve(projectRoot, 'src/reader/block-renderer.ts'), 'utf8'),
+    readFileSync(resolve(projectRoot, 'src/reader/renderers/article-header-renderer.ts'), 'utf8'),
     readFileSync(resolve(projectRoot, 'src/reader/renderers/simple-tweet-renderer.ts'), 'utf8'),
     readFileSync(resolve(projectRoot, 'src/reader/renderers/icons.ts'), 'utf8'),
     readFileSync(resolve(projectRoot, 'src/reader/renderers/video-renderer.ts'), 'utf8'),

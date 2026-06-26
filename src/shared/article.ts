@@ -10,6 +10,9 @@ export type Article = {
   adapterId?: string;
   platform?: string;
   contentType?: 'article' | 'post' | 'thread' | 'answer';
+  author?: ArticleAuthorMeta;
+  sourceMeta?: ArticleSourceMeta;
+  engagement?: ArticleEngagementMeta;
   sourceUrl: string;
   canonicalUrl: string;
   authorName?: string;
@@ -24,6 +27,20 @@ export type Article = {
   extractedAt: number;
   blocks: ArticleBlock[];
 };
+
+export type ArticleAuthorMeta = {
+  name?: string;
+  handle?: string;
+  avatarUrl?: string;
+  verified?: boolean;
+};
+
+export type ArticleSourceMeta = {
+  provider?: string;
+  label?: string;
+};
+
+export type ArticleEngagementMeta = TweetMetrics;
 
 export type ArticleBlock =
   | HeadingBlock

@@ -1,7 +1,10 @@
 export type {
   Article,
   ArticleBlock,
+  ArticleAuthorMeta,
+  ArticleEngagementMeta,
   ArticleSourceKind,
+  ArticleSourceMeta,
   ArticleSource,
   LegacyArticleSource,
   CodeBlockThemeColors,

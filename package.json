@@ -23,6 +23,7 @@
     "verify:reader-theme-settings-ui": "node scripts/verify-reader-theme-settings-ui.mjs",
     "verify:reader-inline-highlight-clean-style": "node scripts/verify-reader-inline-highlight-clean-style.mjs",
     "verify:reader-m1-m2": "npm run build && node scripts/verify-reader-m1-m2.mjs",
+    "verify:reader-platform-neutral-header": "npm run build && node scripts/verify-reader-platform-neutral-header.mjs",
     "verify:video-fullscreen": "npm run build && node scripts/verify-video-fullscreen.mjs",
     "verify:m3-adapters-settings": "npm run build && node scripts/verify-m3-adapters-settings.mjs",
     "verify:configurable-article-extractor": "npm run build && node scripts/verify-configurable-article-extractor.mjs",
