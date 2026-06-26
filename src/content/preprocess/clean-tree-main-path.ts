@@ -1,5 +1,6 @@
 import type { ArticleBlock } from '../../shared/article.js';
 import type { PlatformAdapter } from '../adapters/adapter-types.js';
+import '../extractors/configurable/register-built-in-special-handlers.js';
 import { convertCleanTreeToBlocks } from './clean-tree-block-converter.js';
 import { cloneContentTree, createCleanTreeContext } from './clone-content-tree.js';
 

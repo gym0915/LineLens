@@ -20,10 +20,6 @@ import { convertImageElement as convertImageBlockElement } from './block-convert
 import { convertCodeElement as convertCodeBlockElement } from './block-converters/code-block-converter.js';
 import { convertTableElement as convertTableBlockElement } from './block-converters/table-block-converter.js';
 import {
-  convertSimpleTweetElement as convertXSimpleTweetElement,
-  isSimpleTweetElement
-} from '../extractors/x/simple-tweet-clean-tree-converter.js';
-import {
   convertPlatformImageGalleryElement,
   convertPlatformSpecialImageElement,
   extractPlatformImageMetadata,
@@ -75,14 +71,6 @@ function convertElementToBlock(
   const specialComponentBlock = convertSpecialComponentElement(element, context, index, enabledBlockTypes, consumedElements);
   if (specialComponentBlock) {
     return specialComponentBlock;
-  }
-
-  if (isSimpleTweetElement(element) && enabledBlockTypes.has('simple-tweet')) {
-    return convertXSimpleTweetElement({
-      element,
-      blockId: cleanTreeBlockId(context, index),
-      consumedElements
-    });
   }
 
   if (isImageGalleryElement(element, semanticSelectors) && enabledBlockTypes.has('image-gallery')) {
@@ -175,28 +163,51 @@ function convertSpecialComponentElement(
   enabledBlockTypes: Set<ArticleBlock['type']>,
   consumedElements: Set<Element>
 ): ArticleBlock | null {
-  const component = context.adapter.specialComponents?.find((candidate) => element.matches(candidate.rootSelector));
-  if (!component || !enabledBlockTypes.has(component.type as ArticleBlock['type'])) {
+  const matched = findSpecialComponentRoot(element, context);
+  if (!matched) {
     return null;
   }
 
+  const { component, root } = matched;
   const handler = getSpecialComponentHandler(component.handlerId);
   if (!handler) {
     return null;
   }
 
-  const block = handler.extract(element, {
+  const block = handler.extract(root, {
     component,
     sourceUrl: context.sourceUrl,
     debugId: context.debugId,
     index
   });
-  if (!block) {
+  if (!block || !enabledBlockTypes.has(block.type)) {
     return null;
   }
 
   consumedElements.add(element);
+  consumedElements.add(root);
+  for (const ancestor of Array.from(rootBlockAncestors(root))) {
+    consumedElements.add(ancestor);
+  }
   return block;
+}
+
+function findSpecialComponentRoot(
+  element: Element,
+  context: CleanTreeContext
+): { component: NonNullable<CleanTreeContext['adapter']['specialComponents']>[number]; root: Element } | null {
+  for (const component of context.adapter.specialComponents ?? []) {
+    if (element.matches(component.rootSelector)) {
+      return { component, root: element };
+    }
+
+    const root = element.querySelector(component.rootSelector);
+    if (root) {
+      return { component, root };
+    }
+  }
+
+  return null;
 }
 
 function convertImageGalleryElement(

@@ -10,6 +10,8 @@ const sourceFiles = {
   articleMetadata: readFileSync(resolve(projectRoot, 'src/content/extractors/x/article-metadata.ts'), 'utf8'),
   simpleTweet: readFileSync(resolve(projectRoot, 'src/content/extractors/x/simple-tweet.ts'), 'utf8'),
   simpleTweetCleanTree: readFileSync(resolve(projectRoot, 'src/content/extractors/x/simple-tweet-clean-tree-converter.ts'), 'utf8'),
+  simpleTweetHandler: readFileSync(resolve(projectRoot, 'src/content/extractors/x/simple-tweet-handler.ts'), 'utf8'),
+  builtInHandlers: readFileSync(resolve(projectRoot, 'src/content/extractors/configurable/register-built-in-special-handlers.ts'), 'utf8'),
   cleanTree: readFileSync(resolve(projectRoot, 'src/content/preprocess/clean-tree-block-converter.ts'), 'utf8'),
   platformFixes: readFileSync(resolve(projectRoot, 'src/content/preprocess/apply-platform-fixes.ts'), 'utf8'),
   cloneTree: readFileSync(resolve(projectRoot, 'src/content/preprocess/clone-content-tree.ts'), 'utf8'),
@@ -57,8 +59,11 @@ assert.match(sourceFiles.simpleTweet, /excerptTextStyle:\s*extractElementTextSty
 assert.match(sourceFiles.simpleTweet, /getArticleCoverAspectRatio/, 'simpleTweet extractor should derive the article-cover image aspect ratio from source DOM');
 assert.match(sourceFiles.article, /extractXArticleMetadata/, 'article extractor should delegate title-area author and interaction metadata extraction');
 assert.match(sourceFiles.articleMetadata, /findHeaderElementAfterTitle\(readView, longform, '\[itemprop="author"\]'/, 'article metadata extraction should use the title-to-longform boundary');
-assert.match(sourceFiles.cleanTree, /simple-tweet-clean-tree-converter\.js/, 'generic clean-tree converter should hand off simpleTweet parsing to the X module');
-assert.match(sourceFiles.cleanTree, /convertSimpleTweetElement as convertXSimpleTweetElement/, 'generic clean-tree converter should call the X clean-tree simpleTweet converter explicitly');
+assert.match(sourceFiles.cleanTree, /getSpecialComponentHandler/, 'generic clean-tree converter should hand off special component parsing through handlerId');
+assert.doesNotMatch(sourceFiles.cleanTree, /simple-tweet-clean-tree-converter\.js/, 'generic clean-tree converter should not import the X simpleTweet converter directly');
+assert.match(sourceFiles.simpleTweetHandler, /handlerId:\s*'x\.simple-tweet'/, 'X simpleTweet handler should own the x.simple-tweet handlerId');
+assert.match(sourceFiles.simpleTweetHandler, /convertSimpleTweetElement/, 'X simpleTweet handler should call the clean-tree simpleTweet converter explicitly');
+assert.match(sourceFiles.builtInHandlers, /registerXSimpleTweetHandler/, 'built-in handler registry should register X simpleTweet handling');
 assert.doesNotMatch(sourceFiles.cleanTree, /extractSimpleTweetItemsFromCleanTree|extractTweetAiGeneratedText|extractArticleCoverAuthorProfile|extractMetricsFromGroup|isCondensedPreview|getSimpleTweetPhotoLayoutRoot|getSimpleTweetMediaLayoutDirection/, 'generic clean-tree converter should not contain X-only simpleTweet parsing helpers');
 assert.match(sourceFiles.simpleTweetCleanTree, /extractSimpleTweetBlockFromCleanTreeRoot/, 'X clean-tree converter should route clean-tree simpleTweet blocks into the X parser');
 assert.match(sourceFiles.simpleTweetCleanTree, /isSimpleTweetCard/, 'X clean-tree converter should own simpleTweet root detection');

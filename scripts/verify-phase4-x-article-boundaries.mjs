@@ -7,6 +7,7 @@ import { JSDOM } from 'jsdom';
 
 import { xArticleAdapter } from '../dist/content/adapters/index.js';
 import { extractXArticleLegacyBlocksForDebug } from '../dist/content/extractors/x/article-extractor.js';
+import { getSpecialComponentHandler } from '../dist/content/extractors/configurable/special-component-handlers.js';
 import { X_ARTICLE_SELECTORS } from '../dist/content/extractors/x/article-selectors.js';
 import {
   buildCleanTreePrimaryBlocks,
@@ -58,6 +59,12 @@ assert.deepEqual(
   HIGH_RISK_DUAL_TRACK_BLOCK_TYPES,
   ['video'],
   'video should stay on the high-risk dual-track path in this refactor'
+);
+assert.ok(getSpecialComponentHandler('x.simple-tweet'), 'x.simple-tweet should be registered as a code-owned special component handler');
+assert.equal(
+  getSpecialComponentHandler('x.video-or-gif'),
+  null,
+  'x.video-or-gif should remain an explicit high-risk dual-track boundary until a dedicated handler is implemented'
 );
 
 const cleanParagraphs = result.cleanTreeBlocks.filter((block) => block.type === 'paragraph');

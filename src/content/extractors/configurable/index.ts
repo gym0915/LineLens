@@ -1,4 +1,4 @@
-import '../substack/index.js';
+import './register-built-in-special-handlers.js';
 
 export {
   createAdapterDrivenArticleExtractor,
