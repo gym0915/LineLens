@@ -1,11 +1,11 @@
-# HANDOFF: P7 complete -> P8 platform verifier template
+# HANDOFF: P8 complete -> P9 media resolver
 
 ## Current state
 
 - Worktree: `/Users/steve/ClaudeWork/Codex/LineByLine/LineLens/.worktrees/new-media-platform-refactor`
 - Branch: `feature/new-media-platform-refactor`
-- Latest completed phase: P7, `readiness.stableDomMs`
-- Next phase: P8, platform article verifier template
+- Latest completed phase: P8, platform article verifier template
+- Next phase: P9, platform-neutral media resolver
 
 ## Completed so far
 
@@ -14,19 +14,21 @@
 - P6 split and generalized Reader article header rendering.
 - P7 added `src/content/extractors/configurable/dom-readiness.ts`.
 - P7 made `waitUntilConfigurableArticleReady()` consume `adapter.readiness.stableDomMs`.
-- X and Substack adapters still do not set `stableDomMs`, preserving current readiness speed.
+- P8 added `scripts/templates/verify-platform-article-template.mjs`.
+- P8 added `scripts/verify-fixture-platform-template.mjs` and `verify:platform-template-fixture`.
+- P8 added `docs/templates/platform-adapter-checklist.md` and linked it from `docs/README.md`.
 
-## Verified after P7
+## Verified after P8
 
 - `npm run build`
+- `node scripts/templates/verify-platform-article-template.mjs --help`
+- `npm run verify:platform-template-fixture`
+- `npm run verify:adapter-manifest-scope`
 - `npm run verify:configurable-article-extractor`
-- `npm run verify:content-single-source`
-- `npm run verify:substack-article-fixture`
-- `npm run verify:phase4-x-article-full`
 
-## Notes for P8
+## Notes for P9
 
-- Start with `scripts/templates/verify-platform-article-template.mjs`.
-- The repo already has `scripts/verify-fixture-platform-adapter.mjs`; use it as the nearest existing fixture-adapter verifier reference.
-- Check whether `docs/templates/platform-adapter-checklist.md` exists before editing; create it if absent.
-- Keep the template copyable and opt-in; do not wire it into default npm verification.
+- Start by adding `scripts/verify-platform-media-resolver.mjs` before implementation.
+- Read `src/content/preprocess/platform-media-metadata.ts` and `src/content/preprocess/block-converters/image-block-converter.ts`.
+- P9 should move image/gallery/embed media interpretation into platform-neutral resolver code while keeping platform-specific metadata and selectors outside generic converter internals.
+- Keep `x.video-or-gif` dual-track/high-risk behavior unchanged unless the P9 verifier proves an explicit safe migration path.
