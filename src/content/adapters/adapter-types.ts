@@ -43,6 +43,11 @@ export type ReadinessConfig = {
   stableDomMs?: number;
 };
 
+export type CodeThemePair = {
+  light: string;
+  dark: string;
+};
+
 export type TitleStrategy = 'required' | 'optional' | 'fallback-from-h1';
 export type EmptyContentStrategy = 'reject' | 'allow-media-only';
 
@@ -97,6 +102,7 @@ export type PlatformAdapter = {
   cleanRules?: CleanRulesConfig;
   readiness?: ReadinessConfig;
   validation?: ValidationConfig;
+  codeThemePairs?: CodeThemePair[];
   fixes: PlatformFix[];
   enabledFixes: PlatformFixId[];
   styleWhitelist: StyleWhitelistConfig;

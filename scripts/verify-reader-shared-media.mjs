@@ -22,6 +22,7 @@ const socialCss = read('public/styles/social-card.css');
 const articleTypes = read('src/shared/article.ts');
 const extractor = read('src/content/extractors/x/article-extractor.ts');
 const cleanTreeConverter = read('src/content/preprocess/clean-tree-block-converter.ts');
+const xMediaLayout = read('src/content/extractors/x/media-layout.ts');
 
 assert.match(articleTypes, /type ImageBlock = \{[\s\S]*displaySrc\?: string/, 'single image blocks should preserve the visible X background-image URL');
 assert.match(articleTypes, /type ImageBlock = \{[\s\S]*backgroundSize\?:/, 'single image blocks should carry media frame background sizing');
@@ -35,11 +36,13 @@ for (const source of [extractor]) {
   assert.match(source, /const aspectRatio = frameAspectRatio \?\? \(image \? getImageAspectRatio\(image\) : undefined\)/, 'single-image extraction should prefer frame ratio over natural image ratio');
 }
 
-assert.match(cleanTreeConverter, /function tweetPhotoElementToImageBlock/, 'clean-tree single-image extraction should use the tweetPhoto container');
-assert.match(cleanTreeConverter, /getImageGalleryAspectRatio\(element\)/, 'clean-tree single-image extraction should preserve X padding-bottom media frame ratios');
-assert.match(cleanTreeConverter, /objectFit:\s*'cover'/, 'clean-tree single-image extraction should preserve X cover cropping');
-assert.match(cleanTreeConverter, /const frameAspectRatio = getImageGalleryAspectRatio\(ratioRoot\)/, 'clean-tree single-image extraction should read the X media frame ratio');
-assert.match(cleanTreeConverter, /const aspectRatio = frameAspectRatio \?\? \(image \? getImageAspectRatio\(image\) : undefined\)/, 'clean-tree single-image extraction should prefer frame ratio over natural image ratio');
+assert.match(cleanTreeConverter, /convertPlatformSpecialImageElement/, 'clean-tree single-image extraction should delegate platform media handling');
+assert.doesNotMatch(cleanTreeConverter, /tweetPhotoElementToImageBlock/, 'clean-tree converter should not own X single-image helper naming');
+assert.match(xMediaLayout, /function xMediaElementToImageBlock/, 'X-owned media helper should use the tweetPhoto container');
+assert.match(xMediaLayout, /getXMediaAspectRatio\(ratioRoot\)/, 'X-owned media helper should preserve X padding-bottom media frame ratios');
+assert.match(xMediaLayout, /objectFit:\s*'cover'/, 'X-owned media helper should preserve X cover cropping');
+assert.match(xMediaLayout, /const frameAspectRatio = getXMediaAspectRatio\(ratioRoot\)/, 'X-owned media helper should read the X media frame ratio');
+assert.match(xMediaLayout, /const aspectRatio = frameAspectRatio \?\? \(image \? getImageAspectRatio\(image\) : undefined\)/, 'X-owned media helper should prefer frame ratio over natural image ratio');
 
 assert.match(renderer, /className = 'reader-media-frame'/, 'shared media frame should expose a common frame class');
 assert.match(renderer, /className = 'reader-media-background'/, 'shared media frame should render the visible background layer');

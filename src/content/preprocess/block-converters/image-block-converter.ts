@@ -2,16 +2,22 @@ import type { ImageBlock } from '../../../shared/article.js';
 
 export type ImageBlockConverterDeps = {
   blockId: string;
-  tweetPhotoElementToImageBlock(element: HTMLElement): ImageBlock | null;
+  specialImageRootSelector?: string;
+  convertSpecialImageElement(element: HTMLElement): ImageBlock | null;
   extractPlatformImageMetadata(element: Element): Pick<ImageBlock, 'aspectRatio' | 'objectFit' | 'objectPosition'>;
 };
 
 export function convertImageElement(element: Element, deps: ImageBlockConverterDeps): ImageBlock | null {
-  const tweetPhoto = element.matches('[data-testid="tweetPhoto"]')
-    ? (element as HTMLElement)
-    : element.closest<HTMLElement>('[data-testid="tweetPhoto"]');
-  if (tweetPhoto) {
-    return deps.tweetPhotoElementToImageBlock(tweetPhoto);
+  const specialImageRoot = deps.specialImageRootSelector
+    ? element.matches(deps.specialImageRootSelector)
+      ? (element as HTMLElement)
+      : element.closest<HTMLElement>(deps.specialImageRootSelector)
+    : null;
+  if (specialImageRoot) {
+    const specialImage = deps.convertSpecialImageElement(specialImageRoot);
+    if (specialImage) {
+      return specialImage;
+    }
   }
 
   const image = element.tagName.toUpperCase() === 'IMG' ? element : element.querySelector('img');

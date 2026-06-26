@@ -108,7 +108,14 @@ const sourceFiles = {
   types: readFileSync(resolve(projectRoot, 'src/shared/article.ts'), 'utf8'),
   modularExtractor: readFileSync(resolve(projectRoot, 'src/content/extractors/x/article-extractor.ts'), 'utf8'),
   cleanTree: readFileSync(resolve(projectRoot, 'src/content/preprocess/clean-tree-block-converter.ts'), 'utf8'),
-  renderer: readFileSync(resolve(projectRoot, 'src/reader/block-renderer.ts'), 'utf8'),
+  tableConverter: readFileSync(resolve(projectRoot, 'src/content/preprocess/block-converters/table-block-converter.ts'), 'utf8'),
+  xAdapter: readFileSync(resolve(projectRoot, 'src/content/adapters/x-article-adapter.ts'), 'utf8'),
+  xCodeTheme: readFileSync(resolve(projectRoot, 'src/content/extractors/x/code-theme.ts'), 'utf8'),
+  renderer: [
+    readFileSync(resolve(projectRoot, 'src/reader/block-renderer.ts'), 'utf8'),
+    readFileSync(resolve(projectRoot, 'src/reader/renderers/code-block-renderer.ts'), 'utf8'),
+    readFileSync(resolve(projectRoot, 'src/reader/renderers/table-block-renderer.ts'), 'utf8')
+  ].join('\n'),
   textRenderer: readFileSync(resolve(projectRoot, 'src/reader/reader-text-renderer.ts'), 'utf8'),
   css: readFileSync(resolve(projectRoot, 'public/styles/blocks.css'), 'utf8'),
   codeCss: readFileSync(resolve(projectRoot, 'public/styles/code.css'), 'utf8'),
@@ -135,13 +142,16 @@ for (const [name, source] of [
   assert.match(source, /createCodeTokenThemeColors/, `${name} should derive day/night code token color themes`);
   assert.match(source, /extractTextAnnotationStyle/, `${name} should extract inline text styles`);
   assert.match(source, /hasTextAnnotationSignal/, `${name} should keep style-only text annotations`);
-  assert.match(source, /extractTableBlock|convertTableElement/, `${name} should convert table DOM into table blocks`);
-  assert.match(source, /columnCount:\s*Math\.max/, `${name} should derive dynamic table column count`);
   assert.match(source, /textAlign:\s*getStyleValue\(element, 'textAlign'\)/, `${name} should preserve table/body text alignment`);
 }
 
 assert.match(sourceFiles.cleanTree, /DEFAULT_ENABLED_BLOCK_TYPES[\s\S]*'table'/, 'clean-tree path should enable table conversion');
-assert.match(sourceFiles.cleanTree, /querySelectorAll\('[^']*table,\s*\[role="table"\],\s*\[role="grid"\]/, 'clean-tree path should scan table roots directly');
+assert.match(sourceFiles.cleanTree, /selectors\.tableSelector/, 'clean-tree path should scan table roots through adapter semantic selectors');
+assert.match(sourceFiles.tableConverter, /convertTableElement/, 'clean-tree table block converter should convert table DOM into table blocks');
+assert.match(sourceFiles.tableConverter, /columnCount:\s*Math\.max/, 'clean-tree table block converter should derive dynamic table column count');
+assert.match(sourceFiles.xAdapter, /codeThemePairs:\s*xCodeColorThemePairs/, 'X adapter should own X code theme pairs as static adapter config');
+assert.match(sourceFiles.xCodeTheme, /xCodeColorThemePairs/, 'X code theme pairs should live in an X-owned helper');
+assert.doesNotMatch(sourceFiles.cleanTree, /X_CODE_COLOR_THEME_PAIRS/, 'clean-tree converter should not own X code theme pairs');
 assert.match(sourceFiles.renderer, /function renderArticleHeaderAuthorMeta[\s\S]*return null/, 'Reader should be able to omit the article author row');
 assert.match(sourceFiles.renderer, /const authorMeta = renderArticleHeaderAuthorMeta\(article\)[\s\S]*const metrics = renderArticleHeaderMetrics\(article\)/, 'Reader should render interaction row independently from author row');
 assert.match(sourceFiles.renderer, /function renderTableBlock\(block: TableBlock\)/, 'Reader should render table blocks');

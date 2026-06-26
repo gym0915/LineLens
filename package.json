@@ -8,6 +8,7 @@
     "verify:stage0": "node scripts/verify-stage0.mjs",
     "verify:content-single-source": "node scripts/verify-content-single-source.mjs",
     "verify:adapter-manifest-scope": "node scripts/verify-adapter-manifest-scope.mjs",
+    "verify:generic-converter-platform-neutral": "node scripts/verify-generic-converter-platform-neutral.mjs",
     "verify:fixture-platform-adapter": "npm run build && node scripts/verify-fixture-platform-adapter.mjs",
     "verify:fixture-reader-demo": "npm run build && node scripts/verify-fixture-reader-demo.mjs",
     "verify:reader-a3-a4": "npm run build && node scripts/verify-reader-a3-a4.mjs",

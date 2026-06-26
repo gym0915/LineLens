@@ -1,6 +1,5 @@
 import type {
   ArticleBlock,
-  ImageBlock,
   ImageGalleryBlock,
   TextAnnotation,
   TextStyle,
@@ -8,6 +7,7 @@ import type {
   CodeBlockStyle,
   CodeToken
 } from '../../shared/article.js';
+import type { CodeThemePair } from '../adapters/adapter-types.js';
 import type { CleanTreeContext } from './clone-content-tree.js';
 import { resolveSemanticSelectors, type ResolvedSemanticSelectors } from './semantic-map-selectors.js';
 import { getSpecialComponentHandler } from '../extractors/configurable/special-component-handlers.js';
@@ -23,28 +23,18 @@ import {
   convertSimpleTweetElement as convertXSimpleTweetElement,
   isSimpleTweetElement
 } from '../extractors/x/simple-tweet-clean-tree-converter.js';
-import { extractPlatformImageMetadata } from './platform-media-metadata.js';
+import {
+  convertPlatformImageGalleryElement,
+  convertPlatformSpecialImageElement,
+  extractPlatformImageMetadata,
+  getPlatformImageGalleryConsumedElements
+} from './platform-media-metadata.js';
 
 export type CleanTreeBlockConversionOptions = {
   enabledBlockTypes?: Array<ArticleBlock['type']>;
 };
 
 const DEFAULT_ENABLED_BLOCK_TYPES: Array<ArticleBlock['type']> = ['paragraph', 'heading', 'quote', 'list', 'image', 'code', 'table', 'simple-tweet', 'image-gallery', 'embed'];
-const X_CANONICAL_ORIGIN = 'https://x.com';
-const X_CODE_COLOR_THEME_PAIRS: Array<{ light: string; dark: string }> = [
-  { light: 'rgb(247, 249, 249)', dark: 'rgb(22, 24, 28)' },
-  { light: 'rgb(250, 250, 250)', dark: 'rgb(22, 24, 28)' },
-  { light: 'rgb(229, 234, 236)', dark: 'rgb(22, 24, 28)' },
-  { light: 'rgb(15, 20, 25)', dark: 'rgb(231, 233, 234)' },
-  { light: 'rgb(15, 20, 25)', dark: 'rgb(239, 243, 244)' },
-  { light: 'rgb(56, 58, 66)', dark: 'rgb(212, 212, 212)' },
-  { light: 'rgb(166, 38, 164)', dark: 'rgb(86, 156, 214)' },
-  { light: 'rgb(64, 120, 242)', dark: 'rgb(220, 220, 170)' },
-  { light: 'rgb(64, 120, 242)', dark: 'rgb(212, 212, 212)' },
-  { light: 'rgb(80, 161, 79)', dark: 'rgb(206, 145, 120)' },
-  { light: 'rgb(160, 161, 167)', dark: 'rgb(106, 153, 85)' },
-  { light: 'rgb(56, 58, 66)', dark: 'rgb(156, 220, 254)' }
-];
 
 export function convertCleanTreeToBlocks(
   root: Element,
@@ -102,7 +92,8 @@ function convertElementToBlock(
   if (isImageElement(element, semanticSelectors) && enabledBlockTypes.has('image')) {
     return convertImageBlockElement(element, {
       blockId: cleanTreeBlockId(context, index),
-      tweetPhotoElementToImageBlock: (tweetPhoto) => tweetPhotoElementToImageBlock(tweetPhoto, context, index),
+      specialImageRootSelector: semanticSelectors.imageGallerySelector,
+      convertSpecialImageElement: (specialImageElement) => convertPlatformSpecialImageElement(context.adapter, specialImageElement, cleanTreeBlockId(context, index)),
       extractPlatformImageMetadata: (imageElement) => extractPlatformImageMetadata(context.adapter, imageElement)
     });
   }
@@ -118,8 +109,8 @@ function convertElementToBlock(
       semanticSelectors,
       rootBlockAncestors,
       normalizeCodeLanguage,
-      extractCodeBlockStyle,
-      extractCodeTokens
+      extractCodeBlockStyle: (codeRoot, pre, code) => extractCodeBlockStyle(codeRoot, pre, code, context.adapter.codeThemePairs ?? []),
+      extractCodeTokens: (code) => extractCodeTokens(code, context.adapter.codeThemePairs ?? [])
     });
   }
 
@@ -208,57 +199,22 @@ function convertSpecialComponentElement(
   return block;
 }
 
-function tweetPhotoElementToImageBlock(element: HTMLElement, context: CleanTreeContext, index: number): ImageBlock | null {
-  const image = element.querySelector<HTMLImageElement>('img');
-  const displaySrc = getTweetPhotoBackgroundUrl(element);
-  const src = image?.currentSrc || image?.src || image?.getAttribute('src') || displaySrc;
-  if (!src) {
-    return null;
-  }
-
-  const ratioRoot = element.closest('[data-block="true"]') ?? element.closest('a') ?? element;
-  const frameAspectRatio = getImageGalleryAspectRatio(ratioRoot);
-  const aspectRatio = frameAspectRatio ?? (image ? getImageAspectRatio(image) : undefined);
-  const href = element.closest('a[href]')?.getAttribute('href') ?? undefined;
-  return {
-    id: cleanTreeBlockId(context, index),
-    type: 'image',
-    src,
-    ...(displaySrc ? { displaySrc } : {}),
-    alt: image?.alt || image?.getAttribute('alt') || undefined,
-    ...(href ? { href: toAbsoluteXUrl(href) } : {}),
-    ...(aspectRatio ? { aspectRatio } : {}),
-    backgroundSize: 'cover',
-    backgroundPosition: 'center center',
-    objectFit: 'cover',
-    objectPosition: 'center center'
-  };
-}
-
 function convertImageGalleryElement(
   element: Element,
   context: CleanTreeContext,
   index: number,
   consumedElements: Set<Element>
 ): ImageGalleryBlock | null {
-  const photos = Array.from(element.querySelectorAll<HTMLElement>('[data-testid="tweetPhoto"]'))
-    .map((photo) => tweetPhotoElementToGalleryItem(photo))
-    .filter((item): item is ImageGalleryBlock['items'][number] => Boolean(item));
-
-  if (photos.length <= 1) {
+  const gallery = convertPlatformImageGalleryElement(context.adapter, element, cleanTreeBlockId(context, index));
+  if (gallery === null) {
     return null;
   }
 
-  for (const photo of Array.from(element.querySelectorAll('[data-testid="tweetPhoto"]'))) {
-    consumedElements.add(photo);
+  for (const consumedElement of getPlatformImageGalleryConsumedElements(context.adapter, element)) {
+    consumedElements.add(consumedElement);
   }
 
-  return {
-    id: cleanTreeBlockId(context, index),
-    type: 'image-gallery',
-    items: photos,
-    ...(getImageGalleryAspectRatio(element) ? { aspectRatio: getImageGalleryAspectRatio(element) } : {})
-  };
+  return gallery;
 }
 
 function extractTextAnnotations(element: Element, fullText = normalizeText(element.textContent ?? '')): TextAnnotation[] {
@@ -386,8 +342,8 @@ function isTableElement(element: Element, selectors: ResolvedSemanticSelectors):
 function isMediaCaptionElement(element: Element): boolean {
   return Boolean(
     element.getAttribute('data-linelens-block-role') === 'caption' ||
-      element.closest('.twitter-article-media-caption-id, [id^="caption-"]') ||
-      element.querySelector('.twitter-article-media-caption-id, [id^="caption-"]')
+      element.closest('[data-linelens-block-role="caption"]') ||
+      element.querySelector('[data-linelens-block-role="caption"]')
   );
 }
 
@@ -423,7 +379,7 @@ function getElementDisplayText(element: Element, preserveLineBreaks = false): st
   return element.textContent ?? '';
 }
 
-function extractCodeBlockStyle(codeRoot: Element | null, pre: Element | null, code: Element | null): CodeBlockStyle {
+function extractCodeBlockStyle(codeRoot: Element | null, pre: Element | null, code: Element | null, platformThemePairs: CodeThemePair[]): CodeBlockStyle {
   const header = codeRoot?.querySelector(':scope > div:first-child') ?? null;
   const copyIcon = codeRoot?.querySelector('button svg, button [style*="color"]') ?? null;
   const headerBackgroundColor = getStyleValue(header, 'backgroundColor');
@@ -441,15 +397,18 @@ function extractCodeBlockStyle(codeRoot: Element | null, pre: Element | null, co
     preColor,
     codeBackgroundColor,
     codeColor,
-    themeColors: createCodeBlockThemeColors({
-      headerBackgroundColor,
-      headerColor,
-      copyColor,
-      preBackgroundColor,
-      preColor,
-      codeBackgroundColor,
-      codeColor
-    }),
+    themeColors: createCodeBlockThemeColors(
+      {
+        headerBackgroundColor,
+        headerColor,
+        copyColor,
+        preBackgroundColor,
+        preColor,
+        codeBackgroundColor,
+        codeColor
+      },
+      platformThemePairs
+    ),
     fontFamily: getStyleValue(code, 'fontFamily') || getStyleValue(pre, 'fontFamily'),
     fontSize: getStyleValue(code, 'fontSize') || getStyleValue(pre, 'fontSize'),
     lineHeight: getStyleValue(code, 'lineHeight') || getStyleValue(pre, 'lineHeight'),
@@ -462,17 +421,17 @@ function getCodeHeaderColor(codeRoot: Element | null, header: Element | null): s
   return getStyleValue(languageLabel, 'color') || getStyleValue(header, 'color');
 }
 
-function extractCodeTokens(code: Element | null): CodeToken[] | undefined {
+function extractCodeTokens(code: Element | null, platformThemePairs: CodeThemePair[]): CodeToken[] | undefined {
   if (!code) {
     return undefined;
   }
 
   const tokens: CodeToken[] = [];
-  collectCodeTokens(code, tokens, extractCodeTokenStyle(code));
+  collectCodeTokens(code, tokens, extractCodeTokenStyle(code, platformThemePairs), platformThemePairs);
   return tokens.length > 0 ? tokens : undefined;
 }
 
-function collectCodeTokens(node: Node, tokens: CodeToken[], inheritedStyle: Omit<CodeToken, 'text'> = {}): void {
+function collectCodeTokens(node: Node, tokens: CodeToken[], inheritedStyle: Omit<CodeToken, 'text'> = {}, platformThemePairs: CodeThemePair[] = []): void {
   if (node.nodeType === Node.TEXT_NODE) {
     const text = node.textContent ?? '';
     if (text) {
@@ -485,50 +444,53 @@ function collectCodeTokens(node: Node, tokens: CodeToken[], inheritedStyle: Omit
     return;
   }
 
-  const style = { ...inheritedStyle, ...extractCodeTokenStyle(node) };
+  const style = { ...inheritedStyle, ...extractCodeTokenStyle(node, platformThemePairs) };
   for (const child of Array.from(node.childNodes)) {
-    collectCodeTokens(child, tokens, style);
+    collectCodeTokens(child, tokens, style, platformThemePairs);
   }
 }
 
-function extractCodeTokenStyle(element: Element | null): Omit<CodeToken, 'text'> {
+function extractCodeTokenStyle(element: Element | null, platformThemePairs: CodeThemePair[]): Omit<CodeToken, 'text'> {
   const color = getStyleValue(element, 'color');
   return compactStyle({
     color,
-    themeColors: createCodeTokenThemeColors(color, element?.textContent ?? ''),
+    themeColors: createCodeTokenThemeColors(color, element?.textContent ?? '', platformThemePairs),
     fontStyle: getStyleValue(element, 'fontStyle'),
     fontWeight: getStyleValue(element, 'fontWeight')
   });
 }
 
-function createCodeBlockThemeColors(colors: Pick<CodeBlockStyle, 'headerBackgroundColor' | 'headerColor' | 'copyColor' | 'preBackgroundColor' | 'preColor' | 'codeBackgroundColor' | 'codeColor'>): CodeBlockStyle['themeColors'] {
+function createCodeBlockThemeColors(
+  colors: Pick<CodeBlockStyle, 'headerBackgroundColor' | 'headerColor' | 'copyColor' | 'preBackgroundColor' | 'preColor' | 'codeBackgroundColor' | 'codeColor'>,
+  platformThemePairs: CodeThemePair[]
+): CodeBlockStyle['themeColors'] {
   return compactStyle({
-    headerBackgroundColor: createCodeThemeColorPair(colors.headerBackgroundColor),
-    headerColor: createCodeThemeColorPair(colors.headerColor, [{ light: 'rgb(15, 20, 25)', dark: 'rgb(231, 233, 234)' }]),
-    copyColor: createCodeThemeColorPair(colors.copyColor, [{ light: 'rgb(15, 20, 25)', dark: 'rgb(239, 243, 244)' }]),
-    preBackgroundColor: createCodeThemeColorPair(colors.preBackgroundColor),
-    preColor: createCodeThemeColorPair(colors.preColor),
-    codeBackgroundColor: createCodeThemeColorPair(colors.codeBackgroundColor),
-    codeColor: createCodeThemeColorPair(colors.codeColor)
+    headerBackgroundColor: createCodeThemeColorPair(colors.headerBackgroundColor, [], platformThemePairs),
+    headerColor: createCodeThemeColorPair(colors.headerColor, [{ light: 'rgb(15, 20, 25)', dark: 'rgb(231, 233, 234)' }], platformThemePairs),
+    copyColor: createCodeThemeColorPair(colors.copyColor, [{ light: 'rgb(15, 20, 25)', dark: 'rgb(239, 243, 244)' }], platformThemePairs),
+    preBackgroundColor: createCodeThemeColorPair(colors.preBackgroundColor, [], platformThemePairs),
+    preColor: createCodeThemeColorPair(colors.preColor, [], platformThemePairs),
+    codeBackgroundColor: createCodeThemeColorPair(colors.codeBackgroundColor, [], platformThemePairs),
+    codeColor: createCodeThemeColorPair(colors.codeColor, [], platformThemePairs)
   });
 }
 
-function createCodeTokenThemeColors(color: string | undefined, text = ''): CodeToken['themeColors'] {
+function createCodeTokenThemeColors(color: string | undefined, text = '', platformThemePairs: CodeThemePair[]): CodeToken['themeColors'] {
   return compactStyle({
-    color: createCodeThemeColorPair(color, getCodeTokenPreferredThemePairs(text))
+    color: createCodeThemeColorPair(color, getCodeTokenPreferredThemePairs(text), platformThemePairs)
   });
 }
 
-function createCodeThemeColorPair(color: string | undefined, preferredPairs: Array<{ light: string; dark: string }> = []): { light?: string; dark?: string } | undefined {
+function createCodeThemeColorPair(color: string | undefined, preferredPairs: CodeThemePair[] = [], platformThemePairs: CodeThemePair[] = []): { light?: string; dark?: string } | undefined {
   if (!color) {
     return undefined;
   }
   const normalized = normalizeCodeColor(color);
-  const pair = [...preferredPairs, ...X_CODE_COLOR_THEME_PAIRS].find((candidate) => normalizeCodeColor(candidate.light) === normalized || normalizeCodeColor(candidate.dark) === normalized);
+  const pair = [...preferredPairs, ...platformThemePairs].find((candidate) => normalizeCodeColor(candidate.light) === normalized || normalizeCodeColor(candidate.dark) === normalized);
   return pair ?? { light: color, dark: color };
 }
 
-function getCodeTokenPreferredThemePairs(text: string): Array<{ light: string; dark: string }> {
+function getCodeTokenPreferredThemePairs(text: string): CodeThemePair[] {
   if (/^[=+\-*/%<>!&|^~?:.,()[\]{}]+$/.test(text.trim())) {
     return [{ light: 'rgb(64, 120, 242)', dark: 'rgb(212, 212, 212)' }];
   }
@@ -677,7 +639,9 @@ function isMediaUiOnlyBlock(element: Element): boolean {
 function isMediaContainerBlock(element: Element): boolean {
   return (
     element.hasAttribute('data-block') &&
-    (element.querySelector('[data-testid="videoPlayer"]') !== null || element.querySelector('[data-testid="tweetPhoto"]') !== null)
+    (element.querySelector('[data-linelens-media-aspect-ratio]') !== null ||
+      element.querySelector('[data-linelens-media-layout-direction]') !== null ||
+      element.querySelector('[data-linelens-video-hls-candidate]') !== null)
   );
 }
 
@@ -720,145 +684,6 @@ function hasConsumedAncestor(element: Element, consumedElements: Set<Element>): 
   return false;
 }
 
-function tweetPhotoElementToPhoto(element: HTMLElement): { src: string; displaySrc?: string; alt?: string; href?: string } | null {
-  const image = element.querySelector<HTMLImageElement>('img');
-  const displaySrc = getTweetPhotoBackgroundUrl(element);
-  const src = image?.currentSrc || image?.src || displaySrc;
-  if (!src) {
-    return null;
-  }
-
-  const href = element.closest('a[href]')?.getAttribute('href') ?? undefined;
-  return {
-    src,
-    ...(displaySrc ? { displaySrc } : {}),
-    alt: image?.alt || undefined,
-    ...(href ? { href: toAbsoluteXUrl(href) } : {})
-  };
-}
-
-function getTweetPhotoBackgroundUrl(element: Element): string {
-  const backgroundLayer = element.querySelector<HTMLElement>('[style*="background-image"]');
-  const style = backgroundLayer?.style.backgroundImage || backgroundLayer?.getAttribute('style') || '';
-  const match = /url\((?:"|&quot;)?([^")]+)(?:"|&quot;)?\)/.exec(style);
-  return match?.[1]?.replace(/&amp;/g, '&') ?? '';
-}
-
-function tweetPhotoElementToGalleryItem(element: HTMLElement): ImageGalleryBlock['items'][number] | null {
-  const image = element.querySelector<HTMLImageElement>('img');
-  const displaySrc = getTweetPhotoBackgroundUrl(element);
-  const src = image?.currentSrc || image?.src || displaySrc;
-  if (!src) {
-    return null;
-  }
-
-  const href = element.closest('a[href]')?.getAttribute('href') ?? undefined;
-  const aspectRatio = image ? getImageAspectRatio(image) : undefined;
-  return {
-    src,
-    ...(displaySrc ? { displaySrc } : {}),
-    alt: image?.alt || undefined,
-    ...(href ? { href: toAbsoluteXUrl(href) } : {}),
-    ...(aspectRatio ? { aspectRatio } : {})
-  };
-}
-
-function getImageGalleryAspectRatio(element: Element): number | undefined {
-  const descendantPreservedRatio = getDescendantPreservedMediaAspectRatio(element);
-  if (descendantPreservedRatio) {
-    return descendantPreservedRatio;
-  }
-
-  const descendantRatio = getDescendantPaddingBottomAspectRatio(element);
-  if (descendantRatio) {
-    return descendantRatio;
-  }
-
-  for (let current: Element | null = element; current; current = current.parentElement) {
-    const preservedRatio = getPreservedMediaAspectRatio(current);
-    if (preservedRatio) {
-      return preservedRatio;
-    }
-
-    const paddingRatio = getPaddingBottomAspectRatio(current);
-    if (paddingRatio) {
-      return paddingRatio;
-    }
-  }
-
-  return undefined;
-}
-
-function getDescendantPreservedMediaAspectRatio(element: Element): number | undefined {
-  for (const child of Array.from(element.querySelectorAll<HTMLElement>('[data-linelens-media-aspect-ratio]'))) {
-    const ratio = getPreservedMediaAspectRatio(child);
-    if (ratio) {
-      return ratio;
-    }
-  }
-
-  return undefined;
-}
-
-function getPreservedMediaAspectRatio(element: Element): number | undefined {
-  const ratio = Number(element.getAttribute('data-linelens-media-aspect-ratio'));
-  return Number.isFinite(ratio) && ratio > 0 ? ratio : undefined;
-}
-
-function getDescendantPaddingBottomAspectRatio(element: Element): number | undefined {
-  for (const child of Array.from(element.querySelectorAll<HTMLElement>('[style*="padding-bottom"]'))) {
-    const paddingBottom = getInlinePaddingBottomPercent(child);
-    if (paddingBottom) {
-      return roundAspectRatio(100 / paddingBottom);
-    }
-  }
-
-  return undefined;
-}
-
-function getImageAspectRatio(image: HTMLImageElement): number | undefined {
-  return toValidAspectRatio(image.naturalWidth, image.naturalHeight);
-}
-
-function getPaddingBottomAspectRatio(element: Element): number | undefined {
-  for (const child of Array.from(element.children)) {
-    const paddingBottom = getInlinePaddingBottomPercent(child);
-    if (paddingBottom) {
-      return roundAspectRatio(100 / paddingBottom);
-    }
-  }
-
-  return undefined;
-}
-
-function getInlinePaddingBottomPercent(element: Element): number | undefined {
-  const inlinePaddingBottom = (element as HTMLElement).style?.paddingBottom;
-  const match = inlinePaddingBottom
-    ? /^([0-9.]+)%$/i.exec(inlinePaddingBottom.trim())
-    : /(?:^|;)\s*padding-bottom:\s*([0-9.]+)%/i.exec(element.getAttribute('style') ?? '');
-  if (!match) {
-    return undefined;
-  }
-
-  const value = Number(match[1]);
-  return Number.isFinite(value) && value > 0 ? value : undefined;
-}
-
-function toValidAspectRatio(width: number, height: number): number | undefined {
-  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
-    return undefined;
-  }
-
-  return roundAspectRatio(width / height);
-}
-
-function roundAspectRatio(value: number): number {
-  return Math.round(value * 10000) / 10000;
-}
-
-function toAbsoluteXUrl(href: string): string {
-  return new URL(href, X_CANONICAL_ORIGIN).toString();
-}
 
 function getHeadingLevel(element: Element): 1 | 2 | 3 | 4 | 5 | 6 {
   const tagName = element.tagName.toUpperCase();

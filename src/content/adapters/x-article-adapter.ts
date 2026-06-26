@@ -1,4 +1,5 @@
 import type { PlatformAdapter } from './adapter-types.js';
+import { xCodeColorThemePairs } from '../extractors/x/code-theme.js';
 
 export const xArticleAdapter: PlatformAdapter = {
   id: 'x.article',
@@ -74,6 +75,7 @@ export const xArticleAdapter: PlatformAdapter = {
     titleStrategy: 'required',
     emptyContentStrategy: 'reject'
   },
+  codeThemePairs: xCodeColorThemePairs,
   fixes: [
     {
       id: 'expand-folded-tweet-text',

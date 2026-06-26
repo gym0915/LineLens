@@ -1,6 +1,11 @@
-import type { ImageBlock } from '../../shared/article.js';
+import type { ImageBlock, ImageGalleryBlock } from '../../shared/article.js';
 import type { PlatformAdapter } from '../adapters/index.js';
 import { extractSubstackImageUrlMetadata } from '../extractors/substack/image-metadata.js';
+import {
+  getXMediaElementsToConsume,
+  xMediaElementToImageBlock,
+  xMediaGalleryElementToBlock
+} from '../extractors/x/media-layout.js';
 
 export function extractPlatformImageMetadata(
   adapter: PlatformAdapter,
@@ -16,4 +21,36 @@ export function extractPlatformImageMetadata(
   }
 
   return {};
+}
+
+export function convertPlatformSpecialImageElement(
+  adapter: PlatformAdapter,
+  element: HTMLElement,
+  blockId: string
+): ImageBlock | null {
+  if (adapter.platform === 'x') {
+    return xMediaElementToImageBlock(element, blockId);
+  }
+
+  return null;
+}
+
+export function convertPlatformImageGalleryElement(
+  adapter: PlatformAdapter,
+  element: Element,
+  blockId: string
+): ImageGalleryBlock | null {
+  if (adapter.platform === 'x') {
+    return xMediaGalleryElementToBlock(element, blockId);
+  }
+
+  return null;
+}
+
+export function getPlatformImageGalleryConsumedElements(adapter: PlatformAdapter, element: Element): Element[] {
+  if (adapter.platform === 'x') {
+    return getXMediaElementsToConsume(element);
+  }
+
+  return [];
 }

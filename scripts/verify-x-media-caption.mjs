@@ -10,7 +10,10 @@ const sourceFiles = {
   extractor: readFileSync(resolve(projectRoot, 'src/content/extractors/x/article-extractor.ts'), 'utf8'),
   cleanTree: readFileSync(resolve(projectRoot, 'src/content/preprocess/clean-tree-block-converter.ts'), 'utf8'),
   platformFixes: readFileSync(resolve(projectRoot, 'src/content/preprocess/apply-platform-fixes.ts'), 'utf8'),
-  renderer: readFileSync(resolve(projectRoot, 'src/reader/block-renderer.ts'), 'utf8'),
+  renderer: [
+    readFileSync(resolve(projectRoot, 'src/reader/block-renderer.ts'), 'utf8'),
+    readFileSync(resolve(projectRoot, 'src/reader/renderers/text-block-renderer.ts'), 'utf8')
+  ].join('\n'),
   blocksCss: readFileSync(resolve(projectRoot, 'public/styles/blocks.css'), 'utf8'),
   tokensCss: readFileSync(resolve(projectRoot, 'public/styles/tokens.css'), 'utf8')
 };
@@ -19,12 +22,13 @@ assert.match(sourceFiles.types, /export type ParagraphBlock = \{[\s\S]*?role\?: 
 
 for (const [name, source] of [
   ['modular extractor', sourceFiles.extractor],
-  ['clean-tree converter', sourceFiles.cleanTree],
   ['platform fixes', sourceFiles.platformFixes]
 ]) {
   assert.match(source, /twitter-article-media-caption-id/, `${name} should recognize X article media caption DOM`);
   assert.match(source, /caption-/, `${name} should recognize X article media caption id prefixes`);
 }
+assert.match(sourceFiles.cleanTree, /data-linelens-block-role/, 'clean-tree converter should consume platform-neutral caption metadata');
+assert.doesNotMatch(sourceFiles.cleanTree, /twitter-article-media-caption-id/, 'clean-tree converter should not directly recognize X article media caption DOM');
 
 assert.match(sourceFiles.renderer, /reader-media-caption/, 'Reader should render media captions with a dedicated class');
 assert.match(sourceFiles.blocksCss, /\.reader-media-caption\s*\{[\s\S]*?font-size:\s*var\(--reader-media-caption-source-size, var\(--reader-media-caption-size\)\)/, 'Reader caption CSS should prefer the parsed source font size');
