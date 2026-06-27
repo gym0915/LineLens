@@ -1,16 +1,101 @@
 # LineLens
 
-## Phase4 X Article Verification
+LineLens 是一个面向长文阅读的浏览器扩展。它会把支持平台上的文章内容提取出来，转换成干净、稳定的 Reader 页面，并用逐语义单元的聚焦方式帮助用户持续停留在当前阅读位置。
 
-Run Phase4 gates from this directory:
+这个项目的重点不是重新排版网页，也不是做摘要工具，而是把复杂媒体平台里的长文还原成更适合认真阅读的文本体验：页面更安静，结构更清楚，当前位置更明确。
+
+## 产品定位
+
+LineLens 适合阅读信息密度高、篇幅较长、容易被页面噪音打断的内容。用户打开一篇支持的文章后，扩展会识别页面是否可读；当页面可读时，点击扩展图标即可进入独立 Reader Tab。
+
+Reader 只消费统一的 Article 数据，不直接依赖源站 DOM。平台适配、内容提取和阅读渲染被拆成不同层，这使项目可以继续扩展到更多媒体平台，同时保持阅读页本身的稳定。
+
+## 用户群特性
+
+LineLens 面向需要长时间处理文字内容的人，包括：
+
+- 经常阅读技术长文、深度评论、行业分析的用户。
+- 容易跳读、漏读，或读到一半忘记当前位置的用户。
+- 希望从社交媒体和订阅平台中抽离正文、减少干扰的人。
+- 需要在代码、图片、引用、嵌入内容之间保持阅读节奏的重度信息消费者。
+
+这类用户通常不缺内容来源，真正的问题是阅读过程太容易被打断：页面按钮、推荐流、互动组件、复杂排版和媒体卡片都会抢走注意力。
+
+## 解决的痛点
+
+很多媒体平台的长文不是为专注阅读设计的。正文旁边常常混着互动按钮、推荐入口、折叠内容、嵌入卡片和平台私有样式。用户在阅读时容易出现几个问题：
+
+- 视线跳走，不知道刚刚读到哪一句。
+- 段落太长，读完后很难保持连续理解。
+- 原站样式不稳定，图片、视频、代码块和嵌入内容容易打断节奏。
+- 重新打开文章时，难以回到上次阅读位置。
+- 不同平台的文章结构差异大，普通阅读模式很难稳定处理。
+
+LineLens 的做法是先把源站内容提取为统一文章模型，再由 Reader 负责呈现、聚焦、导航和进度恢复。
+
+## 已实现特性
+
+- 支持浏览器扩展形态，基于 Manifest V3。
+- 支持在可读文章页面启用扩展图标，并从当前页面打开 Reader Tab。
+- 将文章提取为统一 Article 数据，包括标题、正文、标题块、引用、列表、图片、图集、代码、表格、链接、视频和嵌入内容等结构。
+- Reader 默认使用逐语义单元阅读模式，段落仍保持自然排版，但当前语义单元会被明确高亮。
+- 支持键盘推进：左右方向键切换上一个/下一个阅读单元，`Home` 和 `End` 跳到首尾。
+- 支持鼠标点击任意阅读单元后直接聚焦该位置。
+- 支持按文章保存和恢复阅读进度。
+- 支持窗口尺寸变化、图片加载和字体加载后的高亮位置刷新。
+- 支持系统主题和 Reader 主题配置，包括字号、行高、版心宽度、聚焦粒度和阅读模式等设置入口。
+- 支持本地字体、深浅色主题、弱化非当前内容和面向阅读的视觉高亮层。
+- 支持 X 文章中的图片、图集、GIF、视频、代码块、表格、媒体说明和嵌入推文等内容处理。
+- 支持捕获 X 视频 HLS 信息，并在 Reader 中使用本地打包的播放依赖。
+- 支持 Substack 文章的正文、标题、列表、引用、图片、代码、表格和 Twitter 嵌入内容提取。
+- 提供平台 Adapter 架构，用于声明不同平台的 URL 规则、根节点、标题节点、正文节点、清洗规则、样式白名单和特殊组件处理方式。
+
+## 适配的媒体平台
+
+- X / Twitter Articles：`x.com/{user}/article/{id}`、`twitter.com/{user}/article/{id}`
+- Substack：`substack.com/inbox/post/*`、`substack.com/home/post/*`、`substack.com/p/*`、`*.substack.com/p/*`
+
+## 使用场景
+
+当你在 X / Twitter 上阅读长文时，可以用 LineLens 把内容切换到独立 Reader 页面，逐句或逐段向前推进，避免被时间线、互动按钮和推荐内容干扰。
+
+当你阅读 Substack 文章时，可以把正文、图片、引用、列表和嵌入内容统一放进同一个阅读体验里，而不是被源站复杂排版牵着走。
+
+当你需要分多次读完一篇长文时，LineLens 会保存阅读进度。下次打开同一篇文章，可以从上次聚焦的位置继续。
+
+## 安装部署
+
+克隆项目：
 
 ```bash
-npm run verify:phase4
+git clone git@github.com:gym0915/LineLens.git
+cd LineLens
 ```
 
-The gate runs:
+安装依赖：
 
-- `verify:phase4-pipeline-baseline`: validates clean tree, style whitelist, platform fixes, block conversion, fallback behavior, and second-platform adapter wiring.
-- `verify:phase4-x-article-full`: validates the full X Article fixture at `../assets/x-article-full-html.html` when running in the normal checkout, or the outer workspace `assets/x-article-full-html.html` when running from a project worktree.
+```bash
+npm install
+```
 
-High-risk blocks (`video`, `simple-tweet`, `code`, `image-gallery`) remain dual-track and must continue to use their dedicated X Article regression gates.
+构建扩展：
+
+```bash
+npm run build
+```
+
+构建完成后，浏览器可加载的扩展目录是：
+
+```text
+LineLens/dist
+```
+
+在 Chrome 或 Edge 中打开扩展管理页，开启开发者模式，选择“加载已解压的扩展程序”，然后选择上面的 `dist` 目录。
+
+更新代码后重新执行：
+
+```bash
+npm run build
+```
+
+然后在浏览器扩展管理页中重新加载 LineLens。
