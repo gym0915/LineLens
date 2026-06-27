@@ -58,6 +58,8 @@ const PRESERVED_ATTRIBUTE_NAMES = new Set([
   'rel',
   'role',
   'src',
+  'srcset',
+  'sizes',
   'style',
   'target',
   'title'
@@ -76,6 +78,11 @@ const PRESERVED_DATA_ATTRIBUTES = new Set([
   'data-linelens-media-layout-direction',
   'data-linelens-media-layout-width',
   'data-linelens-video-hls-candidate',
+  'data-original',
+  'data-poster',
+  'data-src',
+  'data-srcset',
+  'data-thumbnail',
   'data-offset-key',
   'data-testid',
   'data-text'

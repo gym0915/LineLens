@@ -11,7 +11,7 @@ export function extractPlatformImageMetadata(
   adapter: PlatformAdapter,
   element: Element
 ): Pick<ImageBlock, 'aspectRatio' | 'objectFit' | 'objectPosition'> {
-  const src = element.getAttribute('src') ?? '';
+  const src = getImageMetadataSource(element);
   if (!src) {
     return {};
   }
@@ -53,4 +53,25 @@ export function getPlatformImageGalleryConsumedElements(adapter: PlatformAdapter
   }
 
   return [];
+}
+
+function getImageMetadataSource(element: Element): string {
+  return (
+    element.getAttribute('src')?.trim() ||
+    element.getAttribute('data-src')?.trim() ||
+    element.getAttribute('data-original')?.trim() ||
+    firstSrcsetUrl(element.getAttribute('srcset')?.trim()) ||
+    firstSrcsetUrl(element.getAttribute('data-srcset')?.trim()) ||
+    ''
+  );
+}
+
+function firstSrcsetUrl(srcset: string | undefined): string {
+  return (
+    srcset
+      ?.split(',')
+      .map((candidate) => candidate.trim())
+      .find(Boolean)
+      ?.split(/\s+/)[0] ?? ''
+  );
 }

@@ -1,11 +1,11 @@
-# HANDOFF: P8 complete -> P9 media resolver
+# HANDOFF: P9 complete -> P10 manifest scope
 
 ## Current state
 
 - Worktree: `/Users/steve/ClaudeWork/Codex/LineByLine/LineLens/.worktrees/new-media-platform-refactor`
 - Branch: `feature/new-media-platform-refactor`
-- Latest completed phase: P8, platform article verifier template
-- Next phase: P9, platform-neutral media resolver
+- Latest completed phase: P9, platform-neutral media resolver
+- Next phase: P10, manifest scope guardrails
 
 ## Completed so far
 
@@ -17,18 +17,25 @@
 - P8 added `scripts/templates/verify-platform-article-template.mjs`.
 - P8 added `scripts/verify-fixture-platform-template.mjs` and `verify:platform-template-fixture`.
 - P8 added `docs/templates/platform-adapter-checklist.md` and linked it from `docs/README.md`.
+- P9 added `src/content/preprocess/media-resolver.ts`.
+- P9 routes image extraction through `resolveImageCandidate()`.
+- P9 preserves safe media attributes in clean trees: `srcset`, `sizes`, `data-src`, `data-original`, poster/thumbnail metadata.
+- P9 adds generic gallery resolution while keeping X `preserve-x-media-layout` gallery conversion first.
+- P9 adds safe iframe/embed metadata extraction into existing `EmbedBlock` fields without passing iframe DOM to Reader.
 
-## Verified after P8
+## Verified after P9
 
 - `npm run build`
-- `node scripts/templates/verify-platform-article-template.mjs --help`
-- `npm run verify:platform-template-fixture`
-- `npm run verify:adapter-manifest-scope`
-- `npm run verify:configurable-article-extractor`
+- `npm run verify:platform-media-resolver`
+- `npm run verify:x-article-image-gallery`
+- `npm run verify:substack-article-fixture`
+- `npm run verify:reader-shared-media`
+- `npm run verify:phase4-x-article-full`
 
-## Notes for P9
+## Notes for P10
 
-- Start by adding `scripts/verify-platform-media-resolver.mjs` before implementation.
-- Read `src/content/preprocess/platform-media-metadata.ts` and `src/content/preprocess/block-converters/image-block-converter.ts`.
-- P9 should move image/gallery/embed media interpretation into platform-neutral resolver code while keeping platform-specific metadata and selectors outside generic converter internals.
-- Keep `x.video-or-gif` dual-track/high-risk behavior unchanged unless the P9 verifier proves an explicit safe migration path.
+- Start by extending `scripts/verify-adapter-manifest-scope.mjs`.
+- Check `public/manifest.json`, `src/content/adapters/index.ts`, and built-in adapters.
+- Enforce that enabled built-in adapters have explicit manifest host coverage.
+- Keep fixture-only adapters out of manifest scope.
+- Add explicit external media allowlist checks without broadening content-script matches for media CDNs.

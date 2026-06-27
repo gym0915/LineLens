@@ -25,6 +25,7 @@ import {
   extractPlatformImageMetadata,
   getPlatformImageGalleryConsumedElements
 } from './platform-media-metadata.js';
+import { resolveEmbedElement, resolveImageGalleryElement } from './media-resolver.js';
 
 export type CleanTreeBlockConversionOptions = {
   enabledBlockTypes?: Array<ArticleBlock['type']>;
@@ -84,6 +85,16 @@ function convertElementToBlock(
       convertSpecialImageElement: (specialImageElement) => convertPlatformSpecialImageElement(context.adapter, specialImageElement, cleanTreeBlockId(context, index)),
       extractPlatformImageMetadata: (imageElement) => extractPlatformImageMetadata(context.adapter, imageElement)
     });
+  }
+
+  if (isEmbedElement(element) && enabledBlockTypes.has('embed')) {
+    const embed = resolveEmbedElement(element, cleanTreeBlockId(context, index));
+    if (embed) {
+      for (const consumedElement of Array.from(element.querySelectorAll('iframe, embed'))) {
+        consumedElements.add(consumedElement);
+      }
+    }
+    return embed;
   }
 
   if (isHeadingElement(element, semanticSelectors) && enabledBlockTypes.has('heading')) {
@@ -217,15 +228,26 @@ function convertImageGalleryElement(
   consumedElements: Set<Element>
 ): ImageGalleryBlock | null {
   const gallery = convertPlatformImageGalleryElement(context.adapter, element, cleanTreeBlockId(context, index));
-  if (gallery === null) {
+  if (gallery !== null) {
+    for (const consumedElement of getPlatformImageGalleryConsumedElements(context.adapter, element)) {
+      consumedElements.add(consumedElement);
+    }
+
+    return gallery;
+  }
+
+  const genericGallery = resolveImageGalleryElement(element, cleanTreeBlockId(context, index), {
+    extractPlatformImageMetadata: (imageElement) => extractPlatformImageMetadata(context.adapter, imageElement)
+  });
+  if (genericGallery === null) {
     return null;
   }
 
-  for (const consumedElement of getPlatformImageGalleryConsumedElements(context.adapter, element)) {
+  for (const consumedElement of Array.from(element.querySelectorAll('img'))) {
     consumedElements.add(consumedElement);
   }
 
-  return gallery;
+  return genericGallery;
 }
 
 function extractTextAnnotations(element: Element, fullText = normalizeText(element.textContent ?? '')): TextAnnotation[] {
@@ -311,6 +333,7 @@ function buildBlockCandidateSelector(selectors: ResolvedSemanticSelectors, conte
     selectors.unorderedListSelector,
     selectors.imageGallerySelector,
     selectors.imageSelector,
+    'iframe[src], iframe[data-src], embed[src], embed[data-src], [data-kind="embed"], figcaption',
     selectors.codeSelector,
     selectors.tableSelector,
     ...(context.adapter.specialComponents ?? []).map((component) => component.rootSelector)
@@ -346,13 +369,18 @@ function isCodeElement(element: Element, selectors: ResolvedSemanticSelectors): 
   return element.matches(selectors.codeSelector) || element.querySelector(selectors.codeSelector) !== null;
 }
 
+function isEmbedElement(element: Element): boolean {
+  return element.matches('iframe[src], iframe[data-src], embed[src], embed[data-src]') || element.querySelector('iframe[src], iframe[data-src], embed[src], embed[data-src]') !== null;
+}
+
 function isTableElement(element: Element, selectors: ResolvedSemanticSelectors): boolean {
   return findTableRoot(element, selectors) !== null;
 }
 
 function isMediaCaptionElement(element: Element): boolean {
   return Boolean(
-    element.getAttribute('data-linelens-block-role') === 'caption' ||
+    element.tagName.toUpperCase() === 'FIGCAPTION' ||
+      element.getAttribute('data-linelens-block-role') === 'caption' ||
       element.closest('[data-linelens-block-role="caption"]') ||
       element.querySelector('[data-linelens-block-role="caption"]')
   );

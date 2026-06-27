@@ -12,6 +12,7 @@
     "verify:special-components-platform-boundary": "npm run build && node scripts/verify-special-components-platform-boundary.mjs",
     "verify:fixture-platform-adapter": "npm run build && node scripts/verify-fixture-platform-adapter.mjs",
     "verify:platform-template-fixture": "npm run build && node scripts/verify-fixture-platform-template.mjs",
+    "verify:platform-media-resolver": "npm run build && node scripts/verify-platform-media-resolver.mjs",
     "verify:fixture-reader-demo": "npm run build && node scripts/verify-fixture-reader-demo.mjs",
     "verify:reader-a3-a4": "npm run build && node scripts/verify-reader-a3-a4.mjs",
     "verify:reader-a5": "npm run build && node scripts/verify-reader-a5.mjs",
