@@ -22,6 +22,8 @@ export type {
 export { fixtureArticleAdapter } from './fixture-article-adapter.js';
 export { substackArticleAdapter } from './substack-article-adapter.js';
 export { xArticleAdapter } from './x-article-adapter.js';
+export { EXTERNAL_MEDIA_HOST_ALLOWLIST } from './external-media-hosts.js';
+export type { ExternalMediaHostAllowlistEntry, ManifestScopeSurface } from './external-media-hosts.js';
 
 export const BUILT_IN_PLATFORM_ADAPTERS: PlatformAdapter[] = [xArticleAdapter, substackArticleAdapter, fixtureArticleAdapter];
 

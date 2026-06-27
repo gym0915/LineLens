@@ -1,11 +1,11 @@
-# HANDOFF: P9 complete -> P10 manifest scope
+# HANDOFF: P10 complete -> final acceptance
 
 ## Current state
 
 - Worktree: `/Users/steve/ClaudeWork/Codex/LineByLine/LineLens/.worktrees/new-media-platform-refactor`
 - Branch: `feature/new-media-platform-refactor`
-- Latest completed phase: P9, platform-neutral media resolver
-- Next phase: P10, manifest scope guardrails
+- Latest completed phase: P10, manifest scope guardrails
+- Next phase: final acceptance, merge to main, and diff report
 
 ## Completed so far
 
@@ -22,20 +22,22 @@
 - P9 preserves safe media attributes in clean trees: `srcset`, `sizes`, `data-src`, `data-original`, poster/thumbnail metadata.
 - P9 adds generic gallery resolution while keeping X `preserve-x-media-layout` gallery conversion first.
 - P9 adds safe iframe/embed metadata extraction into existing `EmbedBlock` fields without passing iframe DOM to Reader.
+- P10 added `src/content/adapters/external-media-hosts.ts`.
+- P10 moved X external media hosts into an auditable allowlist with platform, purpose, and allowed manifest surfaces.
+- P10 tightened `verify-adapter-manifest-scope` so enabled adapter hosts must be covered, fixture hosts must stay out of production manifest scope, and media hosts cannot enter content-script or web-accessible scopes unless explicitly allowlisted.
 
-## Verified after P9
+## Verified after P10
 
 - `npm run build`
-- `npm run verify:platform-media-resolver`
-- `npm run verify:x-article-image-gallery`
-- `npm run verify:substack-article-fixture`
-- `npm run verify:reader-shared-media`
-- `npm run verify:phase4-x-article-full`
+- `npm run verify:adapter-manifest-scope`
+- `npm run verify:fixture-platform-adapter`
+- `npm run verify:stage0`
+- `npm run verify:configurable-article-extractor`
 
-## Notes for P10
+## Notes for final acceptance
 
-- Start by extending `scripts/verify-adapter-manifest-scope.mjs`.
-- Check `public/manifest.json`, `src/content/adapters/index.ts`, and built-in adapters.
-- Enforce that enabled built-in adapters have explicit manifest host coverage.
-- Keep fixture-only adapters out of manifest scope.
-- Add explicit external media allowlist checks without broadening content-script matches for media CDNs.
+- Commit P10 with `test: tighten adapter manifest scope guardrails`.
+- Run the overall acceptance commands from the plan in the feature worktree.
+- Merge `feature/new-media-platform-refactor` back to `main`.
+- Rerun the overall acceptance commands from the main checkout.
+- After main passes, write `docs/reports/2026-06-26-new-media-platform-refactor-diff.md` in the outer workspace and update the final report checklist.
