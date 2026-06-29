@@ -7,11 +7,14 @@ const workspaceRoot = findWorkspaceRoot(rootDir);
 
 const articleModelSource = readFileSync(resolve(rootDir, 'src/shared/article.ts'), 'utf8');
 const extractorSource = readFileSync(resolve(rootDir, 'src/content/extractors/x/article-extractor.ts'), 'utf8');
+const legacyBlocksSource = readFileSync(resolve(rootDir, 'src/content/extractors/x/article-legacy-blocks.ts'), 'utf8');
 const simpleTweetSource = readFileSync(resolve(rootDir, 'src/content/extractors/x/simple-tweet.ts'), 'utf8');
+const videoRendererSource = readFileSync(resolve(rootDir, 'src/reader/renderers/video-renderer.ts'), 'utf8');
+const simpleTweetRendererSource = readFileSync(resolve(rootDir, 'src/reader/renderers/simple-tweet-renderer.ts'), 'utf8');
 const readerRendererSource = [
   readFileSync(resolve(rootDir, 'src/reader/block-renderer.ts'), 'utf8'),
-  readFileSync(resolve(rootDir, 'src/reader/renderers/simple-tweet-renderer.ts'), 'utf8'),
-  readFileSync(resolve(rootDir, 'src/reader/renderers/video-renderer.ts'), 'utf8')
+  simpleTweetRendererSource,
+  videoRendererSource
 ].join('\n');
 const readerCss = readReaderCss();
 const packageJson = JSON.parse(readFileSync(resolve(rootDir, 'package.json'), 'utf8'));
@@ -53,16 +56,16 @@ assert.match(
 );
 assert.match(
   extractorSource,
-  /extractSimpleTweetBlock\(block, blockId\(articleId, index\), capturedVideos\)/,
-  'top-level block extraction should pass captured video groups into simpleTweet extraction'
+  /extractXArticleLegacyBlocks\(\{[\s\S]*?longform,[\s\S]*?articleId,[\s\S]*?capturedVideos[\s\S]*?\}\)/,
+  'top-level extraction should pass captured video groups into the legacy block boundary'
 );
 assert.match(
-  extractorSource,
+  legacyBlocksSource,
   /const simpleTweet = await extractSimpleTweetBlock[\s\S]*?const video = extractVideoFromElement/,
   'simpleTweet detection should run before standalone video extraction so embedded tweet videos stay inside the tweet card'
 );
 assert.match(
-  readerRendererSource,
+  videoRendererSource,
   /function renderVideoPlayer/,
   'reader should expose one reusable video player renderer'
 );
@@ -72,9 +75,14 @@ assert.match(
   'simpleTweet rendering should call the shared video player for embedded tweet videos'
 );
 assert.match(
-  readerRendererSource,
+  videoRendererSource,
   /renderVideoBlock\(block: VideoBlock\)[\s\S]*renderVideoPlayer\(block/,
   'standalone video block rendering should call the same shared video player'
+);
+assert.doesNotMatch(
+  simpleTweetRendererSource,
+  /video-source-controller|video-playback-controller/,
+  'simpleTweet rendering should stay behind the video renderer facade instead of using video controllers directly'
 );
 assert.match(
   readerCss,
