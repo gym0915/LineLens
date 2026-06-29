@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { relative, resolve } from 'node:path';
 
 const projectRoot = resolve(import.meta.dirname, '..');
 const contentEntry = readFileSync(resolve(projectRoot, 'src/content/index.ts'), 'utf8');
+const sharedSourceDir = resolve(projectRoot, 'src/shared');
 const builtContentPath = resolve(projectRoot, 'dist/content.js');
 const builtContent = existsSync(builtContentPath) ? readFileSync(builtContentPath, 'utf8') : '';
 
@@ -25,6 +26,15 @@ for (const [pattern, message] of forbiddenEntryPatterns) {
   assert.doesNotMatch(contentEntry, pattern, message);
 }
 
+for (const sourcePath of collectTypeScriptFiles(sharedSourceDir)) {
+  const source = readFileSync(sourcePath, 'utf8');
+  assert.doesNotMatch(
+    source,
+    /(?:import|export)\s+(?:type\s+)?(?:[\s\S]*?\s+from\s+)?['"](?:\.\.\/)+content(?:\/[^'"]*)?['"]/,
+    `shared source must not import content modules: ${relative(projectRoot, sourcePath)}`
+  );
+}
+
 assert.match(contentEntry, /createExtractorRegistry/, 'content entry should route through the extractor registry');
 assert.match(contentEntry, /xArticleExtractor/, 'content entry should register the modular X Article extractor');
 assert.match(contentEntry, /createAdapterDrivenArticleExtractor/, 'content entry should register the adapter-driven extractor');
@@ -37,3 +47,14 @@ assert.doesNotMatch(builtContent, /^export\s/m, 'built content.js must not conta
 assert.match(builtContent, /chrome\.runtime\.onMessage\.addListener/, 'built content.js should register the content runtime listener');
 
 console.log('Content single-source verification passed');
+
+function collectTypeScriptFiles(directory) {
+  return readdirSync(directory).flatMap((entry) => {
+    const entryPath = resolve(directory, entry);
+    if (statSync(entryPath).isDirectory()) {
+      return collectTypeScriptFiles(entryPath);
+    }
+
+    return entryPath.endsWith('.ts') ? [entryPath] : [];
+  });
+}

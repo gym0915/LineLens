@@ -10,6 +10,7 @@ import {
   isXArticleUrl
 } from '../../../shared/url.js';
 import { loadSettingsFromLocalStorage } from '../../../shared/settings.js';
+import { DEFAULT_CONTENT_SETTINGS } from '../../adapters/index.js';
 import { xArticleAdapter } from '../../adapters/x-article-adapter.js';
 import {
   extractConfigurableArticleWithDiagnostics,
@@ -57,7 +58,7 @@ export const xArticleExtractor: ArticleExtractor = {
       throw new Error('article_not_ready');
     }
 
-    const adapter = loadSettingsFromLocalStorage().platformAdapters[xArticleAdapter.id] ?? xArticleAdapter;
+    const adapter = loadSettingsFromLocalStorage(undefined, DEFAULT_CONTENT_SETTINGS).platformAdapters[xArticleAdapter.id] ?? xArticleAdapter;
     const capturedVideos = await getCapturedVideos();
     const legacyBlocks = await extractXArticleLegacyBlocks({
       longform,

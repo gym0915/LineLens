@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {
   BUILT_IN_PLATFORM_ADAPTERS,
+  DEFAULT_CONTENT_SETTINGS,
   fixtureArticleAdapter,
   resolvePlatformAdapter,
   substackArticleAdapter,
@@ -145,13 +146,18 @@ assert.equal(
 assert.equal(LINE_LENS_SETTINGS_STORAGE_KEY, 'linelens.settings.v1', 'settings storage key should be versioned');
 assert.equal(DEFAULT_SETTINGS.schemaVersion, 1, 'settings schema should be versioned');
 assert.deepEqual(
-  Object.keys(DEFAULT_SETTINGS.platformAdapters),
-  ['x.article', 'substack.article', 'fixture.article'],
-  'default settings should carry X, Substack, and fixture adapter config'
+  DEFAULT_SETTINGS.platformAdapters,
+  {},
+  'shared default settings should not embed content adapter config'
 );
-assert.equal(DEFAULT_SETTINGS.platformAdapters['x.article'].enabled, true, 'X adapter should be enabled by default');
-assert.equal(DEFAULT_SETTINGS.platformAdapters['substack.article'].enabled, true, 'Substack adapter should be enabled by default');
-assert.equal(DEFAULT_SETTINGS.platformAdapters['fixture.article'].enabled, true, 'fixture adapter should be enabled for local validation');
+assert.deepEqual(
+  Object.keys(DEFAULT_CONTENT_SETTINGS.platformAdapters),
+  ['x.article', 'substack.article', 'fixture.article'],
+  'content default settings should carry X, Substack, and fixture adapter config'
+);
+assert.equal(DEFAULT_CONTENT_SETTINGS.platformAdapters['x.article'].enabled, true, 'X adapter should be enabled by default');
+assert.equal(DEFAULT_CONTENT_SETTINGS.platformAdapters['substack.article'].enabled, true, 'Substack adapter should be enabled by default');
+assert.equal(DEFAULT_CONTENT_SETTINGS.platformAdapters['fixture.article'].enabled, true, 'fixture adapter should be enabled for local validation');
 assert.deepEqual(
   DEFAULT_SETTINGS.reader,
   DEFAULT_READER_SETTINGS,
@@ -262,7 +268,7 @@ assert.deepEqual(
   'style whitelist should accept declarative custom selectors without hardcoded defaults'
 );
 
-const mergedSettings = mergeSettings(DEFAULT_SETTINGS, {
+const mergedSettings = mergeSettings(DEFAULT_CONTENT_SETTINGS, {
   reader: {
     theme: 'cool-gray',
     fontScale: 'large',
@@ -345,7 +351,7 @@ const normalized = normalizeSettings({
       script: 'alert(1)'
     }
   }
-});
+}, DEFAULT_CONTENT_SETTINGS);
 assert.equal(normalized.schemaVersion, 1, 'invalid schema versions should fall back to v1');
 assert.deepEqual(normalized.reader, DEFAULT_READER_SETTINGS, 'invalid Reader settings should fall back to defaults');
 assert.equal(Object.hasOwn(normalized.reader, 'script'), false, 'Reader settings should not allow arbitrary scripts');
@@ -440,7 +446,7 @@ const localStorageSettings = loadSettingsFromLocalStorage(fakeStorage({
       }
     }
   })
-}));
+}), DEFAULT_CONTENT_SETTINGS);
 assert.equal(
   localStorageSettings.platformAdapters['x.article'].semanticMap?.imageSelector,
   'article img',
@@ -484,7 +490,7 @@ assert.deepEqual(
   'localStorage settings should replace X-specific color whitelist fields'
 );
 assert.equal(
-  loadSettingsFromLocalStorage(fakeStorage({ [LINE_LENS_SETTINGS_STORAGE_KEY]: '{' })).platformAdapters['x.article'].rootSelector,
+  loadSettingsFromLocalStorage(fakeStorage({ [LINE_LENS_SETTINGS_STORAGE_KEY]: '{' }), DEFAULT_CONTENT_SETTINGS).platformAdapters['x.article'].rootSelector,
   xArticleAdapter.rootSelector,
   'invalid localStorage settings should fall back to defaults'
 );

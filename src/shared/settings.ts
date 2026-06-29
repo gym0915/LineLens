@@ -1,16 +1,4 @@
-import {
-  BUILT_IN_PLATFORM_ADAPTERS,
-  type CleanRulesConfig,
-  type EmptyContentStrategy,
-  type PlatformAdapter,
-  type PlatformAdapterUserConfig,
-  type ReadinessConfig,
-  type SemanticMapConfig,
-  type SpecialComponentConfig,
-  type SpecialComponentType,
-  type TitleStrategy,
-  type ValidationConfig
-} from '../content/adapters/index.js';
+import type { ArticleSource } from './article.js';
 import {
   DEFAULT_READER_SETTINGS,
   READER_COLUMN_WIDTH_SETTINGS,
@@ -26,6 +14,116 @@ import {
 
 export const LINE_LENS_SETTINGS_STORAGE_KEY = 'linelens.settings.v1';
 
+export type PlatformFixId =
+  | 'expand-folded-tweet-text'
+  | 'normalize-handwritten-ordered-list'
+  | 'preserve-svg-emoji'
+  | 'capture-x-video-hls'
+  | 'preserve-x-media-caption'
+  | 'preserve-x-media-layout';
+
+export type PlatformFix = {
+  id: PlatformFixId;
+  enabledByDefault: boolean;
+  description: string;
+};
+
+export type SemanticMapConfig = {
+  blockSelector?: string;
+  paragraphSelector?: string;
+  headingSelector?: string;
+  quoteSelector?: string;
+  orderedListSelector?: string;
+  unorderedListSelector?: string;
+  imageSelector?: string;
+  imageGallerySelector?: string;
+  codeSelector?: string;
+  tableSelector?: string;
+  linkSelector?: string;
+  textSelector?: string;
+};
+
+export type CleanRulesConfig = {
+  removeSelectors?: string[];
+  unwrapSelectors?: string[];
+  preserveAttributeNames?: string[];
+};
+
+export type ReadinessConfig = {
+  minTextLength?: number;
+  minBlockCount?: number;
+  requiredSelectors?: string[];
+  stableDomMs?: number;
+};
+
+export type CodeThemePair = {
+  light: string;
+  dark: string;
+};
+
+export type TitleStrategy = 'required' | 'optional' | 'fallback-from-h1';
+export type EmptyContentStrategy = 'reject' | 'allow-media-only';
+
+export type ValidationConfig = {
+  minBlockCount?: number;
+  minTextLength?: number;
+  titleStrategy?: TitleStrategy;
+  emptyContentStrategy?: EmptyContentStrategy;
+};
+
+export type SpecialComponentType =
+  | 'social-card'
+  | 'video'
+  | 'gif'
+  | 'image-gallery'
+  | 'embed'
+  | 'custom-card';
+
+export type SpecialComponentConfig = {
+  id: string;
+  type: SpecialComponentType;
+  rootSelector: string;
+  handlerId: string;
+  preserveSelectors?: string[];
+  removeSelectors?: string[];
+};
+
+export type PlatformAdapter = {
+  id: string;
+  platform: string;
+  contentType: 'article' | 'post' | 'thread' | 'answer';
+  articleSource?: ArticleSource;
+  hosts: string[];
+  urlPatterns?: RegExp[];
+  enabled: boolean;
+  rootSelector: string;
+  titleSelector?: string;
+  contentSelector?: string;
+  semanticMap?: SemanticMapConfig;
+  cleanRules?: CleanRulesConfig;
+  readiness?: ReadinessConfig;
+  validation?: ValidationConfig;
+  codeThemePairs?: CodeThemePair[];
+  fixes: PlatformFix[];
+  enabledFixes: PlatformFixId[];
+  styleWhitelist: StyleWhitelistConfig;
+  specialComponents?: SpecialComponentConfig[];
+};
+
+export type PlatformAdapterUserConfig = {
+  enabled?: boolean;
+  rootSelector?: string;
+  titleSelector?: string;
+  contentSelector?: string;
+  semanticMap?: Partial<SemanticMapConfig>;
+  cleanRules?: Partial<CleanRulesConfig>;
+  readiness?: Partial<ReadinessConfig>;
+  validation?: Partial<ValidationConfig>;
+  enabledFixes?: string[];
+  styleWhitelist?: Partial<StyleWhitelistConfig>;
+  specialComponents?: SpecialComponentConfig[];
+};
+
 export type LineLensSettings = {
   schemaVersion: 1;
   platformAdapters: Record<string, PlatformAdapter>;
@@ -38,36 +136,40 @@ export type LineLensUserSettings = {
   reader?: ReaderSettingsUserConfig | unknown;
 };
 
-export const DEFAULT_SETTINGS: LineLensSettings = {
-  schemaVersion: 1,
-  platformAdapters: Object.fromEntries(BUILT_IN_PLATFORM_ADAPTERS.map((adapter) => [adapter.id, adapter])),
-  reader: DEFAULT_READER_SETTINGS
-};
+export const DEFAULT_SETTINGS: LineLensSettings = createDefaultSettings();
 
-export function loadSettingsFromLocalStorage(storage?: Storage | null): LineLensSettings {
+export function createDefaultSettings(adapters: PlatformAdapter[] = []): LineLensSettings {
+  return {
+    schemaVersion: 1,
+    platformAdapters: Object.fromEntries(adapters.map((adapter) => [adapter.id, adapter])),
+    reader: DEFAULT_READER_SETTINGS
+  };
+}
+
+export function loadSettingsFromLocalStorage(storage?: Storage | null, defaults: LineLensSettings = DEFAULT_SETTINGS): LineLensSettings {
   try {
     const readableStorage = storage ?? globalThis.localStorage;
     if (!readableStorage) {
-      return DEFAULT_SETTINGS;
+      return defaults;
     }
 
     const raw = readableStorage.getItem(LINE_LENS_SETTINGS_STORAGE_KEY);
     if (!raw) {
-      return DEFAULT_SETTINGS;
+      return defaults;
     }
 
-    return normalizeSettings(JSON.parse(raw));
+    return normalizeSettings(JSON.parse(raw), defaults);
   } catch {
-    return DEFAULT_SETTINGS;
+    return defaults;
   }
 }
 
-export function normalizeSettings(input: unknown): LineLensSettings {
+export function normalizeSettings(input: unknown, defaults: LineLensSettings = DEFAULT_SETTINGS): LineLensSettings {
   if (!isPlainObject(input)) {
-    return DEFAULT_SETTINGS;
+    return defaults;
   }
 
-  return mergeSettings(DEFAULT_SETTINGS, input as LineLensUserSettings);
+  return mergeSettings(defaults, input as LineLensUserSettings);
 }
 
 export function mergeSettings(defaults: LineLensSettings, userSettings: LineLensUserSettings): LineLensSettings {
