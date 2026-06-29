@@ -136,6 +136,28 @@ assert.doesNotMatch(
   'focus.css should not use backdrop-filter for inline active focus because it creates a separate night-mode rendering path'
 );
 
+const overlaysCss = read('public/styles/overlays.css');
+assert.match(
+  overlaysCss,
+  /\.highlight-layer\.is-visible\s*\{[\s\S]*?opacity:\s*1;/,
+  'shared HighlightLayer should remain visible in night mode'
+);
+assert.match(
+  overlaysCss,
+  /\.highlight-focus\s*\{[\s\S]*?background:\s*var\(--reader-highlight-surface\);[\s\S]*?box-shadow:\s*var\(--reader-highlight-shadow\);/,
+  'shared HighlightLayer should own the night-mode focus surface and halo'
+);
+assert.doesNotMatch(
+  read('public/styles/focus.css'),
+  /\.focus-unit\.is-active[\s\S]*?box-shadow:\s*var\(--reader-card-shadow\);/,
+  'active FocusUnit components should not duplicate the shared focus halo'
+);
+assert.doesNotMatch(
+  read('public/styles/focus.css'),
+  /\.focus-unit\.is-active[\s\S]*?background:\s*var\(--reader-highlight-surface\);/,
+  'active FocusUnit components should not duplicate the shared focus background'
+);
+
 console.log('verify:reader-night-mode-system passed');
 
 function hasTokenDeclaration(css, token, value) {

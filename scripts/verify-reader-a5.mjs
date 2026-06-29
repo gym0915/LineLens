@@ -152,10 +152,10 @@ for (const expected of [
   '.highlight-layer',
   '.highlight-focus',
   '--reader-highlight-outline',
+  '--reader-highlight-shadow',
   '--reader-media-active-border',
   '--reader-media-active-padding',
   '--reader-media-active-width',
-  '--reader-card-shadow',
   '--reader-quote-border-active',
   '.focus-unit:hover',
   '.focus-unit.is-muted:hover',
@@ -179,7 +179,6 @@ for (const expected of [
   'font-weight: 700',
   'padding: 9px 10px 11px',
   'padding: var(--reader-inline-highlight-padding-block) var(--reader-inline-highlight-padding-inline)',
-  'background: var(--reader-highlight-surface)',
   'width: var(--reader-media-active-width)',
   'border: 1px solid var(--reader-media-active-border)',
   'filter: none'
@@ -188,13 +187,47 @@ for (const expected of [
 }
 
 assert(
-  getRule(css, '.highlight-layer.is-visible').includes('opacity: 0;'),
-  'HighlightLayer should stay visually disabled; active focus units own their background/radius/shadow'
+  getRule(css, '.highlight-layer.is-visible').includes('opacity: 1;'),
+  'HighlightLayer should become visible; shared layer owns active focus visuals'
+);
+const highlightFocusRule = getRule(css, '.highlight-focus');
+assert(
+  highlightFocusRule.includes('background: var(--reader-highlight-surface);'),
+  'HighlightLayer focus rect should own the active focus background'
 );
 assert(
-  getRule(css, '.highlight-focus').includes('box-shadow: none;'),
-  'HighlightLayer should not render a separate focus halo'
+  highlightFocusRule.includes('box-shadow: var(--reader-highlight-shadow);'),
+  'HighlightLayer focus rect should own the active focus halo/shadow'
 );
+assert(
+  highlightFocusRule.includes('transform: translate3d(var(--highlight-x, 0), var(--highlight-y, 0), 0);'),
+  'HighlightLayer focus rect should move the halo and shadow together'
+);
+assert(
+  highlightFocusRule.includes('transform 250ms ease') &&
+    highlightFocusRule.includes('width 250ms ease') &&
+    highlightFocusRule.includes('height 250ms ease'),
+  'HighlightLayer focus rect should own rect transition'
+);
+
+for (const selector of [
+  'p .focus-unit.is-active',
+  '.reader-media.focus-unit.is-active',
+  '.reader-block[data-block-type="quote"].focus-unit.is-active',
+  '.reader-embed.focus-unit.is-active',
+  '.reader-code.focus-unit.is-active',
+  '.reader-table.focus-unit.is-active',
+  '.reader-link.focus-unit.is-active',
+  '.reader-simple-tweet.focus-unit.is-active',
+  '.reader-list-item.focus-unit.is-active',
+  '.reader-block[data-block-type="heading"].focus-unit.is-active'
+]) {
+  const rule = getRule(css, selector);
+  assert(rule, `${selector} rule should exist`);
+  assert(!rule.includes('background: var(--reader-highlight-surface);'), `${selector} should not own duplicate outer focus background`);
+  assert(!rule.includes('box-shadow: var(--reader-card-shadow);'), `${selector} should not own duplicate outer card shadow`);
+  assert(!rule.includes('box-shadow: var(--reader-highlight-shadow);'), `${selector} should not own duplicate focus halo shadow`);
+}
 
 console.log('Reader A5 verification passed.');
 

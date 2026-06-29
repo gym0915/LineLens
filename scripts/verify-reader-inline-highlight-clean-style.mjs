@@ -38,13 +38,14 @@ for (const expected of [
 }
 
 for (const expected of [
-  'box-shadow: var(--reader-card-shadow);',
   'transition: var(--reader-inline-highlight-transition);'
 ]) {
   assert(activeRule.includes(expected), 'paragraph inline highlight should include: ' + expected);
 }
 
 assert(!activeRule.includes('padding:'), 'paragraph active highlight should not introduce a focus-only padding delta');
+assert(!activeRule.includes('box-shadow:'), 'paragraph active highlight should not own the outer focus shadow');
+assert(!activeRule.includes('background:'), 'paragraph active highlight should not own the outer focus background');
 assert(!activeRule.includes('backdrop-filter'), 'paragraph inline highlight should not use backdrop-filter because it changes the rendering mechanism between themes');
 assert(!activeRule.includes('-webkit-backdrop-filter'), 'paragraph inline highlight should not use webkit backdrop-filter because it can create a covering composited layer');
 for (const expected of [
@@ -54,13 +55,9 @@ for (const expected of [
 ]) {
   assert(defaultListItemRule.includes(expected), 'list item focus default state should reserve active layout: ' + expected);
 }
-for (const expected of [
-  'background: var(--reader-highlight-surface);',
-  'box-shadow: var(--reader-card-shadow);'
-]) {
-  assert(activeListItemRule.includes(expected), 'list item active focus should include visual styling: ' + expected);
-}
 assert(!activeListItemRule.includes('padding:'), 'list item active highlight should not introduce a focus-only padding delta');
+assert(!activeListItemRule.includes('background:'), 'list item active highlight should not own the outer focus background');
+assert(!activeListItemRule.includes('box-shadow:'), 'list item active highlight should not own the outer focus shadow');
 for (const expected of [
   'display: block;',
   'padding: 10px 14px 10px 18px;',
@@ -69,13 +66,13 @@ for (const expected of [
   assert(defaultQuoteRule.includes(expected), 'quote focus default state should reserve active layout: ' + expected);
 }
 for (const expected of [
-  'border-left-color: var(--reader-quote-border-active);',
-  'background: var(--reader-highlight-surface);',
-  'box-shadow: var(--reader-card-shadow);'
+  'border-left-color: var(--reader-quote-border-active);'
 ]) {
   assert(activeQuoteRule.includes(expected), 'quote active focus should include visual styling: ' + expected);
 }
 assert(!activeQuoteRule.includes('padding:'), 'quote active highlight should not introduce a focus-only padding delta');
+assert(!activeQuoteRule.includes('background:'), 'quote active highlight should not own the outer focus background');
+assert(!activeQuoteRule.includes('box-shadow:'), 'quote active highlight should not own the outer focus shadow');
 assert(!activeRule.includes('0 0 0 4px var(--reader-highlight-surface)'), 'paragraph inline highlight should not use the old white spread shadow');
 assert(!tokensCss.includes('--reader-inline-highlight-animation'), 'inline highlight animation token should be removed');
 assert(!activeRule.includes('animation:'), 'paragraph inline highlight should not animate on selection');
