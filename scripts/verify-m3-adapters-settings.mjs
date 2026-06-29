@@ -116,8 +116,8 @@ assert.equal(
 );
 assert.equal(
   resolveSemanticSelectors({ headingSelector: '  [data-heading]  ', quoteSelector: '' }).quoteSelector,
-  '[data-testid="tweet"], blockquote',
-  'semanticMap resolver should fall back when selector values are empty'
+  '[data-linelens-block-role="quote"], [data-kind="quote"], blockquote',
+  'semanticMap resolver should fall back to a platform-neutral selector when selector values are empty'
 );
 
 assert.equal(
@@ -126,9 +126,9 @@ assert.equal(
   'X adapter should declare the simpleTweet special component'
 );
 assert.equal(
-  xArticleAdapter.specialComponents?.some((component) => component.id === 'x.video-or-gif' && component.handlerId === 'x.video-or-gif' && component.type === 'video'),
-  true,
-  'X adapter should declare the video/GIF special component'
+  xArticleAdapter.specialComponents?.some((component) => component.id === 'x.video-or-gif' || component.handlerId === 'x.video-or-gif'),
+  false,
+  'X adapter should not declare video/GIF as a special component until a registered handler exists'
 );
 
 assert.equal(substackArticleAdapter.articleSource, 'substack-article', 'Substack adapter should expose article source metadata');

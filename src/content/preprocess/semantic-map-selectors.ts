@@ -16,15 +16,15 @@ export type ResolvedSemanticSelectors = {
 };
 
 const DEFAULT_SEMANTIC_SELECTORS: ResolvedSemanticSelectors = {
-  blockSelector: '[data-block="true"]',
-  paragraphSelector: '[data-block="true"]',
-  headingSelector: '[data-linelens-block-role="heading"], h1, h2, h3, h4, h5, h6',
-  quoteSelector: '[data-testid="tweet"], blockquote',
-  orderedListSelector: '[data-linelens-list-kind="ordered"]',
-  unorderedListSelector: 'li, [data-linelens-list-kind="unordered"]',
-  imageSelector: '[data-testid="tweetPhoto"], img',
-  imageGallerySelector: '[data-testid="tweetPhoto"]',
-  codeSelector: '[data-testid="markdown-code-block"], pre, code',
+  blockSelector: '[data-block], p, h1, h2, h3, h4, h5, h6, blockquote, li, figure, img, pre, code, table',
+  paragraphSelector: '[data-linelens-block-role="paragraph"], [data-kind="paragraph"], p',
+  headingSelector: '[data-linelens-block-role="heading"], [data-kind="heading"], h1, h2, h3, h4, h5, h6',
+  quoteSelector: '[data-linelens-block-role="quote"], [data-kind="quote"], blockquote',
+  orderedListSelector: '[data-linelens-list-kind="ordered"], [data-kind="ordered-list"], ol > li',
+  unorderedListSelector: '[data-linelens-list-kind="unordered"], [data-kind="unordered-list"], ul > li',
+  imageSelector: '[data-linelens-block-role="image"] img, [data-kind="image"] img, figure img, picture img, img',
+  imageGallerySelector: '[data-linelens-block-role="image-gallery"], [data-kind="image-gallery"], figure',
+  codeSelector: '[data-linelens-block-role="code"], [data-kind="code"], pre, code',
   tableSelector: 'table, [role="table"], [role="grid"]',
   linkSelector: 'a[href], [role="link"]',
   textSelector: '[data-text="true"]'

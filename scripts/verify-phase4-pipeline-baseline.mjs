@@ -101,9 +101,9 @@ assert.equal(
   'P4.5 should expose X simpleTweet as a declared special component'
 );
 assert.equal(
-  xArticleAdapter.specialComponents?.some((component) => component.id === 'x.video-or-gif' && component.handlerId === 'x.video-or-gif'),
-  true,
-  'P4.5 should expose X video/GIF as a declared special component'
+  xArticleAdapter.specialComponents?.some((component) => component.id === 'x.video-or-gif' || component.handlerId === 'x.video-or-gif'),
+  false,
+  'X video/GIF should stay on the explicit high-risk dual-track path until a registered handler exists'
 );
 
 const regressionInventory = {

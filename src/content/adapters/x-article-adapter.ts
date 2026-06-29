@@ -129,12 +129,6 @@ export const xArticleAdapter: PlatformAdapter = {
       handlerId: 'x.simple-tweet',
       preserveSelectors: ['[data-testid="tweetText"]', 'img', '[data-testid="videoPlayer"]'],
       removeSelectors: ['[data-testid="reply"]', '[data-testid="retweet"]', '[data-testid="like"]']
-    },
-    {
-      id: 'x.video-or-gif',
-      type: 'video',
-      rootSelector: '[data-testid="videoPlayer"]',
-      handlerId: 'x.video-or-gif'
     }
   ]
 };

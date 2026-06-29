@@ -21,7 +21,20 @@ assert.match(xAdapter, /id:\s*'x\.simple-tweet'[\s\S]*handlerId:\s*'x\.simple-tw
 assert.match(substackAdapter, /id:\s*'substack\.twitter-embed'[\s\S]*handlerId:\s*'substack\.twitter-embed'/, 'substack.article.specialComponents must declare substack.twitter-embed');
 assert.match(handlersSource, /registeredHandlers\.get\(handlerId\)/, 'special component handlers must resolve only registered code-owned handlers');
 
+await import('../dist/content/extractors/configurable/register-built-in-special-handlers.js');
+const { BUILT_IN_PLATFORM_ADAPTERS } = await import('../dist/content/adapters/index.js');
 const { getSpecialComponentHandler } = await import('../dist/content/extractors/configurable/special-component-handlers.js');
 assert.equal(getSpecialComponentHandler('unknown.platform-handler'), null, 'unknown special component handlerId should resolve to null');
+
+const unresolvedComponents = BUILT_IN_PLATFORM_ADAPTERS.flatMap((adapter) =>
+  (adapter.specialComponents ?? [])
+    .filter((component) => getSpecialComponentHandler(component.handlerId) === null)
+    .map((component) => `${adapter.id}:${component.id}->${component.handlerId}`)
+);
+assert.deepEqual(
+  unresolvedComponents,
+  [],
+  'built-in adapter specialComponents must declare only registered handlerId values'
+);
 
 console.log('verify:special-components-platform-boundary passed');

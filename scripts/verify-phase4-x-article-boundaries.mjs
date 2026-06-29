@@ -68,6 +68,11 @@ assert.deepEqual(
 );
 assert.ok(getSpecialComponentHandler('x.simple-tweet'), 'x.simple-tweet should be registered as a code-owned special component handler');
 assert.equal(
+  xArticleAdapter.specialComponents?.some((component) => component.id === 'x.video-or-gif' || component.handlerId === 'x.video-or-gif'),
+  false,
+  'x.video-or-gif should not be declared as a special component until a dedicated handler is registered'
+);
+assert.equal(
   getSpecialComponentHandler('x.video-or-gif'),
   null,
   'x.video-or-gif should remain an explicit high-risk dual-track boundary until a dedicated handler is implemented'
