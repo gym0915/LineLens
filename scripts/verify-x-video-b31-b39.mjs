@@ -5,6 +5,7 @@ import { resolve } from 'node:path';
 const rootDir = resolve(import.meta.dirname, '..');
 const backgroundSource = readFileSync(resolve(rootDir, 'src/background/index.ts'), 'utf8');
 const extractorSource = readFileSync(resolve(rootDir, 'src/content/extractors/x/article-extractor.ts'), 'utf8');
+const legacyBlocksSource = readFileSync(resolve(rootDir, 'src/content/extractors/x/article-legacy-blocks.ts'), 'utf8');
 const articleModelSource = readFileSync(resolve(rootDir, 'src/shared/article.ts'), 'utf8');
 const messageModelSource = readFileSync(resolve(rootDir, 'src/shared/messages.ts'), 'utf8');
 const readerRendererSource = [
@@ -201,19 +202,20 @@ assert.match(articleModelSource, /videoPlaylists\?: Array<\{/, 'video block HLS 
 assert.match(backgroundSource, /url\.includes\('\/pl\/mp4a\/'\)/, 'background capture should classify audio playlists separately');
 assert.match(backgroundSource, /url\.includes\('\/pl\/avc1\/'\)/, 'background capture should classify video playlists separately');
 assert.match(backgroundSource, /masterPlaylistUrl/, 'background capture should store real master playlists');
-assert.match(extractorSource, /function buildVideoHlsPayload/, 'extractor should build HLS payloads instead of only choosing one url');
-assert.match(extractorSource, /function pickAudioPlaylist/, 'extractor should select a grouped audio playlist when master is absent');
-assert.match(extractorSource, /videoPlaylists: /, 'extractor should pass grouped video renditions to reader');
-assert.match(extractorSource, /audioPlaylistUrl: /, 'extractor should pass grouped audio playlist to reader');
+assert.match(extractorSource, /capturedVideos[\s\S]*extractXArticleLegacyBlocks/, 'extractor should pass captured video groups into the legacy block boundary');
+assert.match(legacyBlocksSource, /function buildVideoHlsPayload/, 'legacy block extractor should build HLS payloads instead of only choosing one url');
+assert.match(legacyBlocksSource, /function pickAudioPlaylist/, 'legacy block extractor should select a grouped audio playlist when master is absent');
+assert.match(legacyBlocksSource, /videoPlaylists: /, 'legacy block extractor should pass grouped video renditions to reader');
+assert.match(legacyBlocksSource, /audioPlaylistUrl: /, 'legacy block extractor should pass grouped audio playlist to reader');
 assert.match(
-  extractorSource,
+  legacyBlocksSource,
   /const preferredVideo = hls\?\.videoPlaylists\?\.\[0\]\?\.url/,
-  'extractor should choose the first normalized HLS video rendition as the preferred fallback source'
+  'legacy block extractor should choose the first normalized HLS video rendition as the preferred fallback source'
 );
 assert.match(
-  extractorSource,
+  legacyBlocksSource,
   /\.sort\(\(\[left\], \[right\]\) => compareResolutionLabel\(right\) - compareResolutionLabel\(left\)\)/,
-  'extractor should sort video renditions by descending resolution so the preferred source is high resolution'
+  'legacy block extractor should sort video renditions by descending resolution so the preferred source is high resolution'
 );
 assert.match(readerHtml, /vendor\/hls\.min\.js/, 'reader should load local hls.min.js');
 assert.match(readerRendererSource, /window\.Hls/, 'reader should use the global hls.js runtime');

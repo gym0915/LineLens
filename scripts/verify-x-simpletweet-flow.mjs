@@ -7,6 +7,7 @@ const assetRoot = findAssetRoot(projectRoot);
 
 const sourceFiles = {
   article: readFileSync(resolve(projectRoot, 'src/content/extractors/x/article-extractor.ts'), 'utf8'),
+  articleLegacyBlocks: readFileSync(resolve(projectRoot, 'src/content/extractors/x/article-legacy-blocks.ts'), 'utf8'),
   articleMetadata: readFileSync(resolve(projectRoot, 'src/content/extractors/x/article-metadata.ts'), 'utf8'),
   simpleTweet: readFileSync(resolve(projectRoot, 'src/content/extractors/x/simple-tweet.ts'), 'utf8'),
   simpleTweetCleanTree: readFileSync(resolve(projectRoot, 'src/content/extractors/x/simple-tweet-clean-tree-converter.ts'), 'utf8'),
@@ -49,7 +50,8 @@ assert.match(sourceFiles.types, /export type SimpleTweetPhotoLayout =[\s\S]*kind
 assert.match(sourceFiles.types, /widthRatio\?:\s*number/, 'photo layout nodes should preserve DOM-derived width ratios');
 assert.match(sourceFiles.types, /heightRatio\?:\s*number/, 'photo layout nodes should preserve DOM-derived height ratios');
 assert.match(sourceFiles.types, /aspectRatio\?:\s*number/, 'photo-group should preserve the source media container aspect ratio');
-assert.match(sourceFiles.article, /extractSimpleTweetBlockFromRoot/, 'article extractor should route simpleTweet parsing through the content-flow helper');
+assert.match(sourceFiles.article, /extractXArticleLegacyBlocks/, 'article extractor should delegate simpleTweet-sensitive legacy block extraction');
+assert.match(sourceFiles.articleLegacyBlocks, /extractSimpleTweetBlockFromRoot/, 'legacy block extractor should route simpleTweet parsing through the content-flow helper');
 assert.match(sourceFiles.simpleTweet, /getSimpleTweetPhotoLayoutRoot/, 'simpleTweet extractor should derive photo grouping from shared wrapper containers');
 assert.match(sourceFiles.simpleTweet, /extractArticleCoverSourceBadge/, 'simpleTweet extractor should detect the X Article badge from the source cover DOM');
 assert.match(sourceFiles.simpleTweet, /\[role="img"\]\[aria-label\]/, 'simpleTweet extractor should use the source badge role and aria-label as the Article signal');

@@ -8,6 +8,7 @@ const projectRoot = resolve(import.meta.dirname, '..');
 const sourceFiles = {
   types: readFileSync(resolve(projectRoot, 'src/shared/article.ts'), 'utf8'),
   extractor: readFileSync(resolve(projectRoot, 'src/content/extractors/x/article-extractor.ts'), 'utf8'),
+  legacyBlocks: readFileSync(resolve(projectRoot, 'src/content/extractors/x/article-legacy-blocks.ts'), 'utf8'),
   cleanTree: readFileSync(resolve(projectRoot, 'src/content/preprocess/clean-tree-block-converter.ts'), 'utf8'),
   platformFixes: readFileSync(resolve(projectRoot, 'src/content/preprocess/apply-platform-fixes.ts'), 'utf8'),
   renderer: [
@@ -21,12 +22,13 @@ const sourceFiles = {
 assert.match(sourceFiles.types, /export type ParagraphBlock = \{[\s\S]*?role\?: 'caption'/, 'ParagraphBlock should carry a caption role');
 
 for (const [name, source] of [
-  ['modular extractor', sourceFiles.extractor],
+  ['legacy blocks', sourceFiles.legacyBlocks],
   ['platform fixes', sourceFiles.platformFixes]
 ]) {
   assert.match(source, /twitter-article-media-caption-id/, `${name} should recognize X article media caption DOM`);
   assert.match(source, /caption-/, `${name} should recognize X article media caption id prefixes`);
 }
+assert.match(sourceFiles.extractor, /extractXArticleLegacyBlocks/, 'modular extractor should delegate caption-sensitive legacy block extraction');
 assert.match(sourceFiles.cleanTree, /data-linelens-block-role/, 'clean-tree converter should consume platform-neutral caption metadata');
 assert.doesNotMatch(sourceFiles.cleanTree, /twitter-article-media-caption-id/, 'clean-tree converter should not directly recognize X article media caption DOM');
 
@@ -67,7 +69,7 @@ globalThis.HTMLVideoElement = dom.window.HTMLVideoElement;
 globalThis.HTMLImageElement = dom.window.HTMLImageElement;
 globalThis.Node = dom.window.Node;
 
-const { extractXArticleLegacyBlocksForDebug } = await import('../dist/content/extractors/x/article-extractor.js');
+const { extractXArticleLegacyBlocksForDebug } = await import('../dist/content/extractors/x/article-legacy-blocks.js');
 const { cloneContentTree, createCleanTreeContext } = await import('../dist/content/preprocess/clone-content-tree.js');
 const { convertCleanTreeToBlocks } = await import('../dist/content/preprocess/clean-tree-block-converter.js');
 const { buildCleanTreePrimaryBlocks } = await import('../dist/content/preprocess/clean-tree-main-path.js');

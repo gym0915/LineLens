@@ -57,6 +57,7 @@ assert.deepEqual(
     platform: 'substack',
     fallbackBlockCount: 0,
     highRiskBlockCount: 0,
+    legacyOnlyBlockCount: 0,
     replacedBlockCount: 0
   },
   'Substack configurable extraction should expose zero-fallback adapter diagnostics'

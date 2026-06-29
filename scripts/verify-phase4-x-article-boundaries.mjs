@@ -6,13 +6,14 @@ import { fileURLToPath } from 'node:url';
 import { JSDOM } from 'jsdom';
 
 import { xArticleAdapter } from '../dist/content/adapters/index.js';
-import { extractXArticleLegacyBlocksForDebug } from '../dist/content/extractors/x/article-extractor.js';
+import { extractXArticleLegacyBlocksForDebug } from '../dist/content/extractors/x/article-legacy-blocks.js';
 import { getSpecialComponentHandler } from '../dist/content/extractors/configurable/special-component-handlers.js';
 import { X_ARTICLE_SELECTORS } from '../dist/content/extractors/x/article-selectors.js';
 import {
   buildCleanTreePrimaryBlocks,
   CLEAN_TREE_PRIMARY_BLOCK_TYPES,
-  HIGH_RISK_DUAL_TRACK_BLOCK_TYPES
+  HIGH_RISK_DUAL_TRACK_BLOCK_TYPES,
+  LEGACY_ONLY_BLOCK_TYPES
 } from '../dist/content/preprocess/clean-tree-main-path.js';
 
 const projectRoot = resolve(fileURLToPath(new URL('..', import.meta.url)));
@@ -57,8 +58,13 @@ assert.deepEqual(
 );
 assert.deepEqual(
   HIGH_RISK_DUAL_TRACK_BLOCK_TYPES,
-  ['video'],
-  'video should stay on the high-risk dual-track path in this refactor'
+  ['video', 'gif'],
+  'video and gif should stay on the high-risk dual-track path in this refactor'
+);
+assert.deepEqual(
+  LEGACY_ONLY_BLOCK_TYPES,
+  ['link'],
+  'standalone link blocks should stay on the legacy-only path until clean tree has a LinkBlock converter'
 );
 assert.ok(getSpecialComponentHandler('x.simple-tweet'), 'x.simple-tweet should be registered as a code-owned special component handler');
 assert.equal(
@@ -70,6 +76,17 @@ assert.equal(
 const cleanParagraphs = result.cleanTreeBlocks.filter((block) => block.type === 'paragraph');
 const cleanLists = result.cleanTreeBlocks.filter((block) => block.type === 'list');
 const cleanCodes = result.cleanTreeBlocks.filter((block) => block.type === 'code');
+
+assert.deepEqual(
+  result.blocks.map((block) => block.id),
+  legacyBlocks.map((block) => block.id),
+  'clean-tree merge should preserve legacy block id and order for FocusUnit restore stability'
+);
+assert.equal(
+  result.replacedBlockCount > 0,
+  true,
+  'fixture should exercise low-risk clean-tree replacement rather than legacy-only output'
+);
 
 const paragraphText = cleanParagraphs.map((block) => block.text).join('\n');
 const listText = cleanLists.flatMap((block) => block.items).join('\n');
@@ -116,6 +133,7 @@ assert.match(
   'markdown decision-tree code block should preserve tree line breaks'
 );
 assert.equal(result.highRiskBlockCount, 0, 'code should no longer count as high risk after clean tree migration');
+assert.equal(Number.isInteger(result.legacyOnlyBlockCount), true, 'merge diagnostics should expose legacy-only block count');
 
 console.log(
   JSON.stringify(
@@ -127,7 +145,8 @@ console.log(
       cleanCodes: cleanCodes.length,
       replaced: result.replacedBlockCount,
       fallback: result.fallbackBlockCount,
-      highRisk: result.highRiskBlockCount
+      highRisk: result.highRiskBlockCount,
+      legacyOnly: result.legacyOnlyBlockCount
     },
     null,
     2

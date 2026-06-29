@@ -11,6 +11,7 @@ function read(path) {
 }
 
 const extractor = read('src/content/extractors/x/article-extractor.ts');
+const legacyBlocks = read('src/content/extractors/x/article-legacy-blocks.ts');
 const articleTypes = read('src/shared/article.ts');
 const simpleTweetExtractor = read('src/content/extractors/x/simple-tweet.ts');
 const xMediaLayout = read('src/content/extractors/x/media-layout.ts');
@@ -41,12 +42,13 @@ assert.equal(userGalleryFixture.includes('r-18u37iz'), true, 'fixture should con
 assert.equal(userGalleryFixture.includes('r-eqz5dr'), true, 'fixture should contain the X column flex marker');
 assert.equal((userGalleryFixture.match(/background-image: url/g) ?? []).length, 3, 'fixture should model tweetPhoto background layers');
 
-for (const source of [extractor, xMediaLayout]) {
+assert.match(extractor, /extractXArticleLegacyBlocks/, 'X article extractor should delegate gallery-sensitive legacy block extraction');
+for (const source of [legacyBlocks, xMediaLayout]) {
   assert.match(source, /function getDescendantPaddingBottomAspectRatio/, 'gallery aspect ratio should inspect descendant padding-bottom nodes');
   assert.match(source, /querySelectorAll<HTMLElement>\('\[style\*="padding-bottom"\]'\)/, 'gallery aspect ratio should search nested ratio placeholders');
   assert.match(source, /return roundAspectRatio\(100 \/ paddingBottom\)/, 'gallery aspect ratio should convert padding-bottom percent to width divided by height');
 }
-assert.match(extractor, /function getImageGalleryAspectRatio\(element: Element\): number \| undefined \{\s*const descendantRatio = getDescendantPaddingBottomAspectRatio\(element\)/, 'legacy gallery aspect ratio should prefer the component-local ratio placeholder before walking ancestors');
+assert.match(legacyBlocks, /function getImageGalleryAspectRatio\(element: Element\): number \| undefined \{\s*const descendantRatio = getDescendantPaddingBottomAspectRatio\(element\)/, 'legacy gallery aspect ratio should prefer the component-local ratio placeholder before walking ancestors');
 assert.match(xMediaLayout, /function getDescendantPreservedMediaAspectRatio/, 'X-owned clean-tree gallery helper should inspect preserved platform media ratios');
 assert.match(xMediaLayout, /querySelectorAll<HTMLElement>\('\[data-linelens-media-aspect-ratio\]'\)/, 'X-owned clean-tree gallery helper should search nested preserved media ratio metadata');
 assert.match(xMediaLayout, /const descendantPreservedRatio = getDescendantPreservedMediaAspectRatio\(element\)/, 'X-owned clean-tree gallery helper should prefer preserved media ratio metadata before padding fallback');

@@ -17,8 +17,21 @@ export const CLEAN_TREE_PRIMARY_BLOCK_TYPES: Array<ArticleBlock['type']> = [
   'embed'
 ];
 
+// X video and GIF blocks still depend on tab-scoped HLS capture, poster/media
+// matching, and playback metadata from the legacy path. Remove them from this
+// list only after a dedicated clean-tree handler emits equivalent blocks and
+// the X media + Reader restore verifiers cover the replacement path.
 export const HIGH_RISK_DUAL_TRACK_BLOCK_TYPES: Array<ArticleBlock['type']> = [
-  'video'
+  'video',
+  'gif'
+];
+
+// Standalone LinkBlock is an X legacy compatibility shape. The clean-tree path
+// already preserves inline links as text annotations, but it does not emit a
+// separate LinkBlock. Remove this legacy-only exception only after clean-tree
+// has a dedicated standalone link converter and Reader restore coverage.
+export const LEGACY_ONLY_BLOCK_TYPES: Array<ArticleBlock['type']> = [
+  'link'
 ];
 
 export type CleanTreePrimaryBlocksResult = {
@@ -27,6 +40,7 @@ export type CleanTreePrimaryBlocksResult = {
   replacedBlockCount: number;
   fallbackBlockCount: number;
   highRiskBlockCount: number;
+  legacyOnlyBlockCount: number;
 };
 
 export function buildCleanTreePrimaryBlocks(params: {
@@ -62,11 +76,14 @@ export function mergeCleanTreePrimaryBlocks(
   let replacedBlockCount = 0;
   let fallbackBlockCount = 0;
   let highRiskBlockCount = 0;
+  let legacyOnlyBlockCount = 0;
 
   const blocks = legacyBlocks.map((legacyBlock) => {
     if (!CLEAN_TREE_PRIMARY_BLOCK_TYPES.includes(legacyBlock.type)) {
       if (HIGH_RISK_DUAL_TRACK_BLOCK_TYPES.includes(legacyBlock.type)) {
         highRiskBlockCount += 1;
+      } else if (LEGACY_ONLY_BLOCK_TYPES.includes(legacyBlock.type)) {
+        legacyOnlyBlockCount += 1;
       }
       return legacyBlock;
     }
@@ -91,6 +108,7 @@ export function mergeCleanTreePrimaryBlocks(
     cleanTreeBlocks,
     fallbackBlockCount,
     highRiskBlockCount,
+    legacyOnlyBlockCount,
     replacedBlockCount
   };
 }

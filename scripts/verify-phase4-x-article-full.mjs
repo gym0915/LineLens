@@ -9,7 +9,8 @@ import { getPlatformFixOrder } from '../dist/content/preprocess/apply-platform-f
 import {
   buildCleanTreePrimaryBlocks,
   CLEAN_TREE_PRIMARY_BLOCK_TYPES,
-  HIGH_RISK_DUAL_TRACK_BLOCK_TYPES
+  HIGH_RISK_DUAL_TRACK_BLOCK_TYPES,
+  LEGACY_ONLY_BLOCK_TYPES
 } from '../dist/content/preprocess/clean-tree-main-path.js';
 import { filterInlineStyle } from '../dist/content/preprocess/style-whitelist.js';
 
@@ -80,7 +81,8 @@ assert.deepEqual(getPlatformFixOrder(xArticleAdapter), [
   'preserve-x-media-layout'
 ]);
 assert.deepEqual(CLEAN_TREE_PRIMARY_BLOCK_TYPES, ['paragraph', 'heading', 'quote', 'list', 'image', 'code', 'table', 'simple-tweet', 'image-gallery', 'embed']);
-assert.deepEqual(HIGH_RISK_DUAL_TRACK_BLOCK_TYPES, ['video']);
+assert.deepEqual(HIGH_RISK_DUAL_TRACK_BLOCK_TYPES, ['video', 'gif']);
+assert.deepEqual(LEGACY_ONLY_BLOCK_TYPES, ['link']);
 
 const xDefaultCleanTreeBlockCounts = {
   full: summarizeXCleanTreeBlocks(fullHtml, 'x-full-default-semantic-map'),
@@ -197,6 +199,7 @@ const configurableExtractorSource = readFileSync(
 const modularExtractorSource = readFileSync(resolve(projectRoot, 'src/content/extractors/x/article-extractor.ts'), 'utf8');
 const metadataModulePath = resolve(projectRoot, 'src/content/extractors/x/article-metadata.ts');
 const legacyBlocksModulePath = resolve(projectRoot, 'src/content/extractors/x/article-legacy-blocks.ts');
+const legacyBlocksSource = readFileSync(legacyBlocksModulePath, 'utf8');
 
 assert.match(cleanTreeSource, /root\.cloneNode\(true\)/, 'clean tree gate should clone before sanitizing');
 assert.match(cleanTreeSource, /applyPlatformFixes\(clonedRoot, context\.adapter, context\)/, 'clean tree gate should run platform fixes before sanitizing');
@@ -232,6 +235,7 @@ assert.match(
 assert.match(mainPathSource, /id: legacyBlock\.id/, 'legacy merge helper should preserve legacy ids when its statistics path is exercised');
 assert.match(mainPathSource, /fallbackBlockCount/, 'main path gate should report fallback count');
 assert.match(mainPathSource, /highRiskBlockCount/, 'main path gate should report high-risk dual-track count');
+assert.match(mainPathSource, /legacyOnlyBlockCount/, 'main path gate should report legacy-only count');
 assert.match(
   configurableExtractorSource,
   /export async function extractConfigurableArticleWithDiagnostics/,
@@ -253,6 +257,21 @@ assert.equal(existsSync(metadataModulePath), true, 'Step 4.1 should isolate X ar
 assert.equal(existsSync(legacyBlocksModulePath), true, 'Step 4.1 should isolate X legacy block extraction in article-legacy-blocks.ts');
 assert.match(modularExtractorSource, /extractXArticleMetadata/, 'X article extract() should delegate metadata extraction');
 assert.match(modularExtractorSource, /extractXArticleLegacyBlocks/, 'X article extract() should delegate legacy block extraction');
+assert.doesNotMatch(
+  modularExtractorSource,
+  /async function extractBlocks/,
+  'P0 should keep legacy block helper implementation out of the X article orchestration module'
+);
+assert.match(
+  legacyBlocksSource,
+  /async function extractBlocks/,
+  'P0 should keep reusable legacy block helper implementation in article-legacy-blocks.ts'
+);
+assert.match(
+  legacyBlocksSource,
+  /export async function extractXArticleLegacyBlocksForDebug/,
+  'P0 should expose the debug legacy-vs-clean-tree comparison helper from the legacy block module'
+);
 assert.match(
   configurableExtractorSource,
   /export function locateConfigurableArticleRoots/,
@@ -277,7 +296,8 @@ const report = {
     whitelist: 'emphasis/link/pre-wrap preserved; layout/theme pollution rejected',
     platformFixes: getPlatformFixOrder(xArticleAdapter),
     blockConversion: CLEAN_TREE_PRIMARY_BLOCK_TYPES,
-    highRiskDualTrack: HIGH_RISK_DUAL_TRACK_BLOCK_TYPES
+    highRiskDualTrack: HIGH_RISK_DUAL_TRACK_BLOCK_TYPES,
+    legacyOnly: LEGACY_ONLY_BLOCK_TYPES
   }
 };
 
@@ -304,7 +324,8 @@ function summarizeXCleanTreeBlocks(html, debugId) {
   return {
     total: result.cleanTreeBlocks.length,
     counts,
-    highRiskBlockCount: result.highRiskBlockCount
+    highRiskBlockCount: result.highRiskBlockCount,
+    legacyOnlyBlockCount: result.legacyOnlyBlockCount
   };
 }
 

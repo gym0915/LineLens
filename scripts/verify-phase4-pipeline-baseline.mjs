@@ -12,10 +12,13 @@ import {
 import { applyPlatformFixes, getPlatformFixOrder } from '../dist/content/preprocess/apply-platform-fixes.js';
 import { convertCleanTreeToBlocks } from '../dist/content/preprocess/clean-tree-block-converter.js';
 import {
+  buildCleanTreePrimaryBlocks,
   CLEAN_TREE_PRIMARY_BLOCK_TYPES,
   HIGH_RISK_DUAL_TRACK_BLOCK_TYPES,
+  LEGACY_ONLY_BLOCK_TYPES,
   mergeCleanTreePrimaryBlocks
 } from '../dist/content/preprocess/clean-tree-main-path.js';
+import { extractXArticleLegacyBlocksForDebug } from '../dist/content/extractors/x/article-legacy-blocks.js';
 import {
   filterInlineStyle,
   shouldPreserveStyleProperty
@@ -56,7 +59,8 @@ assert.deepEqual(getPlatformFixOrder(xArticleAdapter), [
   'preserve-x-media-layout'
 ]);
 assert.deepEqual(CLEAN_TREE_PRIMARY_BLOCK_TYPES, ['paragraph', 'heading', 'quote', 'list', 'image', 'code', 'table', 'simple-tweet', 'image-gallery', 'embed']);
-assert.deepEqual(HIGH_RISK_DUAL_TRACK_BLOCK_TYPES, ['video']);
+assert.deepEqual(HIGH_RISK_DUAL_TRACK_BLOCK_TYPES, ['video', 'gif']);
+assert.deepEqual(LEGACY_ONLY_BLOCK_TYPES, ['link']);
 assert.equal(xArticleAdapter.semanticMap?.blockSelector, '[data-block="true"]', 'P4.5 should expose X block semantics through adapter config');
 assert.match(xArticleAdapter.semanticMap?.headingSelector ?? '', /longform-header-one/, 'P4.5 should expose X heading semantics through adapter config');
 assert.match(xArticleAdapter.semanticMap?.quoteSelector ?? '', /blockquote/, 'P4.5 should expose X quote semantics through adapter config');
@@ -213,14 +217,17 @@ assert.doesNotMatch(builtContentSource, /^import /m, 'built content.js should re
 const mergeProbe = mergeCleanTreePrimaryBlocks(
   [
     { id: 'legacy-1', type: 'paragraph', text: 'same text' },
-    { id: 'legacy-2', type: 'video', src: 'video.mp4' }
+    { id: 'legacy-2', type: 'video', src: 'video.mp4' },
+    { id: 'legacy-3', type: 'gif', src: 'gif.mp4' },
+    { id: 'legacy-4', type: 'link', text: 'standalone link', href: 'https://example.com' }
   ],
   [
     { id: 'clean-1', type: 'paragraph', text: 'same text', annotations: [{ startOffset: 0, endOffset: 4, bold: true }] }
   ]
 );
 assert.equal(mergeProbe.replacedBlockCount, 1, 'P4.5 should replace equivalent low-risk blocks from clean tree');
-assert.equal(mergeProbe.highRiskBlockCount, 1, 'P4.5 should keep high-risk blocks dual-track');
+assert.equal(mergeProbe.highRiskBlockCount, 2, 'P0 should keep video and gif high-risk blocks dual-track');
+assert.equal(mergeProbe.legacyOnlyBlockCount, 1, 'P0 should report standalone legacy-only blocks separately from fallback misses');
 assert.equal(mergeProbe.blocks[0]?.id, 'legacy-1', 'P4.5 should preserve legacy ids for replaced blocks');
 assert.deepEqual(mergeProbe.blocks[0], {
   id: 'legacy-1',
@@ -229,6 +236,8 @@ assert.deepEqual(mergeProbe.blocks[0], {
   annotations: [{ startOffset: 0, endOffset: 4, bold: true }]
 });
 assert.deepEqual(mergeProbe.blocks[1], { id: 'legacy-2', type: 'video', src: 'video.mp4' });
+assert.deepEqual(mergeProbe.blocks[2], { id: 'legacy-3', type: 'gif', src: 'gif.mp4' });
+assert.deepEqual(mergeProbe.blocks[3], { id: 'legacy-4', type: 'link', text: 'standalone link', href: 'https://example.com' });
 
 const legacyBlocks = summarizeLegacyExtractorBaseline({
   detailSnapshot,
@@ -249,6 +258,22 @@ assert.deepEqual(
   blockDiff,
   {},
   'P4 baseline block comparison should start with no diff while clean tree block conversion is not implemented'
+);
+assert.equal(
+  'legacyOnlyBlockCount' in mergeProbe,
+  true,
+  'P0 legacy/clean-tree difference list should expose legacy-only block accounting'
+);
+const currentLegacyCleanTreeDiff = await summarizeCurrentLegacyCleanTreeDiff(detailSnapshot);
+assert.equal(
+  currentLegacyCleanTreeDiff.replaced > 0,
+  true,
+  'P0 current diff list should prove low-risk blocks are replaced from real clean-tree output'
+);
+assert.deepEqual(
+  Object.keys(currentLegacyCleanTreeDiff.legacyVsCleanTreeTypeDiff).sort(),
+  ['image', 'link', 'paragraph'].sort(),
+  'P0 current diff list should expose real legacy-vs-clean-tree type gaps instead of reusing legacy counts'
 );
 
 assert.equal(xArticleAdapter.styleWhitelist.preserveProps.includes('font-weight'), true);
@@ -347,7 +372,8 @@ const baselineReport = {
   blockConversion: {
     lowRiskBlockTypes: ['paragraph', 'heading', 'quote', 'list', 'image', 'code', 'table', 'simple-tweet', 'image-gallery', 'embed'],
     preservesInlineSemantics: ['bold', 'link', 'emoji'],
-    highRiskBlocksRemainDualTrack: ['video'],
+    highRiskBlocksRemainDualTrack: ['video', 'gif'],
+    legacyOnlyBlocksRemainLegacy: ['link'],
     legacyIdsPreserved: true,
     legacyFallbackAvailable: true,
     xAdapterSchemaDeclared: true,
@@ -362,7 +388,8 @@ const baselineReport = {
     preservesPreWrap: true,
     removesDisallowedStyle: true,
     removesPlatformClass: true
-  }
+  },
+  currentLegacyCleanTreeDiff
 };
 
 console.log(JSON.stringify(baselineReport, null, 2));
@@ -658,6 +685,73 @@ function summarizeLegacyExtractorBaseline(snapshots) {
 
 function summarizeCleanTreeBlockCandidate(snapshots) {
   return summarizeLegacyExtractorBaseline(snapshots);
+}
+
+async function summarizeCurrentLegacyCleanTreeDiff(html) {
+  const sourceUrl = 'https://x.com/dotey/article/2058421725256171718';
+  const dom = new JSDOM(html, { url: sourceUrl });
+  const previousGlobals = {
+    document: globalThis.document,
+    window: globalThis.window,
+    Element: globalThis.Element,
+    HTMLElement: globalThis.HTMLElement,
+    HTMLVideoElement: globalThis.HTMLVideoElement,
+    HTMLImageElement: globalThis.HTMLImageElement,
+    Node: globalThis.Node
+  };
+
+  globalThis.document = dom.window.document;
+  globalThis.window = dom.window;
+  globalThis.Element = dom.window.Element;
+  globalThis.HTMLElement = dom.window.HTMLElement;
+  globalThis.HTMLVideoElement = dom.window.HTMLVideoElement;
+  globalThis.HTMLImageElement = dom.window.HTMLImageElement;
+  globalThis.Node = dom.window.Node;
+
+  try {
+    const readView = dom.window.document.querySelector('[data-testid="twitterArticleReadView"]');
+    const longform = readView?.querySelector('[data-testid="longformRichTextComponent"]');
+    assert.ok(readView, 'P0 diff fixture should include the X article read view');
+    assert.ok(longform, 'P0 diff fixture should include the X article longform root');
+    const legacyBlocks = await extractXArticleLegacyBlocksForDebug({
+      longform,
+      articleId: 'p0-diff',
+      capturedVideos: []
+    });
+    const result = buildCleanTreePrimaryBlocks({
+      sourceRoot: longform,
+      adapter: xArticleAdapter,
+      sourceUrl,
+      debugId: 'p0-current-diff',
+      legacyBlocks
+    });
+
+    return {
+      legacy: countBlockTypes(legacyBlocks),
+      cleanTree: countBlockTypes(result.cleanTreeBlocks),
+      merged: countBlockTypes(result.blocks),
+      legacyVsCleanTreeTypeDiff: diffBlockCounts(countBlockTypes(legacyBlocks), countBlockTypes(result.cleanTreeBlocks)),
+      replaced: result.replacedBlockCount,
+      fallback: result.fallbackBlockCount,
+      highRisk: result.highRiskBlockCount,
+      legacyOnly: result.legacyOnlyBlockCount
+    };
+  } finally {
+    globalThis.document = previousGlobals.document;
+    globalThis.window = previousGlobals.window;
+    globalThis.Element = previousGlobals.Element;
+    globalThis.HTMLElement = previousGlobals.HTMLElement;
+    globalThis.HTMLVideoElement = previousGlobals.HTMLVideoElement;
+    globalThis.HTMLImageElement = previousGlobals.HTMLImageElement;
+    globalThis.Node = previousGlobals.Node;
+  }
+}
+
+function countBlockTypes(blocks) {
+  return blocks.reduce((counts, block) => {
+    counts[block.type] = (counts[block.type] ?? 0) + 1;
+    return counts;
+  }, {});
 }
 
 function diffBlockCounts(left, right) {

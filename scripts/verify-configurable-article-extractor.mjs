@@ -180,6 +180,7 @@ assert.deepEqual(
     platform: 'fixture',
     fallbackBlockCount: 0,
     highRiskBlockCount: 0,
+    legacyOnlyBlockCount: 0,
     replacedBlockCount: 0
   },
   'fixture configurable extraction should expose zero-fallback adapter diagnostics'
@@ -232,6 +233,7 @@ assert.equal(xResult.diagnostics.adapterId, 'x.article', 'X configurable diagnos
 assert.equal(xResult.diagnostics.platform, 'x', 'X configurable diagnostics should expose platform id');
 assert.equal(Number.isInteger(xResult.diagnostics.fallbackBlockCount), true, 'X configurable diagnostics should expose fallback count');
 assert.equal(Number.isInteger(xResult.diagnostics.highRiskBlockCount), true, 'X configurable diagnostics should expose high-risk count');
+assert.equal(Number.isInteger(xResult.diagnostics.legacyOnlyBlockCount), true, 'X configurable diagnostics should expose legacy-only count');
 assert.equal(Number.isInteger(xResult.diagnostics.replacedBlockCount), true, 'X configurable diagnostics should expose replaced count');
 for (const type of ['paragraph', 'list', 'image']) {
   assert.equal(xTypes.has(type), true, `X configurable extraction should expose low-risk ${type} blocks`);
