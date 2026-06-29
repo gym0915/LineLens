@@ -1,5 +1,6 @@
 import type { TextAnnotation } from '../shared/article-schema.js';
 import type { ReaderTextRole } from '../shared/reader-config.js';
+import { applyInlineTextStyle } from './style-policy.js';
 
 export type ReaderTextMetadata = {
   sourceText: string;
@@ -172,10 +173,6 @@ function createAnnotatedNode(
   }
 
   return node;
-}
-
-function applyInlineTextStyle(element: HTMLElement, style: Pick<TextAnnotation, 'color' | 'fontSize' | 'lineHeight' | 'textAlign' | 'fontStyle'>): void {
-  if (style.fontStyle) element.style.fontStyle = style.fontStyle;
 }
 
 function createXEmojiNode(text: string, emojiImageUrl: string, bold: boolean): HTMLElement {

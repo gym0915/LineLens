@@ -1,4 +1,5 @@
-import type { TableBlock, TextStyle } from '../../shared/article-schema.js';
+import type { TableBlock } from '../../shared/article-schema.js';
+import { applyTableCellTextStyle } from '../style-policy.js';
 
 export function renderTableBlock(block: TableBlock): HTMLElement {
   const wrapper = document.createElement('figure');
@@ -31,10 +32,4 @@ export function renderTableBlock(block: TableBlock): HTMLElement {
   table.append(tbody);
   wrapper.append(table);
   return wrapper;
-}
-
-function applyTableCellTextStyle(element: HTMLElement, style?: TextStyle): void {
-  if (!style) return;
-  if (style.fontSize) element.style.fontSize = style.fontSize;
-  if (style.textAlign) element.style.textAlign = style.textAlign;
 }

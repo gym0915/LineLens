@@ -1,5 +1,6 @@
 import type { TextAnnotation, TextStyle } from '../../shared/article-schema.js';
 import { appendReaderText, applyReaderTextMetadata } from '../reader-text-renderer.js';
+import { applyCaptionTextStyle } from '../style-policy.js';
 
 export function renderHeadingBlock(
   blockId: string,
@@ -68,15 +69,6 @@ function renderTextBlock(
     })
   );
   return element;
-}
-
-function applyCaptionTextStyle(element: HTMLElement, style?: TextStyle): void {
-  if (style?.fontSize) {
-    element.style.setProperty('--reader-media-caption-source-size', style.fontSize);
-  }
-  if (style?.lineHeight) {
-    element.style.setProperty('--reader-media-caption-source-line-height', style.lineHeight);
-  }
 }
 
 function getHeadingTagName(level: 1 | 2 | 3 | 4 | 5 | 6 = 2): 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' {

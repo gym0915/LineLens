@@ -106,22 +106,38 @@ globalThis.document = {
 const projectRoot = resolve(import.meta.dirname, '..');
 const sourceFiles = {
   types: readFileSync(resolve(projectRoot, 'src/shared/article.ts'), 'utf8'),
-  modularExtractor: readFileSync(resolve(projectRoot, 'src/content/extractors/x/article-extractor.ts'), 'utf8'),
+  xLegacyBlocks: readFileSync(resolve(projectRoot, 'src/content/extractors/x/article-legacy-blocks.ts'), 'utf8'),
   cleanTree: readFileSync(resolve(projectRoot, 'src/content/preprocess/clean-tree-block-converter.ts'), 'utf8'),
   tableConverter: readFileSync(resolve(projectRoot, 'src/content/preprocess/block-converters/table-block-converter.ts'), 'utf8'),
   xAdapter: readFileSync(resolve(projectRoot, 'src/content/adapters/x-article-adapter.ts'), 'utf8'),
   xCodeTheme: readFileSync(resolve(projectRoot, 'src/content/extractors/x/code-theme.ts'), 'utf8'),
+  stylePolicy: readFileSync(resolve(projectRoot, 'src/reader/style-policy.ts'), 'utf8'),
   renderer: [
     readFileSync(resolve(projectRoot, 'src/reader/block-renderer.ts'), 'utf8'),
     readFileSync(resolve(projectRoot, 'src/reader/renderers/article-header-renderer.ts'), 'utf8'),
     readFileSync(resolve(projectRoot, 'src/reader/renderers/code-block-renderer.ts'), 'utf8'),
-    readFileSync(resolve(projectRoot, 'src/reader/renderers/table-block-renderer.ts'), 'utf8')
+    readFileSync(resolve(projectRoot, 'src/reader/renderers/table-block-renderer.ts'), 'utf8'),
+    readFileSync(resolve(projectRoot, 'src/reader/renderers/simple-tweet-renderer.ts'), 'utf8')
   ].join('\n'),
+  codeRenderer: readFileSync(resolve(projectRoot, 'src/reader/renderers/code-block-renderer.ts'), 'utf8'),
+  tableRenderer: readFileSync(resolve(projectRoot, 'src/reader/renderers/table-block-renderer.ts'), 'utf8'),
+  simpleTweetRenderer: readFileSync(resolve(projectRoot, 'src/reader/renderers/simple-tweet-renderer.ts'), 'utf8'),
   textRenderer: readFileSync(resolve(projectRoot, 'src/reader/reader-text-renderer.ts'), 'utf8'),
   css: readFileSync(resolve(projectRoot, 'public/styles/blocks.css'), 'utf8'),
   codeCss: readFileSync(resolve(projectRoot, 'public/styles/code.css'), 'utf8'),
   focusCss: readFileSync(resolve(projectRoot, 'public/styles/focus.css'), 'utf8')
 };
+
+assert.match(sourceFiles.stylePolicy, /export function applyTableCellTextStyle/, 'Reader table cell source style policy should live in style-policy.ts');
+assert.match(sourceFiles.stylePolicy, /export function applyCodeStyle/, 'Reader code block source style policy should live in style-policy.ts');
+assert.match(sourceFiles.stylePolicy, /export function applyCodeTokenStyle/, 'Reader code token source style policy should live in style-policy.ts');
+assert.match(sourceFiles.stylePolicy, /export function applySimpleTweetTextStyle/, 'Reader simpleTweet source style policy should live in style-policy.ts');
+assert.match(sourceFiles.tableRenderer, /from '\.\.\/style-policy\.js'/, 'Table block renderer should import source style policy helpers');
+assert.match(sourceFiles.codeRenderer, /from '\.\.\/style-policy\.js'/, 'Code block renderer should import source style policy helpers');
+assert.match(sourceFiles.simpleTweetRenderer, /from '\.\.\/style-policy\.js'/, 'simpleTweet renderer should import source style policy helpers');
+assert.doesNotMatch(sourceFiles.tableRenderer, /function applyTableCellTextStyle/, 'Table block renderer should not define local table source style policy');
+assert.doesNotMatch(sourceFiles.codeRenderer, /function applyCodeStyle/, 'Code block renderer should not define local code source style policy');
+assert.doesNotMatch(sourceFiles.simpleTweetRenderer, /function applyTextStyle/, 'simpleTweet renderer should not define local text source style policy');
 
 assert.match(sourceFiles.types, /export type CodeBlockStyle = \{[\s\S]*?preBackgroundColor\?: string[\s\S]*?codeColor\?: string/, 'CodeBlock should carry source code block colors');
 assert.match(sourceFiles.types, /export type CodeToken = \{[\s\S]*?color\?: string[\s\S]*?fontStyle\?: string/, 'CodeBlock should carry source token colors');
@@ -133,7 +149,7 @@ assert.match(sourceFiles.types, /export type TextAnnotation = \{[\s\S]*?color\?:
 assert.match(sourceFiles.types, /export type TextStyle = \{[\s\S]*?textAlign\?: string[\s\S]*?fontWeight\?: string/, 'Block and table text styles should carry alignment and weight');
 
 for (const [name, source] of [
-  ['modular extractor', sourceFiles.modularExtractor],
+  ['X legacy block extractor', sourceFiles.xLegacyBlocks],
   ['clean-tree converter', sourceFiles.cleanTree]
 ]) {
   assert.match(source, /extractCodeBlockStyle/, `${name} should extract code block surface styles`);

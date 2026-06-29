@@ -6,6 +6,16 @@ const repoRoot = resolve(import.meta.dirname, '..');
 const focusCss = readFileSync(resolve(repoRoot, 'public/styles/focus.css'), 'utf8');
 const tokensCss = readFileSync(resolve(repoRoot, 'public/styles/tokens.css'), 'utf8');
 const focusBuilderSource = readFileSync(resolve(repoRoot, 'src/reader/focus-unit-builder.ts'), 'utf8');
+const stylePolicySource = readFileSync(resolve(repoRoot, 'src/reader/style-policy.ts'), 'utf8');
+const readerTextRendererSource = readFileSync(resolve(repoRoot, 'src/reader/reader-text-renderer.ts'), 'utf8');
+const textBlockRendererSource = readFileSync(resolve(repoRoot, 'src/reader/renderers/text-block-renderer.ts'), 'utf8');
+
+assert.match(stylePolicySource, /export function applyInlineTextStyle/, 'Reader inline source style policy should live in style-policy.ts');
+assert.match(stylePolicySource, /export function applyCaptionTextStyle/, 'Reader caption source style policy should live in style-policy.ts');
+assert.match(readerTextRendererSource, /from '\.\/style-policy\.js'/, 'Reader text renderer should import source style policy helpers');
+assert.match(textBlockRendererSource, /from '\.\.\/style-policy\.js'/, 'Text block renderer should import source style policy helpers');
+assert.doesNotMatch(readerTextRendererSource, /function applyInlineTextStyle/, 'Reader text renderer should not define local inline source style policy');
+assert.doesNotMatch(textBlockRendererSource, /function applyCaptionTextStyle/, 'Text block renderer should not define local caption source style policy');
 
 for (const expected of [
   '--reader-inline-highlight-padding-block: 2px;',

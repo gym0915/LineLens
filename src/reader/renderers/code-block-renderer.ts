@@ -1,4 +1,5 @@
 import type { CodeBlock, CodeToken } from '../../shared/article-schema.js';
+import { applyCodeStyle, applyCodeTokenStyle } from '../style-policy.js';
 
 export function renderCodeBlock(block: CodeBlock): HTMLElement {
   const figure = document.createElement('figure');
@@ -28,10 +29,7 @@ export function renderCodeBlock(block: CodeBlock): HTMLElement {
   applyCodeStyle(pre, block.codeStyle);
   const code = document.createElement('code');
   code.className = `language-${label.textContent}`;
-  if (block.codeStyle?.fontFamily) code.style.fontFamily = block.codeStyle.fontFamily;
-  if (block.codeStyle?.fontSize) code.style.fontSize = block.codeStyle.fontSize;
-  if (block.codeStyle?.lineHeight) code.style.lineHeight = block.codeStyle.lineHeight;
-  if (block.codeStyle?.tabSize) code.style.tabSize = block.codeStyle.tabSize;
+  applyCodeStyle(code, block.codeStyle);
   if (block.tokens && block.tokens.length > 0) {
     appendExtractedCodeTokens(code, block.tokens);
   } else {
@@ -40,14 +38,6 @@ export function renderCodeBlock(block: CodeBlock): HTMLElement {
   pre.append(code);
   figure.append(header, pre);
   return figure;
-}
-
-function applyCodeStyle(pre: HTMLElement, style?: CodeBlock['codeStyle']): void {
-  if (!style) return;
-  if (style.fontFamily) pre.style.fontFamily = style.fontFamily;
-  if (style.fontSize) pre.style.fontSize = style.fontSize;
-  if (style.lineHeight) pre.style.lineHeight = style.lineHeight;
-  if (style.tabSize) pre.style.tabSize = style.tabSize;
 }
 
 function applyCodeThemeColorPair(element: HTMLElement, lightVariable: string, darkVariable: string, colorPair?: { light?: string; dark?: string }): boolean {
@@ -77,8 +67,7 @@ function appendExtractedCodeTokens(container: HTMLElement, tokens: CodeToken[]):
     } else if (token.color) {
       span.style.color = token.color;
     }
-    if (token.fontStyle) span.style.fontStyle = token.fontStyle;
-    if (token.fontWeight) span.style.fontWeight = token.fontWeight;
+    applyCodeTokenStyle(span, token);
     container.append(span);
   }
 }

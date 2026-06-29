@@ -1,19 +1,9 @@
 import type { SimpleTweetBlock, SimpleTweetCardData, SimpleTweetContentItem, SimpleTweetLayoutNode, SimpleTweetPhotoLayout, TextAnnotation, TextStyle, TweetMetrics, TweetPhoto, VideoBlock } from '../../shared/article-schema.js';
 import { createReaderTextSpan } from '../reader-text-renderer.js';
+import { applySimpleTweetTextStyle } from '../style-policy.js';
 import { applyMediaAspectRatio, renderMediaFrame } from './media-frame.js';
 import { renderVideoPlayer } from './video-renderer.js';
 import { renderBookmarkIcon, renderGrokIcon, renderLikeIcon, renderReplyIcon, renderRetweetIcon, renderShareIcon, renderSimpleTweetActions, renderSimpleTweetAiGeneratedBadge, renderSimpleTweetTranslationIcon, renderSourceLabelText, renderVerifiedIcon, renderViewsIcon, renderXLogoIcon } from './icons.js';
-
-function applyTextStyle(element: HTMLElement, style?: TextStyle): void {
-  if (!style) return;
-  if (style.color) element.style.color = style.color;
-  if (style.fontSize) element.style.fontSize = style.fontSize;
-  if (style.lineHeight) element.style.lineHeight = style.lineHeight;
-  if (style.textAlign) element.style.textAlign = style.textAlign;
-  if (style.fontStyle) element.style.fontStyle = style.fontStyle;
-  if (style.fontWeight) element.style.fontWeight = style.fontWeight;
-}
-
 
 export function renderSimpleTweetBlock(block: SimpleTweetBlock): HTMLElement {
   const renderableBlock = withRenderableItems(block);
@@ -470,14 +460,14 @@ function renderSimpleTweetArticleCover(item: Extract<SimpleTweetContentItem, { t
     if (item.title) {
       const title = document.createElement('div');
       title.className = 'reader-simple-tweet-title';
-      applyTextStyle(title, item.titleTextStyle);
+      applySimpleTweetTextStyle(title, item.titleTextStyle);
       title.append(createReaderTextSpan(item.title, [], { role: 'social-title' }));
       text.append(title);
     }
     if (item.excerpt) {
       const excerpt = document.createElement('div');
       excerpt.className = 'reader-simple-tweet-excerpt';
-      applyTextStyle(excerpt, item.excerptTextStyle);
+      applySimpleTweetTextStyle(excerpt, item.excerptTextStyle);
       excerpt.append(createReaderTextSpan(item.excerpt, [], { role: 'social-excerpt' }));
       text.append(excerpt);
     }
