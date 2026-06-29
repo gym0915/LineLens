@@ -52,6 +52,16 @@ assert.match(sourceFiles.types, /heightRatio\?:\s*number/, 'photo layout nodes s
 assert.match(sourceFiles.types, /aspectRatio\?:\s*number/, 'photo-group should preserve the source media container aspect ratio');
 assert.match(sourceFiles.article, /extractXArticleLegacyBlocks/, 'article extractor should delegate simpleTweet-sensitive legacy block extraction');
 assert.match(sourceFiles.articleLegacyBlocks, /extractSimpleTweetBlockFromRoot/, 'legacy block extractor should route simpleTweet parsing through the content-flow helper');
+assert.match(sourceFiles.articleLegacyBlocks, /simpleTweetModel\.extractTweetBodyRichText/, 'legacy tweet summary extraction should use the simpleTweet rich-text owner');
+assert.doesNotMatch(sourceFiles.articleLegacyBlocks, /function extractTweetProfile\b/, 'legacy block extractor should not keep a duplicate tweet profile parser');
+assert.doesNotMatch(sourceFiles.articleLegacyBlocks, /function buildTweetAuthorLine\b/, 'legacy block extractor should not keep a duplicate tweet author line formatter');
+assert.doesNotMatch(sourceFiles.articleLegacyBlocks, /function extractTweetMetrics\b/, 'legacy block extractor should not keep a duplicate tweet metrics parser');
+assert.doesNotMatch(sourceFiles.articleLegacyBlocks, /function parseTweetMetricLabel\b/, 'legacy block extractor should not keep duplicate tweet metric label parsing');
+assert.doesNotMatch(sourceFiles.articleLegacyBlocks, /function hasTweetMetrics\b/, 'legacy block extractor should not keep duplicate tweet metrics truthiness checks');
+assert.doesNotMatch(sourceFiles.articleLegacyBlocks, /async function extractTweetBodyText\b/, 'legacy block extractor should not keep duplicate tweet body text expansion');
+assert.doesNotMatch(sourceFiles.articleLegacyBlocks, /async function expandTweetTextIfNeeded\b/, 'legacy block extractor should not keep duplicate tweet show-more expansion');
+assert.doesNotMatch(sourceFiles.articleLegacyBlocks, /function isSimpleTweetCard\b/, 'legacy block extractor should not keep duplicate simpleTweet card detection');
+assert.doesNotMatch(sourceFiles.articleLegacyBlocks, /extractSimpleTweet(?:Image|Video|Text)Card/, 'legacy block extractor should not keep old simpleTweet card entrypoints');
 assert.match(sourceFiles.simpleTweet, /getSimpleTweetPhotoLayoutRoot/, 'simpleTweet extractor should derive photo grouping from shared wrapper containers');
 assert.match(sourceFiles.simpleTweet, /extractArticleCoverSourceBadge/, 'simpleTweet extractor should detect the X Article badge from the source cover DOM');
 assert.match(sourceFiles.simpleTweet, /\[role="img"\]\[aria-label\]/, 'simpleTweet extractor should use the source badge role and aria-label as the Article signal');
@@ -98,8 +108,8 @@ assert.match(sourceFiles.renderer, /renderSimpleTweetArticleCoverMetrics/, 'read
 assert.match(sourceFiles.renderer, /renderXLogoIcon\(item\.sourceIconPath\)/, 'reader should render the extracted X Article svg path when present');
 assert.match(sourceFiles.renderer, /renderSourceLabelText\(item\.sourceLabel \?\? 'Article'\)/, 'reader should render the extracted Article label when present');
 assert.match(sourceFiles.renderer, /--reader-simple-tweet-source-color: ' \+ item\.sourceColor/, 'reader should render X Article badge text with the extracted source color');
-assert.match(sourceFiles.renderer, /applyTextStyle\(title, item\.titleTextStyle\)/, 'reader should apply extracted article-cover title text style');
-assert.match(sourceFiles.renderer, /applyTextStyle\(excerpt, item\.excerptTextStyle\)/, 'reader should apply extracted article-cover excerpt text style');
+assert.match(sourceFiles.renderer, /applySimpleTweetTextStyle\(title, item\.titleTextStyle\)/, 'reader should apply extracted article-cover title text style');
+assert.match(sourceFiles.renderer, /applySimpleTweetTextStyle\(excerpt, item\.excerptTextStyle\)/, 'reader should apply extracted article-cover excerpt text style');
 assert.match(sourceFiles.renderer, /applyMediaAspectRatio\(media, item\.aspectRatio\)/, 'reader should apply extracted article-cover image aspect ratio');
 assert.match(sourceFiles.renderer, /M12\.998 1\.94c\.18 3\.015/, 'reader should embed the AI-generated badge SVG path');
 assert.match(sourceFiles.renderer, /reader-simple-tweet-video-portrait/, 'reader should tag portrait simpleTweet videos for narrower in-card rendering');

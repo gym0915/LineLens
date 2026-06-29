@@ -7,6 +7,7 @@ const workspaceRoot = findWorkspaceRoot(rootDir);
 
 const articleModelSource = readFileSync(resolve(rootDir, 'src/shared/article.ts'), 'utf8');
 const extractorSource = readFileSync(resolve(rootDir, 'src/content/extractors/x/article-extractor.ts'), 'utf8');
+const legacyBlocksSource = readFileSync(resolve(rootDir, 'src/content/extractors/x/article-legacy-blocks.ts'), 'utf8');
 const simpleTweetSource = readFileSync(resolve(rootDir, 'src/content/extractors/x/simple-tweet.ts'), 'utf8');
 const readerRendererSource = [
   readFileSync(resolve(rootDir, 'src/reader/block-renderer.ts'), 'utf8'),
@@ -62,8 +63,13 @@ assert.match(
 
 assert.match(
   extractorSource,
+  /extractXArticleLegacyBlocks\(\{[\s\S]*?longform,[\s\S]*?articleId,[\s\S]*?capturedVideos[\s\S]*?\}\)/,
+  'article extractor should delegate simpleTweet-sensitive parsing into the legacy block boundary'
+);
+assert.match(
+  legacyBlocksSource,
   /simpleTweetModel\.extractSimpleTweetBlockFromRoot\(block, id, capturedVideos\)/,
-  'article extractor should delegate simpleTweet parsing to the dedicated model extractor'
+  'legacy block boundary should delegate simpleTweet parsing to the dedicated model extractor'
 );
 assertTextExtractorContract(simpleTweetSource, 'dedicated simpleTweet model extractor');
 
