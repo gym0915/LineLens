@@ -40,19 +40,6 @@ export function renderCodeBlock(block: CodeBlock): HTMLElement {
   return figure;
 }
 
-function applyCodeThemeColorPair(element: HTMLElement, lightVariable: string, darkVariable: string, colorPair?: { light?: string; dark?: string }): boolean {
-  if (!colorPair?.light && !colorPair?.dark) {
-    return false;
-  }
-  if (colorPair.light) {
-    element.style.setProperty(lightVariable, colorPair.light);
-  }
-  if (colorPair.dark) {
-    element.style.setProperty(darkVariable, colorPair.dark);
-  }
-  return true;
-}
-
 function appendExtractedCodeTokens(container: HTMLElement, tokens: CodeToken[]): void {
   for (const token of tokens) {
     if (!token.color && !token.themeColors?.color && !token.fontStyle && !token.fontWeight) {
@@ -62,12 +49,9 @@ function appendExtractedCodeTokens(container: HTMLElement, tokens: CodeToken[]):
 
     const span = document.createElement('span');
     span.textContent = token.text;
-    if (applyCodeThemeColorPair(span, '--reader-code-token-light-color', '--reader-code-token-dark-color', token.themeColors?.color)) {
+    if (applyCodeTokenStyle(span, token)) {
       span.className = 'reader-code-token-themed';
-    } else if (token.color) {
-      span.style.color = token.color;
     }
-    applyCodeTokenStyle(span, token);
     container.append(span);
   }
 }

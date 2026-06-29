@@ -131,12 +131,17 @@ const sourceFiles = {
 assert.match(sourceFiles.stylePolicy, /export function applyTableCellTextStyle/, 'Reader table cell source style policy should live in style-policy.ts');
 assert.match(sourceFiles.stylePolicy, /export function applyCodeStyle/, 'Reader code block source style policy should live in style-policy.ts');
 assert.match(sourceFiles.stylePolicy, /export function applyCodeTokenStyle/, 'Reader code token source style policy should live in style-policy.ts');
+assert.match(sourceFiles.stylePolicy, /function applyCodeThemeColorPair/, 'Reader code token color-pair policy should live in style-policy.ts');
+assert.match(sourceFiles.stylePolicy, /--reader-code-token-light-color/, 'Reader code token light color variable policy should live in style-policy.ts');
+assert.match(sourceFiles.stylePolicy, /--reader-code-token-dark-color/, 'Reader code token dark color variable policy should live in style-policy.ts');
 assert.match(sourceFiles.stylePolicy, /export function applySimpleTweetTextStyle/, 'Reader simpleTweet source style policy should live in style-policy.ts');
 assert.match(sourceFiles.tableRenderer, /from '\.\.\/style-policy\.js'/, 'Table block renderer should import source style policy helpers');
 assert.match(sourceFiles.codeRenderer, /from '\.\.\/style-policy\.js'/, 'Code block renderer should import source style policy helpers');
 assert.match(sourceFiles.simpleTweetRenderer, /from '\.\.\/style-policy\.js'/, 'simpleTweet renderer should import source style policy helpers');
 assert.doesNotMatch(sourceFiles.tableRenderer, /function applyTableCellTextStyle/, 'Table block renderer should not define local table source style policy');
 assert.doesNotMatch(sourceFiles.codeRenderer, /function applyCodeStyle/, 'Code block renderer should not define local code source style policy');
+assert.doesNotMatch(sourceFiles.codeRenderer, /function applyCodeThemeColorPair/, 'Code block renderer should not define local code token color policy');
+assert.doesNotMatch(sourceFiles.codeRenderer, /span\.style\.color\s*=\s*token\.color/, 'Code block renderer should not apply source token colors directly');
 assert.doesNotMatch(sourceFiles.simpleTweetRenderer, /function applyTextStyle/, 'simpleTweet renderer should not define local text source style policy');
 
 assert.match(sourceFiles.types, /export type CodeBlockStyle = \{[\s\S]*?preBackgroundColor\?: string[\s\S]*?codeColor\?: string/, 'CodeBlock should carry source code block colors');
@@ -173,11 +178,11 @@ assert.match(sourceFiles.renderer, /function renderArticleHeaderAuthorMeta[\s\S]
 assert.match(sourceFiles.renderer, /const authorMeta = renderArticleHeaderAuthorMeta\(article\)[\s\S]*const metrics = renderArticleHeaderMetrics\(article\)/, 'Reader should render interaction row independently from author row');
 assert.match(sourceFiles.renderer, /function renderTableBlock\(block: TableBlock\)/, 'Reader should render table blocks');
 assert.match(sourceFiles.renderer, /appendExtractedCodeTokens/, 'Reader should render extracted code tokens instead of forcing local highlighting');
-assert.match(sourceFiles.renderer, /applyCodeThemeColorPair/, 'Reader should render extracted code colors through theme-aware CSS variables');
+assert.match(sourceFiles.stylePolicy, /applyCodeThemeColorPair/, 'Reader should render extracted code colors through theme-aware CSS variables');
 assert.doesNotMatch(sourceFiles.renderer, /--reader-code-language-light-color/, 'Reader should NOT bake language label surface colors — they are owned by reader design tokens');
 assert.doesNotMatch(sourceFiles.renderer, /--reader-code-copy-dark-color/, 'Reader should NOT bake copy button surface colors — they are owned by reader design tokens');
-assert.match(sourceFiles.renderer, /--reader-code-token-light-color/, 'Reader should write light token color variables instead of fixed source colors only');
-assert.match(sourceFiles.renderer, /--reader-code-token-dark-color/, 'Reader should write dark token color variables instead of fixed source colors only');
+assert.match(sourceFiles.stylePolicy, /--reader-code-token-light-color/, 'Reader should write light token color variables instead of fixed source colors only');
+assert.match(sourceFiles.stylePolicy, /--reader-code-token-dark-color/, 'Reader should write dark token color variables instead of fixed source colors only');
 assert.doesNotMatch(sourceFiles.codeCss, /\)\)\)\)\s*;/, 'Reader code CSS variable fallbacks should not contain invalid extra closing parentheses');
 assert.match(sourceFiles.codeCss, /@media\s*\(prefers-color-scheme:\s*dark\)[\s\S]*--reader-active-code-token-color:\s*var\(--reader-code-token-dark-color/, 'Reader CSS should switch extracted token colors through system dark mode');
 assert.match(sourceFiles.codeCss, /\.reader-code-header\s*\{[\s\S]*?min-height:\s*32px;/, 'Code header should be visually narrower');

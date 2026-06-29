@@ -29,9 +29,35 @@ export function applyCodeStyle(element: HTMLElement, style?: CodeBlock['codeStyl
   if (style.tabSize) element.style.tabSize = style.tabSize;
 }
 
-export function applyCodeTokenStyle(element: HTMLElement, token: Pick<CodeToken, 'fontStyle' | 'fontWeight'>): void {
+export function applyCodeTokenStyle(
+  element: HTMLElement,
+  token: Pick<CodeToken, 'color' | 'themeColors' | 'fontStyle' | 'fontWeight'>
+): boolean {
+  const hasThemeColor = applyCodeThemeColorPair(
+    element,
+    '--reader-code-token-light-color',
+    '--reader-code-token-dark-color',
+    token.themeColors?.color
+  );
+  if (!hasThemeColor && token.color) {
+    element.style.color = token.color;
+  }
   if (token.fontStyle) element.style.fontStyle = token.fontStyle;
   if (token.fontWeight) element.style.fontWeight = token.fontWeight;
+  return hasThemeColor;
+}
+
+function applyCodeThemeColorPair(element: HTMLElement, lightVariable: string, darkVariable: string, colorPair?: { light?: string; dark?: string }): boolean {
+  if (!colorPair?.light && !colorPair?.dark) {
+    return false;
+  }
+  if (colorPair.light) {
+    element.style.setProperty(lightVariable, colorPair.light);
+  }
+  if (colorPair.dark) {
+    element.style.setProperty(darkVariable, colorPair.dark);
+  }
+  return true;
 }
 
 export function applySimpleTweetTextStyle(element: HTMLElement, style?: TextStyle): void {
