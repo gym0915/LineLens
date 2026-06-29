@@ -162,11 +162,16 @@ const openCalls = [];
 const runtimeMessages = [];
 const imagePreloadRequests = [];
 const documentBody = new ElementLike('body');
+const mediaPreviewFacadeSource = readSourceIfPresent('src/reader/controllers/media-preview-controller.ts');
+const mediaPreviewStateSource = readSourceIfPresent('src/reader/controllers/media-preview-state.ts');
+const mediaUrlResolverSource = readSourceIfPresent('src/reader/controllers/media-url-resolver.ts');
+const mediaPreviewViewSource = readSourceIfPresent('src/reader/controllers/media-preview-view.ts');
 const readerControlSource = [
   'src/reader/reader-app.ts',
   'src/reader/controllers/keyboard-controller.ts',
   'src/reader/controllers/click-controller.ts',
   'src/reader/controllers/media-preview-controller.ts',
+  'src/reader/controllers/media-preview-view.ts',
   'src/reader/controllers/code-copy-controller.ts',
   'src/reader/controllers/progress-ui.ts'
 ]
@@ -179,6 +184,46 @@ assert(/ArrowLeft/.test(readerControlSource) && /ArrowRight/.test(readerControlS
 assert(/Home/.test(readerControlSource) && /End/.test(readerControlSource), 'Reader keyboard controls should keep Home/End navigation');
 assert(/reader-media-preview/.test(readerControlSource), 'Reader control layer should keep the media preview entrypoint');
 assert(/reader-progress/.test(readerControlSource), 'Reader control layer should keep the progress UI entrypoint');
+
+assertFacadeExport('getActiveMediaPreview');
+assertFacadeExport('getCoverMediaPreview');
+assertFacadeExport('createMediaPreviewState');
+assertFacadeExport('preloadMediaPreviews');
+assertFacadeExport('openMediaPreview');
+assertFacadeExport('handleMediaPreviewKeydown');
+assertFacadeExport('logReaderMediaLinkClick');
+
+assert(/resolveMediaPreview/.test(mediaUrlResolverSource), 'media-url-resolver.ts should own resolving link/image previews');
+assert(/findMediaPreviewByHref/.test(mediaUrlResolverSource), 'media-url-resolver.ts should own href lookup logic');
+assert(/getMediaHrefKeys/.test(mediaUrlResolverSource), 'media-url-resolver.ts should own href normalization keys');
+assert(/upgradeXImageUrl/.test(mediaUrlResolverSource), 'media-url-resolver.ts should own X image URL upgrade logic');
+assert(/pbs\.twimg\.com\/media/.test(mediaUrlResolverSource), 'media-url-resolver.ts should contain the X image host upgrade contract');
+assert(!/function\s+(?:resolveMediaPreview|findMediaPreviewByHref|getMediaHrefKeys|upgradeXImageUrl)\b/.test(mediaPreviewFacadeSource), 'media-preview-controller.ts facade should not own URL/href/X image resolver internals');
+
+assert(/export\s+type\s+MediaPreviewState\b/.test(mediaPreviewStateSource), 'media-preview-state.ts should own the MediaPreviewState type');
+assert(/createMediaPreviewState/.test(mediaPreviewStateSource), 'media-preview-state.ts should own article media collection');
+assert(/addSimpleTweetMediaPreviews/.test(mediaPreviewStateSource), 'media-preview-state.ts should own simpleTweet media collection');
+assert(/MEDIA_PRELOAD_CONCURRENCY/.test(mediaPreviewStateSource), 'media-preview-state.ts should own preload concurrency');
+assert(/pumpMediaPreloadQueue/.test(mediaPreviewStateSource), 'media-preview-state.ts should own preload queue pumping');
+assert(/preloadMediaPreviews/.test(mediaPreviewStateSource), 'media-preview-state.ts should own media preview preloading');
+assert(!/function\s+(?:createMediaPreviewState|addSimpleTweetMediaPreviews|pumpMediaPreloadQueue|preloadMediaPreviews)\b/.test(mediaPreviewFacadeSource), 'media-preview-controller.ts facade should not own media preview state/preload internals');
+
+assert(/ensureMediaPreview/.test(mediaPreviewViewSource), 'media-preview-view.ts should own overlay DOM creation');
+assert(/renderMediaPreviewImage/.test(mediaPreviewViewSource), 'media-preview-view.ts should own image rendering/loading states');
+assert(/showRelativeMediaPreview/.test(mediaPreviewViewSource), 'media-preview-view.ts should own preview navigation helpers');
+assert(/handleMediaPreviewKeydown/.test(mediaPreviewViewSource), 'media-preview-view.ts should own preview key handling');
+assert(/closeMediaPreview/.test(mediaPreviewViewSource), 'media-preview-view.ts should own preview close behavior');
+assert(!/function\s+(?:ensureMediaPreview|renderMediaPreviewImage|showRelativeMediaPreview|handleMediaPreviewKeydown|closeMediaPreview)\b/.test(mediaPreviewFacadeSource), 'media-preview-controller.ts facade should not own overlay view internals');
+
+const readerInteractionSource = [
+  'src/reader/reader-app.ts',
+  'src/reader/controllers/click-controller.ts',
+  'src/reader/controllers/keyboard-controller.ts'
+]
+  .map((path) => readSourceIfPresent(path))
+  .join('\n');
+assert(!/from\s+['"]\.\/controllers\/media-preview-(?:state|view|url-resolver)\.js['"]/.test(readerInteractionSource), 'reader-app.ts should keep importing media preview through the facade');
+assert(!/from\s+['"]\.\/media-preview-(?:state|view|url-resolver)\.js['"]/.test(readerInteractionSource), 'click/keyboard controllers should keep importing media preview through the facade');
 
 class ImagePreloadLike {
   constructor() {
@@ -886,6 +931,15 @@ function walk(rootElement) {
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
+}
+
+function assertFacadeExport(name) {
+  const directExportPattern = new RegExp(`export\\s+(?:function|const|let|var)\\s+${name}\\b`);
+  const namedExportPattern = new RegExp(`export\\s*\\{[^}]*\\b${name}\\b[^}]*\\}`);
+  assert(
+    directExportPattern.test(mediaPreviewFacadeSource) || namedExportPattern.test(mediaPreviewFacadeSource),
+    `media-preview-controller.ts facade should export ${name}`
+  );
 }
 
 function resolveFixtureDir(rootDir) {
