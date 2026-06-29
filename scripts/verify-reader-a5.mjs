@@ -191,6 +191,12 @@ assert(
   'HighlightLayer should become visible; shared layer owns active focus visuals'
 );
 const highlightFocusRule = getRule(css, '.highlight-focus');
+const highlightLayerRule = getRule(css, '.highlight-layer');
+const readerArticleRule = getRule(css, '.reader-article');
+assert(
+  highlightLayerRule.includes('z-index: 0;'),
+  'HighlightLayer should stay below Reader content in the stacking contract'
+);
 assert(
   highlightFocusRule.includes('background: var(--reader-highlight-surface);'),
   'HighlightLayer focus rect should own the active focus background'
@@ -208,6 +214,10 @@ assert(
     highlightFocusRule.includes('width 250ms ease') &&
     highlightFocusRule.includes('height 250ms ease'),
   'HighlightLayer focus rect should own rect transition'
+);
+assert(
+  readerArticleRule.includes('position: relative;') && readerArticleRule.includes('z-index: 1;'),
+  'Reader article content should render above the visible HighlightLayer focus surface'
 );
 
 for (const selector of [

@@ -6,6 +6,11 @@
   font-family: var(--reader-font-body);
 }
 
+.reader-article {
+  position: relative;
+  z-index: 1;
+}
+
 .article-header {
   display: contents;
 }
