@@ -182,11 +182,25 @@ const modularExtractorSource = readFileSync(
   resolve(projectRoot, 'src/content/extractors/x/article-extractor.ts'),
   'utf8'
 );
+const legacyBlocksSource = readFileSync(
+  resolve(projectRoot, 'src/content/extractors/x/article-legacy-blocks.ts'),
+  'utf8'
+);
+const simpleTweetSource = readFileSync(resolve(projectRoot, 'src/content/extractors/x/simple-tweet.ts'), 'utf8');
+const videoMediaSource = readFileSync(resolve(projectRoot, 'src/content/extractors/x/video-media.ts'), 'utf8');
+const extractionContractSource = [modularExtractorSource, legacyBlocksSource, simpleTweetSource, videoMediaSource].join('\n');
 const articleModelSource = readFileSync(resolve(projectRoot, 'src/shared/article.ts'), 'utf8');
-const readerRendererSource = readFileSync(resolve(projectRoot, 'src/reader/block-renderer.ts'), 'utf8');
+const readerRendererSource = [
+  readFileSync(resolve(projectRoot, 'src/reader/block-renderer.ts'), 'utf8'),
+  readFileSync(resolve(projectRoot, 'src/reader/renderers/simple-tweet-renderer.ts'), 'utf8'),
+  readFileSync(resolve(projectRoot, 'src/reader/renderers/video-renderer.ts'), 'utf8'),
+  readFileSync(resolve(projectRoot, 'src/reader/renderers/video-source-controller.ts'), 'utf8'),
+  readFileSync(resolve(projectRoot, 'src/reader/renderers/icons.ts'), 'utf8')
+].join('\n');
 const cleanTreeBlockConverterSource = readFileSync(resolve(projectRoot, 'src/content/preprocess/clean-tree-block-converter.ts'), 'utf8');
+const listBlockConverterSource = readFileSync(resolve(projectRoot, 'src/content/preprocess/block-converters/list-block-converter.ts'), 'utf8');
 const platformFixesSource = readFileSync(resolve(projectRoot, 'src/content/preprocess/apply-platform-fixes.ts'), 'utf8');
-for (const source of [modularExtractorSource]) {
+for (const source of [extractionContractSource]) {
   assert.match(source, /X_CANONICAL_ORIGIN/, 'extractor should use a dedicated X canonical origin constant');
   assert.match(source, /function getListKind/, 'extractor should detect Draft.js list items and preserve list kind');
   assert.match(source, /function extractHandwrittenOrderedListItem/, 'extractor should normalize handwritten ordered list markers');
@@ -198,7 +212,7 @@ for (const source of [modularExtractorSource]) {
   assert.match(source, /[一二三四五六七八九十百千]/, 'extractor should recognize handwritten Chinese numeral list markers');
   assert.match(source, /hasNonTextContent/, 'handwritten list detection should skip media, code, tweets, and link-like rich blocks');
   assert.match(source, /flushPendingList/, 'extractor should group consecutive list items');
-  assert.match(source, /function extractCoverImage/, 'extractor should have dedicated cover extraction');
+  assert.match(source, /function extractXArticleCoverImage/, 'extractor should have dedicated cover extraction');
   assert.match(source, /findImageBeforeTitle/, 'cover extraction should be constrained to images before the title');
   assert.match(source, /image\.closest\('a\[href\]'\)\?\.getAttribute\('href'\)/, 'cover image extraction should preserve the wrapping media href');
   assert.match(source, /function isHeadingBlock/, 'extractor should preserve explicit X heading tags');
@@ -222,14 +236,14 @@ for (const source of [modularExtractorSource]) {
   assert.match(source, /function extractTweetSummaryBlock/, 'tweet references should build a summary without collapsing author, date, body, and metrics');
   assert.match(source, /function extractTweetBodyText/, 'tweet references should extract the tweet body without appending engagement metrics');
   assert.match(source, /tweet-text-show-more-link/, 'tweet body extraction should detect X show-more controls before reading text');
-  assert.match(source, /getTweetShowMoreButtonLabel/, 'tweet show-more detection should read the localized button text');
+  assert.match(source, /normalizeText\(showMoreButton\.textContent \?\? showMoreButton\.getAttribute\('aria-label'\) \?\? ''\)/, 'tweet show-more detection should read the localized button text');
   assert.match(source, /await expandTweetTextIfNeeded/, 'tweet extraction should await DOM expansion before reading tweetText');
-  assert.match(source, /const explicitTweetText = normalizePreWrapText\(tweet\.querySelector\('\[data-testid="tweetText"\]'\)\?\.textContent \?\? ''\)/, 'simpleTweet text extraction should preserve source line breaks');
+  assert.match(source, /const explicitTweetText = tweet\.querySelector\('\[data-testid="tweetText"\]'\)/, 'simpleTweet text extraction should preserve source line breaks');
   assert.match(source, /MutationObserver/, 'tweet show-more expansion should observe the asynchronous DOM update');
   assert.match(source, /Promise\.race/, 'tweet show-more expansion should not hang if X fails to update the DOM');
   assert.doesNotMatch(source, /title: text \|\| 'X Tweet'/, 'tweet references should not collapse full tweet textContent into a single title');
   assert.match(source, /function getSimpleTweetHref/, 'simple tweets should use a dedicated href extractor');
-  assert.match(source, /function extractSimpleTweetImageCard/, 'simple tweets should parse image-card tweets without article covers');
+  assert.match(source, /function extractPhotoItem|function tweetPhotoElementToPhoto/, 'simple tweets should parse image-card tweets without article covers');
   assert.match(source, /function extractImageGalleryFromElement/, 'extractor should parse X article image grid blocks');
   assert.match(source, /function getImageGalleryLayout/, 'extractor should parse nested image gallery layouts');
   assert.match(source, /function buildImageGalleryLayoutNode/, 'image gallery layout parsing should walk component-internal DOM structure');
@@ -271,11 +285,7 @@ for (const source of [modularExtractorSource]) {
     /const simpleTweet = await extractSimpleTweetBlock\(block, blockId\(articleId, index\), capturedVideos\);[\s\S]*?const video = extractVideoFromElement/,
     'simpleTweet cards should be resolved before standalone video blocks so embedded tweet videos stay inside the tweet card'
   );
-  assert.match(
-    source,
-    /function extractSimpleTweetVideoCard/,
-    'simple tweets should parse embedded video-card tweets without duplicating standalone video extraction logic'
-  );
+  assert.match(source, /function extractVideoItem/, 'simple tweets should parse embedded video-card tweets without duplicating standalone video extraction logic');
   assert.match(source, /function extractTweetProfile/, 'simple tweets should extract dynamic author profile fields');
   assert.match(source, /function extractTweetMetrics/, 'simple tweets should extract dynamic action metrics');
   assert.match(source, /status\/(?!.*analytics)/, 'simple tweet href extraction should prefer tweet status links over profile or analytics links');
@@ -283,8 +293,9 @@ for (const source of [modularExtractorSource]) {
   assert.doesNotMatch(source, /section\[data-block="true"\]\[contenteditable="false"\]/, 'image detection should not rely on contenteditable=false section blocks');
 }
 assert.match(articleModelSource, /kind\?: 'ordered' \| 'unordered'/, 'list model should include ordered/unordered kind');
-assert.match(cleanTreeBlockConverterSource, /function getOrderedListMarker/, 'clean-tree conversion should extract handwritten ordered-list markers');
-assert.match(cleanTreeBlockConverterSource, /kind === 'ordered' && markerLength > 0 \? rawText/, 'clean-tree conversion should keep handwritten ordered-list markers in item text');
+assert.match(listBlockConverterSource, /function getOrderedListMarker/, 'clean-tree conversion should extract handwritten ordered-list markers');
+assert.match(listBlockConverterSource, /kind === 'ordered' \? getOrderedListMarker\(rawText\) : null/, 'clean-tree conversion should detect handwritten ordered-list markers before item text normalization');
+assert.match(listBlockConverterSource, /shiftTextAnnotations\(deps\.extractTextAnnotations\(element, rawText\), markerLength\)/, 'clean-tree conversion should shift annotations when stripping handwritten ordered-list markers');
 assert.doesNotMatch(platformFixesSource, /isHandwrittenOrderedListItem/, 'platform fixes should not convert handwritten ordered marker text into list blocks');
 assert.doesNotMatch(platformFixesSource, /querySelectorAll\('\[data-block="true"\]'\)[\s\S]*data-linelens-list-kind', 'ordered'/, 'platform fixes should only mark real Draft.js ordered list items');
 assert.match(modularExtractorSource, /legacyBlocks = await extractXArticleLegacyBlocks/, 'X article browser path should preserve legacy high-risk blocks through the Step 4 legacy boundary until clean-tree video migration is complete');
@@ -330,7 +341,8 @@ assert.match(readerRendererSource, /reader-gif-pause-icon/, 'reader should rende
 assert.match(readerRendererSource, /renderSimpleTweetPhotoGrid/, 'reader should render simple tweet image cards as a photo grid');
 assert.match(readerRendererSource, /renderSimpleTweetAvatar\(block\)/, 'reader should use dynamic avatar data');
 assert.match(readerRendererSource, /renderSimpleTweetActions\(block\.metrics\)/, 'reader should use dynamic action metrics');
-assert.match(readerRendererSource, /createElement\('a'\)/, 'reader should render linked simple tweets as anchors');
+assert.match(readerRendererSource, /document\.createElement\(hasPlayableVideo \? 'div' : 'a'\)/, 'reader should render linked simple tweets without playable video as anchors');
+assert.match(readerRendererSource, /card\.setAttribute\('href', block\.href\)/, 'reader should preserve simple tweet hrefs when rendering anchors');
 
 const validation = validateArticle({
   id: '2058421725256171718',

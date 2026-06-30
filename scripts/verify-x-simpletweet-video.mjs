@@ -9,6 +9,7 @@ const articleModelSource = readFileSync(resolve(rootDir, 'src/shared/article.ts'
 const extractorSource = readFileSync(resolve(rootDir, 'src/content/extractors/x/article-extractor.ts'), 'utf8');
 const legacyBlocksSource = readFileSync(resolve(rootDir, 'src/content/extractors/x/article-legacy-blocks.ts'), 'utf8');
 const simpleTweetSource = readFileSync(resolve(rootDir, 'src/content/extractors/x/simple-tweet.ts'), 'utf8');
+const videoMediaSource = readFileSync(resolve(rootDir, 'src/content/extractors/x/video-media.ts'), 'utf8');
 const videoRendererSource = readFileSync(resolve(rootDir, 'src/reader/renderers/video-renderer.ts'), 'utf8');
 const simpleTweetRendererSource = readFileSync(resolve(rootDir, 'src/reader/renderers/simple-tweet-renderer.ts'), 'utf8');
 const readerRendererSource = [
@@ -54,6 +55,29 @@ assert.match(
   /function extractVideoItem\(element: Element, id: string, capturedVideos: CapturedXVideo\[\]\): SimpleTweetContentItem \| null[\s\S]*?extractVideoFromElement\(element, id, capturedVideos\)/,
   'simpleTweet video extraction should reuse the same videoPlayer extraction helper'
 );
+assert.match(
+  videoMediaSource,
+  /export function matchCapturedVideo\b[\s\S]*?export function buildVideoHlsPayload\b[\s\S]*?export function chooseCapturedVideoSource\b/,
+  'X captured-video matching and HLS source selection should live in one shared helper'
+);
+assert.match(
+  simpleTweetSource,
+  /from '\.\/video-media\.js'/,
+  'simpleTweet video extraction should import the shared X video/HLS helper'
+);
+assert.match(
+  legacyBlocksSource,
+  /from '\.\/video-media\.js'/,
+  'legacy article video extraction should import the shared X video/HLS helper'
+);
+for (const [label, source] of [
+  ['simpleTweet extractor', simpleTweetSource],
+  ['legacy block extractor', legacyBlocksSource]
+]) {
+  assert.doesNotMatch(source, /function matchCapturedVideo\b/, `${label} should not keep local captured-video matching`);
+  assert.doesNotMatch(source, /function buildVideoHlsPayload\b/, `${label} should not keep local HLS payload construction`);
+  assert.doesNotMatch(source, /function chooseCapturedVideoSource\b/, `${label} should not keep local HLS source selection`);
+}
 assert.match(
   extractorSource,
   /extractXArticleLegacyBlocks\(\{[\s\S]*?longform,[\s\S]*?articleId,[\s\S]*?capturedVideos[\s\S]*?\}\)/,
