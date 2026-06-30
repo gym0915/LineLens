@@ -1,16 +1,16 @@
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { findWorkspaceRootWithFile, readProjectFiles, readWorkspaceFile } from './utils/source-contracts.mjs';
 
 const projectRoot = resolve(new URL('..', import.meta.url).pathname);
-const workspaceRoot = findWorkspaceRoot(projectRoot);
+const workspaceRoot = findWorkspaceRootWithFile(projectRoot, 'assets/x-article-simpletweet-text.html');
 
-const sourceFiles = {
-  simpleTweet: readFileSync(resolve(projectRoot, 'src/content/extractors/x/simple-tweet.ts'), 'utf8'),
-  platformFixes: readFileSync(resolve(projectRoot, 'src/content/preprocess/apply-platform-fixes.ts'), 'utf8'),
-  cleanTree: readFileSync(resolve(projectRoot, 'src/content/preprocess/clean-tree-block-converter.ts'), 'utf8'),
-  cloneTree: readFileSync(resolve(projectRoot, 'src/content/preprocess/clone-content-tree.ts'), 'utf8')
-};
+const sourceFiles = readProjectFiles(projectRoot, [
+  ['simpleTweet', 'src/content/extractors/x/simple-tweet.ts'],
+  ['platformFixes', 'src/content/preprocess/apply-platform-fixes.ts'],
+  ['cleanTree', 'src/content/preprocess/clean-tree-block-converter.ts'],
+  ['cloneTree', 'src/content/preprocess/clone-content-tree.ts']
+]);
 
 const fixturePaths = [
   '../assets/x-article-simpletweet-text.html',
@@ -21,7 +21,7 @@ const fixturePaths = [
 ];
 
 for (const fixturePath of fixturePaths) {
-  const fixture = readFileSync(resolve(workspaceRoot, fixturePath.replace(/^\.\.\//, '')), 'utf8');
+  const fixture = readWorkspaceFile(workspaceRoot, fixturePath.replace(/^\.\.\//, ''));
   assert.match(fixture, /data-testid="simpleTweet"/, `${fixturePath} should contain a simpleTweet fixture`);
 }
 
@@ -78,20 +78,3 @@ assert.match(sourceFiles.cloneTree, /data-linelens-media-layout-width/, 'clean t
 assert.match(sourceFiles.cloneTree, /data-linelens-media-layout-height/, 'clean tree should whitelist preserved layout height metadata');
 
 console.log('SimpleTweet computed layout verification passed.');
-
-function findWorkspaceRoot(startDir) {
-  let current = startDir;
-  for (let depth = 0; depth < 8; depth += 1) {
-    if (existsSync(resolve(current, 'assets/x-article-simpletweet-text.html'))) {
-      return current;
-    }
-
-    const parent = resolve(current, '..');
-    if (parent === current) {
-      break;
-    }
-    current = parent;
-  }
-
-  throw new Error(`Unable to locate workspace assets directory from ${startDir}`);
-}
