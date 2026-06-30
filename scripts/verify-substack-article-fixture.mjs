@@ -19,13 +19,22 @@ const fixturePath = findFixturePath(projectRoot, fixtureName);
 const sourceUrl = new URL('https://substack.com/inbox/post/202529490');
 const dom = installDom(readFileSync(fixturePath, 'utf8'), sourceUrl.toString());
 
-const rootSelector = 'article.newsletter-post.post-viewer-post';
-const titleSelector = 'article.newsletter-post.post-viewer-post > div:first-child a[href*="/p/"]';
+const rootSelector = 'article.newsletter-post.post-viewer-post, article.podcast-post.post-viewer-post';
+const titleSelector = [
+  'article.newsletter-post.post-viewer-post > div:first-child a[href*="/p/"]',
+  'article.podcast-post.post-viewer-post > div:first-child a[href*="/p/"]',
+  'article.podcast-post.post-viewer-post > div:nth-child(2) a[href*="/p/"]'
+].join(', ');
 const contentSelector = '.available-content .body.markup';
 
 assert.ok(dom.window.document.querySelector(rootSelector), 'Substack fixture should expose the article root selector');
 assert.ok(dom.window.document.querySelector(titleSelector), 'Substack fixture should expose the permalink title selector');
 assert.ok(dom.window.document.querySelector(contentSelector), 'Substack fixture should expose the body markup content selector');
+assert.equal(
+  dom.window.document.querySelectorAll(contentSelector).length,
+  1,
+  'Substack fixture should expose exactly one body markup content selector'
+);
 
 const adapter = resolvePlatformAdapter(sourceUrl);
 assert.equal(adapter?.id, 'substack.article', 'Substack adapter should be registered in built-in platform adapters');

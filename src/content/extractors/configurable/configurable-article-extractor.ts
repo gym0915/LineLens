@@ -28,6 +28,17 @@ export type ConfigurableArticleExtractionResult = {
   diagnostics: ConfigurableArticleExtractionDiagnostics;
 };
 
+const ARTICLE_HEADER_TITLE_SELECTORS = [
+  'header h1',
+  'header [data-title]',
+  '[data-article-header] h1',
+  '[data-post-header] h1',
+  '.post-header h1',
+  '.post-title',
+  '.post-title a[href]',
+  ':scope > div:first-child a[href*="/p/"]'
+];
+
 export type AdapterDrivenArticleExtractorOptions = {
   excludeAdapterIds?: string[];
 };
@@ -97,7 +108,7 @@ export async function waitUntilConfigurableArticleReady(
     return { ready: false, reason: 'missing_article_root' };
   }
 
-  if (!resolveConfigurableTitle(adapter, roots.articleRoot, roots.titleElement)) {
+  if (!resolveConfigurableTitle(adapter, roots.root, roots.articleRoot, roots.titleElement)) {
     return { ready: false, reason: 'missing_title' };
   }
 
@@ -154,7 +165,7 @@ export async function extractConfigurableArticleWithDiagnostics(
   if (!roots.articleRoot || !roots.contentRoot) {
     throw new Error('article_not_ready');
   }
-  const title = resolveConfigurableTitle(adapter, roots.articleRoot, roots.titleElement);
+  const title = resolveConfigurableTitle(adapter, roots.root, roots.articleRoot, roots.titleElement);
   if (!title && adapter.validation?.titleStrategy !== 'optional') {
     throw new Error('missing_title');
   }
@@ -223,14 +234,24 @@ export function locateConfigurableArticleRoots(adapter: PlatformAdapter, context
   };
 }
 
-function resolveConfigurableTitle(adapter: PlatformAdapter, articleRoot: Element, titleElement: Element | null): string {
-  const selectedTitle = normalizeText(titleElement?.textContent ?? '');
+function resolveConfigurableTitle(adapter: PlatformAdapter, root: ParentNode | null, articleRoot: Element, titleElement: Element | null): string {
+  const selectedTitle = extractTitleText(titleElement);
   if (selectedTitle) {
     return selectedTitle;
   }
 
+  const articleHeaderTitle = resolveArticleHeaderTitle(articleRoot);
+  if (articleHeaderTitle) {
+    return articleHeaderTitle;
+  }
+
   if (adapter.validation?.titleStrategy === 'fallback-from-h1') {
     return normalizeText(articleRoot.querySelector('h1')?.textContent ?? '');
+  }
+
+  const documentFallbackTitle = resolveDocumentFallbackTitle(root);
+  if (documentFallbackTitle) {
+    return documentFallbackTitle;
   }
 
   if (adapter.validation?.titleStrategy === 'optional') {
@@ -238,6 +259,30 @@ function resolveConfigurableTitle(adapter: PlatformAdapter, articleRoot: Element
   }
 
   return '';
+}
+
+function resolveArticleHeaderTitle(articleRoot: Element): string {
+  for (const selector of ARTICLE_HEADER_TITLE_SELECTORS) {
+    const title = extractTitleText(articleRoot.querySelector(selector));
+    if (title) {
+      return title;
+    }
+  }
+
+  return '';
+}
+
+function resolveDocumentFallbackTitle(root: ParentNode | null): string {
+  const documentTitle = extractTitleText(root?.querySelector('title') ?? null);
+  if (documentTitle) {
+    return documentTitle;
+  }
+
+  return extractTitleText(root?.querySelector('meta[property="og:title"], meta[name="og:title"]') ?? null);
+}
+
+function extractTitleText(element: Element | null | undefined): string {
+  return normalizeText(element?.getAttribute('content') ?? element?.textContent ?? '');
 }
 
 function validateConfigurableArticle(article: Article, config: ValidationConfig | undefined): ValidationResult {

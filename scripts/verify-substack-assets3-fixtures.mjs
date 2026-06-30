@@ -18,6 +18,17 @@ const sourceUrls = [
   'https://substack.com/home/post/p-199574024',
   'https://substack.com/inbox/post/203490377'
 ].map((url) => new URL(url));
+const contentSelector = '.available-content .body.markup';
+const assets3ComponentRootSelector = [
+  '[data-component-name="Image2ToDOM"]',
+  '[data-component-name="Youtube2ToDOM"]',
+  '[data-component-name="VideoEmbedPlayer"]',
+  'audio[src]',
+  '[data-component-name="FootnoteToDOM"]',
+  '[data-component-name="Paywall"]',
+  '[data-component-name="SubscribeWidget"]'
+].join(', ');
+const preservedSubstackComponentAttributes = ['data-component-name', 'data-href', 'data-native'];
 
 assert.equal(fixtures.length, 4, `assets3/html dom should expose exactly 4 HTML fixtures, found ${fixtures.length}`);
 
@@ -31,15 +42,32 @@ for (const [index, fixture] of fixtures.entries()) {
   const dom = installDom(readFileSync(fixture.path, 'utf8'), sourceUrl.toString());
   const { document } = dom.window;
   const articleCount = document.querySelectorAll('article').length;
-  const contentRoot = document.querySelector('.available-content .body.markup');
+  const contentRoots = document.querySelectorAll(contentSelector);
+  const contentRoot = document.querySelector(contentSelector);
 
   assert.ok(articleCount > 0, `${fixture.name} should contain at least one <article>`);
-  assert.ok(contentRoot, `${fixture.name} should contain .available-content .body.markup`);
+  assert.equal(contentRoots.length, 1, `${fixture.name} should expose exactly one ${contentSelector} content root`);
+  assert.ok(contentRoot, `${fixture.name} should contain ${contentSelector}`);
 
   const adapter = resolvePlatformAdapter(sourceUrl);
   assert.equal(adapter?.id, 'substack.article', `${sourceUrl.toString()} should resolve to substack.article`);
+  assert.equal(adapter.contentSelector, contentSelector, 'Substack adapter should keep .available-content .body.markup as the only body entry');
+  assert.equal(
+    adapter.cleanRules?.removeSelectors?.includes('.paywall'),
+    false,
+    'Substack clean rules should preserve Paywall roots for component handlers'
+  );
+  for (const attributeName of preservedSubstackComponentAttributes) {
+    assert.ok(
+      adapter.cleanRules?.preserveAttributeNames?.includes(attributeName),
+      `Substack clean rules should preserve ${attributeName} for assets3 component handlers`
+    );
+  }
 
   const roots = locateConfigurableArticleRoots(adapter, { url: sourceUrl, root: document });
+  assert.equal(roots.contentRoot, contentRoot, `${fixture.name} should extract from the unique ${contentSelector} root`);
+  assertAssets3ComponentRootsCovered(adapter, contentRoot, fixture.name);
+
   const readiness = await waitUntilConfigurableArticleReady(adapter, { url: sourceUrl, root: document });
 
   console.log(
@@ -151,4 +179,24 @@ function installDom(html, url) {
   globalThis.window = jsdom.window;
   globalThis.document = jsdom.window.document;
   return jsdom;
+}
+
+function assertAssets3ComponentRootsCovered(adapter, contentRoot, fixtureName) {
+  const blockSelector = adapter.semanticMap?.blockSelector ?? '';
+  assert.ok(blockSelector, 'Substack adapter should expose semanticMap.blockSelector');
+
+  const componentRoots = Array.from(contentRoot.querySelectorAll(assets3ComponentRootSelector));
+  const blockCandidates = new Set(Array.from(contentRoot.querySelectorAll(blockSelector)));
+
+  for (const componentRoot of componentRoots) {
+    assert.equal(
+      blockCandidates.has(componentRoot),
+      true,
+      `${fixtureName} should include ${describeComponentRoot(componentRoot)} in semanticMap.blockSelector`
+    );
+  }
+}
+
+function describeComponentRoot(element) {
+  return element.getAttribute('data-component-name') ?? element.tagName.toLowerCase();
 }

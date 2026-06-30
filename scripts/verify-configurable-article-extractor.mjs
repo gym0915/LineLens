@@ -67,9 +67,7 @@ const genericAdapter = {
   }
 };
 
-const genericHtml = [
-  '<article data-article-root>',
-  '  <h1 data-title>Configurable Article Fixture</h1>',
+const genericContentHtml = [
   '  <section data-content>',
   '    <p data-block data-kind="paragraph">Opening paragraph with <a href="https://example.com/source">link text</a> for annotations.</p>',
   '    <h2 data-block data-kind="heading" data-linelens-heading-level="2">Mapped heading</h2>',
@@ -79,9 +77,23 @@ const genericHtml = [
   '    <figure data-block data-kind="image"><img src="https://example.com/image.png" alt="Fixture image"></figure>',
   '    <section data-block data-kind="code"><pre><code class="language-ts">const answer: number = 42;</code></pre></section>',
   '    <section data-block data-kind="table"><div role="row"><span role="columnheader">Name</span><span role="columnheader">Value</span></div><div role="row"><span role="cell">kind</span><span role="cell">configurable</span></div></section>',
-  '  </section>',
+  '  </section>'
+].join('');
+
+const genericHtml = [
+  '<article data-article-root>',
+  '  <h1 data-title>Configurable Article Fixture</h1>',
+  genericContentHtml,
   '</article>'
 ].join('');
+
+const genericFallbackTitleAdapter = {
+  ...genericAdapter,
+  readiness: {
+    ...genericAdapter.readiness,
+    requiredSelectors: ['[data-article-root]', '[data-content]']
+  }
+};
 
 const genericUrl = new URL('https://example.com/story/123');
 const genericDom = installDom(genericHtml, genericUrl.toString());
@@ -164,6 +176,65 @@ assert.deepEqual(
   { ready: false, reason: 'missing_title' },
   'configurable readiness should report missing title through adapter selectors'
 );
+
+const headerFallbackHtml = [
+  '<article data-article-root>',
+  '  <header><h1>Header Fallback Title</h1></header>',
+  genericContentHtml,
+  '</article>'
+].join('');
+const headerFallbackDom = installDom(headerFallbackHtml, genericUrl.toString());
+assert.deepEqual(
+  await waitUntilConfigurableArticleReady(genericFallbackTitleAdapter, { url: genericUrl, root: headerFallbackDom.window.document }),
+  { ready: true },
+  'configurable readiness should accept current article header title fallback'
+);
+const headerFallbackArticle = await extractConfigurableArticle(genericFallbackTitleAdapter, {
+  url: genericUrl,
+  root: headerFallbackDom.window.document,
+  now: () => 123456789
+});
+assert.equal(headerFallbackArticle.title, 'Header Fallback Title', 'configurable extraction should use current article header title fallback');
+
+const documentTitleFallbackHtml = [
+  '<!doctype html><html><head><title>Document Fallback Title</title></head><body>',
+  '<article data-article-root>',
+  genericContentHtml,
+  '</article>',
+  '</body></html>'
+].join('');
+const documentTitleFallbackDom = installDom(documentTitleFallbackHtml, genericUrl.toString());
+assert.deepEqual(
+  await waitUntilConfigurableArticleReady(genericFallbackTitleAdapter, { url: genericUrl, root: documentTitleFallbackDom.window.document }),
+  { ready: true },
+  'configurable readiness should accept document <title> fallback'
+);
+const documentTitleFallbackArticle = await extractConfigurableArticle(genericFallbackTitleAdapter, {
+  url: genericUrl,
+  root: documentTitleFallbackDom.window.document,
+  now: () => 123456789
+});
+assert.equal(documentTitleFallbackArticle.title, 'Document Fallback Title', 'configurable extraction should use document <title> fallback');
+
+const openGraphTitleFallbackHtml = [
+  '<!doctype html><html><head><meta property="og:title" content="Open Graph Fallback Title"></head><body>',
+  '<article data-article-root>',
+  genericContentHtml,
+  '</article>',
+  '</body></html>'
+].join('');
+const openGraphTitleFallbackDom = installDom(openGraphTitleFallbackHtml, genericUrl.toString());
+assert.deepEqual(
+  await waitUntilConfigurableArticleReady(genericFallbackTitleAdapter, { url: genericUrl, root: openGraphTitleFallbackDom.window.document }),
+  { ready: true },
+  'configurable readiness should accept og:title fallback'
+);
+const openGraphTitleFallbackArticle = await extractConfigurableArticle(genericFallbackTitleAdapter, {
+  url: genericUrl,
+  root: openGraphTitleFallbackDom.window.document,
+  now: () => 123456789
+});
+assert.equal(openGraphTitleFallbackArticle.title, 'Open Graph Fallback Title', 'configurable extraction should use og:title fallback');
 
 installDom(genericHtml, genericUrl.toString());
 const genericResult = await extractConfigurableArticleWithDiagnostics(genericAdapter, {

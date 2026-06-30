@@ -1,5 +1,23 @@
 import type { PlatformAdapter } from './adapter-types.js';
 
+const SUBSTACK_ARTICLE_ROOT_SELECTOR = 'article.newsletter-post.post-viewer-post, article.podcast-post.post-viewer-post';
+const SUBSTACK_TITLE_SELECTOR = [
+  'article.newsletter-post.post-viewer-post > div:first-child a[href*="/p/"]',
+  'article.podcast-post.post-viewer-post > div:first-child a[href*="/p/"]',
+  'article.podcast-post.post-viewer-post > div:nth-child(2) a[href*="/p/"]'
+].join(', ');
+const SUBSTACK_CONTENT_SELECTOR = '.available-content .body.markup';
+const SUBSTACK_ASSETS3_COMPONENT_BLOCK_SELECTOR = [
+  '.body.markup [data-component-name="Image2ToDOM"]',
+  '.body.markup > [data-component-name="Youtube2ToDOM"]',
+  '.body.markup > [data-component-name="VideoEmbedPlayer"]',
+  '.body.markup audio[src]',
+  '.body.markup > [data-component-name="FootnoteToDOM"]',
+  '.body.markup > [data-component-name="Paywall"]',
+  '.body.markup > [data-testid="paywall"]',
+  '.body.markup > [data-component-name="SubscribeWidget"]'
+].join(', ');
+
 export const substackArticleAdapter: PlatformAdapter = {
   id: 'substack.article',
   platform: 'substack',
@@ -8,9 +26,9 @@ export const substackArticleAdapter: PlatformAdapter = {
   hosts: ['substack.com'],
   urlPatterns: [/^\/inbox\/post\/[^/]+$/, /^\/home\/post\/[^/]+$/],
   enabled: true,
-  rootSelector: 'article.newsletter-post.post-viewer-post',
-  titleSelector: 'article.newsletter-post.post-viewer-post > div:first-child a[href*="/p/"]',
-  contentSelector: '.available-content .body.markup',
+  rootSelector: SUBSTACK_ARTICLE_ROOT_SELECTOR,
+  titleSelector: SUBSTACK_TITLE_SELECTOR,
+  contentSelector: SUBSTACK_CONTENT_SELECTOR,
   semanticMap: {
     blockSelector:
       '.body.markup > p, ' +
@@ -18,6 +36,7 @@ export const substackArticleAdapter: PlatformAdapter = {
       '.body.markup > ul > li, .body.markup > ol > li, ' +
       '.body.markup > blockquote, ' +
       '.body.markup > .captioned-image-container img, ' +
+      SUBSTACK_ASSETS3_COMPONENT_BLOCK_SELECTOR + ', ' +
       '.body.markup > a[data-component-name]',
     paragraphSelector: '.body.markup > p',
     headingSelector: '.body.markup > h1, .body.markup > h2, .body.markup > h3, .body.markup > h4, .body.markup > h5, .body.markup > h6',
@@ -32,19 +51,36 @@ export const substackArticleAdapter: PlatformAdapter = {
     textSelector: '*'
   },
   cleanRules: {
-    removeSelectors: ['script', 'style', 'noscript', 'button', '[role="button"]', '.paywall'],
+    removeSelectors: ['script', 'style', 'noscript', 'button', '[role="button"]'],
     unwrapSelectors: [],
     preserveAttributeNames: [
+      'allow',
+      'allowautoplay',
+      'allowfullscreen',
+      'aria-label',
+      'controls',
+      'controlslist',
+      'crossorigin',
+      'data-href',
+      'data-native',
+      'data-testid',
       'href',
+      'frameborder',
       'src',
       'srcset',
       'sizes',
       'alt',
       'title',
       'class',
+      'id',
+      'loading',
+      'poster',
+      'preload',
       'style',
       'data-component-name',
       'data-attrs',
+      'data-video-id',
+      'gesture',
       'width',
       'height'
     ]
@@ -62,7 +98,7 @@ export const substackArticleAdapter: PlatformAdapter = {
   readiness: {
     minBlockCount: 10,
     minTextLength: 500,
-    requiredSelectors: ['article.newsletter-post.post-viewer-post', '.available-content .body.markup']
+    requiredSelectors: [SUBSTACK_ARTICLE_ROOT_SELECTOR, SUBSTACK_CONTENT_SELECTOR]
   },
   validation: {
     minBlockCount: 10,
