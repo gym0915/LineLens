@@ -74,33 +74,26 @@
 .highlight-layer {
   position: fixed;
   inset: 0;
-  z-index: 0;
+  z-index: 1;
   pointer-events: none;
   opacity: 0;
-  transition: opacity 180ms ease;
 }
 
 .highlight-layer.is-visible {
-  opacity: 1;
-}
-
-.reader-shell {
-  position: relative;
-  z-index: 1;
+  opacity: 0;
 }
 
 .highlight-focus {
   position: fixed;
-  left: 0;
-  top: 0;
+  left: var(--highlight-x, 0);
+  top: var(--highlight-y, 0);
   width: var(--highlight-width, 0);
   height: var(--highlight-height, 0);
-  transform: translate3d(var(--highlight-x, 0), var(--highlight-y, 0), 0);
   border-radius: var(--reader-radius-card);
-  background: var(--reader-highlight-surface);
-  box-shadow: var(--reader-highlight-shadow);
+  box-shadow: none;
   transition:
-    transform 250ms ease,
+    left 250ms ease,
+    top 250ms ease,
     width 250ms ease,
     height 250ms ease,
     opacity 250ms ease;
