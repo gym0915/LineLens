@@ -30,7 +30,10 @@ const xUrl = new URL('https://x.com/example/article/123456789');
 const xStatusUrl = new URL('https://x.com/example/status/123456789');
 const twitterUrl = new URL('https://twitter.com/example/article/123456789');
 const substackInboxUrl = new URL('https://substack.com/inbox/post/202529490');
+const substackHomeUrl = new URL('https://substack.com/home/post/p-199574024');
+const substackPublicPostUrl = new URL('https://substack.com/p/how-to-think-about-agent-browsers');
 const latentSpaceUrl = new URL('https://www.latent.space/p/how-to-think-about-agent-browsers');
+const latentSpaceApexUrl = new URL('https://latent.space/p/how-to-think-about-agent-browsers');
 const fixtureUrl = new URL('https://fixture.linelens.local/article/1');
 const futurePlatformUrl = new URL('https://future.example.com/article/123');
 const unsupportedUrl = new URL('https://example.com/story');
@@ -44,7 +47,10 @@ assert.equal(resolvePlatformAdapter(xUrl)?.id, 'x.article', 'resolver should mat
 assert.equal(resolvePlatformAdapter(xStatusUrl)?.id, 'x.article', 'resolver should match x.com status article URLs');
 assert.equal(resolvePlatformAdapter(twitterUrl)?.id, 'x.article', 'resolver should match twitter.com article URLs');
 assert.equal(resolvePlatformAdapter(substackInboxUrl)?.id, 'substack.article', 'resolver should match substack.com inbox article URLs');
-assert.equal(resolvePlatformAdapter(latentSpaceUrl)?.id, 'substack.article', 'resolver should match Substack custom-domain article URLs');
+assert.equal(resolvePlatformAdapter(substackHomeUrl)?.id, 'substack.article', 'resolver should match substack.com home article URLs');
+assert.equal(resolvePlatformAdapter(substackPublicPostUrl), null, 'resolver should reject legacy substack.com public post URLs');
+assert.equal(resolvePlatformAdapter(latentSpaceUrl), null, 'resolver should reject Substack custom-domain article URLs');
+assert.equal(resolvePlatformAdapter(latentSpaceApexUrl), null, 'resolver should reject Substack apex custom-domain article URLs');
 assert.equal(resolvePlatformAdapter(fixtureUrl)?.id, 'fixture.article', 'resolver should match the local fixture article URLs');
 assert.equal(resolvePlatformAdapter(futurePlatformUrl), null, 'resolver should not match removed future-platform drafts');
 assert.equal(resolvePlatformAdapter(unsupportedUrl), null, 'resolver should reject unsupported hosts');
@@ -135,6 +141,12 @@ assert.equal(
 );
 
 assert.equal(substackArticleAdapter.articleSource, 'substack-article', 'Substack adapter should expose article source metadata');
+assert.deepEqual(substackArticleAdapter.hosts, ['substack.com'], 'Substack adapter should expose only the canonical Substack host');
+assert.deepEqual(
+  substackArticleAdapter.urlPatterns.map((pattern) => pattern.source),
+  ['^\\/inbox\\/post\\/[^/]+$', '^\\/home\\/post\\/[^/]+$'],
+  'Substack adapter should expose only inbox/home feed post URL patterns'
+);
 assert.equal(substackArticleAdapter.rootSelector, 'article.newsletter-post.post-viewer-post', 'Substack adapter should expose the article root selector');
 assert.equal(substackArticleAdapter.contentSelector, '.available-content .body.markup', 'Substack adapter should expose the body markup selector');
 assert.equal(

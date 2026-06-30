@@ -21,8 +21,7 @@ const IDLE_ICON_PATH = {
 const ROUTE_CHANGE_HOST_FILTERS = [
   { hostSuffix: 'x.com' },
   { hostSuffix: 'twitter.com' },
-  { hostSuffix: 'substack.com' },
-  { hostSuffix: 'latent.space' }
+  { hostSuffix: 'substack.com' }
 ];
 const AMPLIFY_VIDEO_ID_PATTERN = /amplify_video\/(\d+)\//;
 

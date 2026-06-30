@@ -15,6 +15,8 @@ const externalMediaHostEntries = new Map(EXTERNAL_MEDIA_HOST_ALLOWLIST.map((entr
 const contentMatches = manifest.content_scripts?.flatMap((script) => script.matches ?? []) ?? [];
 const hostPermissions = manifest.host_permissions ?? [];
 const webAccessibleMatches = manifest.web_accessible_resources?.flatMap((entry) => entry.matches ?? []) ?? [];
+const expectedSubstackContentMatches = ['https://substack.com/inbox/post/*', 'https://substack.com/home/post/*'];
+const expectedSubstackManifestMatches = ['https://substack.com/*'];
 
 assert(contentMatches.length > 0, 'manifest should declare content script matches');
 assert(hostPermissions.length > 0, 'manifest should declare host_permissions');
@@ -26,12 +28,34 @@ for (const [surfaceName, matches] of [
   ['host_permissions', hostPermissions],
   ['web_accessible_resources.matches', webAccessibleMatches]
 ]) {
+  assert.equal(
+    matches.some((match) => match.includes('latent.space')),
+    false,
+    `${surfaceName} should not include latent.space after Substack scope narrowing`
+  );
+
   for (const match of matches) {
     assert.doesNotMatch(match, /^<all_urls>$/, `${surfaceName} should not use <all_urls>`);
     assert.doesNotMatch(match, /^\*:\/\/\*\/\*$/, `${surfaceName} should not use a global scheme/host wildcard`);
     assert.match(match, /^https:\/\/[^/]+\/.*$/, `${surfaceName} should stay on explicit https origins: ${match}`);
   }
 }
+
+assert.deepEqual(
+  contentMatches.filter((match) => match.includes('substack')),
+  expectedSubstackContentMatches,
+  'Substack content script scope should only target inbox/home feed post routes'
+);
+assert.deepEqual(
+  hostPermissions.filter((match) => match.includes('substack')),
+  expectedSubstackManifestMatches,
+  'Substack host permissions should only target the canonical Substack host'
+);
+assert.deepEqual(
+  webAccessibleMatches.filter((match) => match.includes('substack')),
+  expectedSubstackManifestMatches,
+  'Substack web accessible scope should only target the canonical Substack host'
+);
 
 for (const entry of EXTERNAL_MEDIA_HOST_ALLOWLIST) {
   assert.equal(typeof entry.host, 'string', 'external media allowlist entries should declare host');

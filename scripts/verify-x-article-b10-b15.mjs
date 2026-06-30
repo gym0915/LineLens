@@ -216,7 +216,7 @@ assert.equal(typeof tabsActivatedListener, 'function', 'background should regist
 assert.equal(typeof webRequestListener, 'function', 'background should register webRequest listener');
 assert.deepEqual(calls.historyFilters, [
   {
-    url: [{ hostSuffix: 'x.com' }, { hostSuffix: 'twitter.com' }, { hostSuffix: 'substack.com' }, { hostSuffix: 'latent.space' }]
+    url: [{ hostSuffix: 'x.com' }, { hostSuffix: 'twitter.com' }, { hostSuffix: 'substack.com' }]
   }
 ]);
 assert.deepEqual(calls.webRequestFilters, [{ urls: ['https://video.twimg.com/*'] }]);
