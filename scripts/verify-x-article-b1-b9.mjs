@@ -187,8 +187,9 @@ const legacyBlocksSource = readFileSync(
   'utf8'
 );
 const simpleTweetSource = readFileSync(resolve(projectRoot, 'src/content/extractors/x/simple-tweet.ts'), 'utf8');
+const mediaLayoutSource = readFileSync(resolve(projectRoot, 'src/content/extractors/x/media-layout.ts'), 'utf8');
 const videoMediaSource = readFileSync(resolve(projectRoot, 'src/content/extractors/x/video-media.ts'), 'utf8');
-const extractionContractSource = [modularExtractorSource, legacyBlocksSource, simpleTweetSource, videoMediaSource].join('\n');
+const extractionContractSource = [modularExtractorSource, legacyBlocksSource, simpleTweetSource, mediaLayoutSource, videoMediaSource].join('\n');
 const articleModelSource = readFileSync(resolve(projectRoot, 'src/shared/article.ts'), 'utf8');
 const readerRendererSource = [
   readFileSync(resolve(projectRoot, 'src/reader/block-renderer.ts'), 'utf8'),
@@ -279,7 +280,7 @@ for (const source of [extractionContractSource]) {
   assert.match(source, /application\/x-mpegURL/, 'video extraction should set HLS MIME when source is m3u8');
   assert.match(source, /function isSimpleTweetCard/, 'image-card simple tweet parsing should be gated by data-testid simpleTweet');
   assert.match(source, /querySelectorAll<HTMLElement>\(X_ARTICLE_SELECTORS\.tweetPhoto\)/, 'image-card simple tweets should enumerate tweetPhoto containers');
-  assert.match(source, /function getTweetPhotoBackgroundUrl/, 'image-card simple tweets should keep the lazy background-image fallback');
+  assert.match(source, /export function getXMediaBackgroundUrl/, 'image-card simple tweets should keep the lazy background-image fallback through the shared X media helper');
   assert.match(
     source,
     /const simpleTweet = await extractSimpleTweetBlock\(block, blockId\(articleId, index\), capturedVideos\);[\s\S]*?const video = extractVideoFromElement/,

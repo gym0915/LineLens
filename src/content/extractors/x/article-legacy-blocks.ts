@@ -15,6 +15,7 @@ import type { CapturedXVideo } from '../../../shared/messages.js';
 import { normalizeCodeText, normalizePreWrapText, normalizeText } from '../../../shared/text.js';
 import { X_CANONICAL_ORIGIN } from '../../../shared/url.js';
 import { X_ARTICLE_SELECTORS } from './article-selectors.js';
+import { getXImageAspectRatio, getXMediaAspectRatio, getXMediaBackgroundLayer, getXMediaBackgroundUrl } from './media-layout.js';
 import * as simpleTweetModel from './simple-tweet.js';
 import { buildVideoHlsPayload, chooseCapturedVideoSource, matchCapturedVideo } from './video-media.js';
 
@@ -671,17 +672,6 @@ async function extractSimpleTweetBlock(block: Element, id: string, capturedVideo
   return simpleTweetModel.extractSimpleTweetBlockFromRoot(block, id, capturedVideos);
 }
 
-function getTweetPhotoBackgroundUrl(element: Element): string {
-  const backgroundLayer = getTweetPhotoBackgroundLayer(element);
-  const style = backgroundLayer?.style.backgroundImage || backgroundLayer?.getAttribute('style') || '';
-  const match = /url\((?:"|&quot;)?([^")]+)(?:"|&quot;)?\)/.exec(style);
-  return match?.[1]?.replace(/&amp;/g, '&') ?? '';
-}
-
-function getTweetPhotoBackgroundLayer(element: Element): HTMLElement | null {
-  return element.querySelector<HTMLElement>('[style*="background-image"]');
-}
-
 function normalizeGalleryBackgroundSize(value: string | undefined): ImageGalleryBlock['items'][number]['backgroundSize'] {
   const normalized = normalizeCssText(value);
   if (normalized === 'cover' || normalized === 'contain' || normalized === 'auto') {
@@ -845,8 +835,8 @@ function extractImageGalleryFromElement(element: Element, id: string): ImageGall
 
 function tweetPhotoElementToGalleryItem(element: HTMLElement): ImageGalleryBlock['items'][number] | null {
   const image = element.querySelector<HTMLImageElement>('img');
-  const backgroundLayer = getTweetPhotoBackgroundLayer(element);
-  const displaySrc = getTweetPhotoBackgroundUrl(element);
+  const backgroundLayer = getXMediaBackgroundLayer(element);
+  const displaySrc = getXMediaBackgroundUrl(element);
   const src = image?.currentSrc || image?.src || displaySrc;
   if (!src) {
     return null;
@@ -875,30 +865,7 @@ function tweetPhotoElementToGalleryItem(element: HTMLElement): ImageGalleryBlock
 }
 
 function getImageGalleryAspectRatio(element: Element): number | undefined {
-  const descendantRatio = getDescendantPaddingBottomAspectRatio(element);
-  if (descendantRatio) {
-    return descendantRatio;
-  }
-
-  for (let current: Element | null = element; current; current = current.parentElement) {
-    const paddingRatio = getPaddingBottomAspectRatio(current);
-    if (paddingRatio) {
-      return paddingRatio;
-    }
-  }
-
-  return undefined;
-}
-
-function getDescendantPaddingBottomAspectRatio(element: Element): number | undefined {
-  for (const child of Array.from(element.querySelectorAll<HTMLElement>('[style*="padding-bottom"]'))) {
-    const paddingBottom = getInlinePaddingBottomPercent(child);
-    if (paddingBottom) {
-      return roundAspectRatio(100 / paddingBottom);
-    }
-  }
-
-  return undefined;
+  return getXMediaAspectRatio(element);
 }
 
 function getImageGalleryLayout(
@@ -1002,18 +969,11 @@ function getGalleryFlexMetrics(element: Element): Pick<ImageGalleryLayoutNode, '
 }
 
 function getMediaAspectRatio(media: HTMLMediaElement, container: Element): number | undefined {
-  const descendantRatio = getDescendantPaddingBottomAspectRatio(container);
-  if (descendantRatio) {
-    return descendantRatio;
-  }
+  const sourceRatio = getXMediaAspectRatio(container);
 
-  for (let element: Element | null = container; element; element = element.parentElement) {
-    const paddingRatio = getPaddingBottomAspectRatio(element);
-    if (paddingRatio) {
-      return paddingRatio;
-    }
+  if (sourceRatio) {
+    return sourceRatio;
   }
-
   const video = media as HTMLVideoElement;
   const intrinsicRatio = toValidAspectRatio(video.videoWidth, video.videoHeight);
   if (intrinsicRatio) {
@@ -1051,8 +1011,8 @@ function isBefore(element: Element, target: Element): boolean {
 
 function tweetPhotoElementToImageBlock(element: HTMLElement, id: string): ImageBlock | null {
   const image = element.querySelector<HTMLImageElement>('img');
-  const backgroundLayer = getTweetPhotoBackgroundLayer(element);
-  const displaySrc = getTweetPhotoBackgroundUrl(element);
+  const backgroundLayer = getXMediaBackgroundLayer(element);
+  const displaySrc = getXMediaBackgroundUrl(element);
   const src = image?.currentSrc || image?.src || displaySrc;
   if (!src) {
     return null;
@@ -1103,43 +1063,12 @@ function imageElementToBlock(image: HTMLImageElement, id: string): ImageBlock | 
 }
 
 function getImageAspectRatio(image: HTMLImageElement): number | undefined {
-  const intrinsicRatio = toValidAspectRatio(image.naturalWidth, image.naturalHeight);
+  const intrinsicRatio = getXImageAspectRatio(image) ?? toValidAspectRatio(image.naturalWidth, image.naturalHeight);
   if (intrinsicRatio) {
     return intrinsicRatio;
   }
 
-  for (let element: Element | null = image.parentElement; element; element = element.parentElement) {
-    const paddingRatio = getPaddingBottomAspectRatio(element);
-    if (paddingRatio) {
-      return paddingRatio;
-    }
-  }
-
-  return undefined;
-}
-
-function getPaddingBottomAspectRatio(element: Element): number | undefined {
-  for (const child of Array.from(element.children)) {
-    const paddingBottom = getInlinePaddingBottomPercent(child);
-    if (paddingBottom) {
-      return roundAspectRatio(100 / paddingBottom);
-    }
-  }
-
-  return undefined;
-}
-
-function getInlinePaddingBottomPercent(element: Element): number | undefined {
-  const inlinePaddingBottom = (element as HTMLElement).style?.paddingBottom;
-  const match = inlinePaddingBottom
-    ? /^([0-9.]+)%$/i.exec(inlinePaddingBottom.trim())
-    : /(?:^|;)\s*padding-bottom:\s*([0-9.]+)%/i.exec(element.getAttribute('style') ?? '');
-  if (!match) {
-    return undefined;
-  }
-
-  const value = Number(match[1]);
-  return Number.isFinite(value) && value > 0 ? value : undefined;
+  return image.parentElement ? getXMediaAspectRatio(image.parentElement) : undefined;
 }
 
 function toValidAspectRatio(width: number, height: number): number | undefined {
@@ -1147,11 +1076,7 @@ function toValidAspectRatio(width: number, height: number): number | undefined {
     return undefined;
   }
 
-  return roundAspectRatio(width / height);
-}
-
-function roundAspectRatio(value: number): number {
-  return Math.round(value * 10000) / 10000;
+  return Math.round((width / height) * 10000) / 10000;
 }
 
 function isHeadingBlock(block: Element): boolean {

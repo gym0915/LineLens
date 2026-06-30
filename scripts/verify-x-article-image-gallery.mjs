@@ -43,12 +43,11 @@ assert.equal(userGalleryFixture.includes('r-eqz5dr'), true, 'fixture should cont
 assert.equal((userGalleryFixture.match(/background-image: url/g) ?? []).length, 3, 'fixture should model tweetPhoto background layers');
 
 assert.match(extractor, /extractXArticleLegacyBlocks/, 'X article extractor should delegate gallery-sensitive legacy block extraction');
-for (const source of [legacyBlocks, xMediaLayout]) {
-  assert.match(source, /function getDescendantPaddingBottomAspectRatio/, 'gallery aspect ratio should inspect descendant padding-bottom nodes');
-  assert.match(source, /querySelectorAll<HTMLElement>\('\[style\*="padding-bottom"\]'\)/, 'gallery aspect ratio should search nested ratio placeholders');
-  assert.match(source, /return roundAspectRatio\(100 \/ paddingBottom\)/, 'gallery aspect ratio should convert padding-bottom percent to width divided by height');
-}
-assert.match(legacyBlocks, /function getImageGalleryAspectRatio\(element: Element\): number \| undefined \{\s*const descendantRatio = getDescendantPaddingBottomAspectRatio\(element\)/, 'legacy gallery aspect ratio should prefer the component-local ratio placeholder before walking ancestors');
+assert.match(xMediaLayout, /function getDescendantPaddingBottomAspectRatio/, 'X media helper should inspect descendant padding-bottom nodes');
+assert.match(xMediaLayout, /querySelectorAll<HTMLElement>\('\[style\*="padding-bottom"\]'\)/, 'X media helper should search nested ratio placeholders');
+assert.match(xMediaLayout, /return roundAspectRatio\(100 \/ paddingBottom\)/, 'X media helper should convert padding-bottom percent to width divided by height');
+assert.match(legacyBlocks, /from '\.\/media-layout\.js'/, 'legacy gallery extraction should reuse X media primitives');
+assert.match(legacyBlocks, /function getImageGalleryAspectRatio\(element: Element\): number \| undefined \{\s*return getXMediaAspectRatio\(element\)/, 'legacy gallery aspect ratio should delegate to the shared X media helper');
 assert.match(xMediaLayout, /function getDescendantPreservedMediaAspectRatio/, 'X-owned clean-tree gallery helper should inspect preserved platform media ratios');
 assert.match(xMediaLayout, /querySelectorAll<HTMLElement>\('\[data-linelens-media-aspect-ratio\]'\)/, 'X-owned clean-tree gallery helper should search nested preserved media ratio metadata');
 assert.match(xMediaLayout, /const descendantPreservedRatio = getDescendantPreservedMediaAspectRatio\(element\)/, 'X-owned clean-tree gallery helper should prefer preserved media ratio metadata before padding fallback');
@@ -57,7 +56,8 @@ assert.match(cleanTreeConverter, /convertPlatformImageGalleryElement/, 'clean-tr
 assert.doesNotMatch(cleanTreeConverter, /data-testid="tweetPhoto"/, 'clean-tree converter should not directly know X media selectors');
 
 assert.match(articleTypes, /displaySrc\?: string/, 'tweetPhoto-backed media types should preserve a visible background-image URL');
-assert.match(simpleTweetExtractor, /const displaySrc = getTweetPhotoBackgroundUrl\(element\)/, 'simpleTweet tweetPhoto extraction should read the X background-image URL separately');
+assert.match(xMediaLayout, /export function getXMediaBackgroundUrl/, 'X media helper should own tweetPhoto background-image URL parsing');
+assert.match(simpleTweetExtractor, /const displaySrc = getXMediaBackgroundUrl\(element\)/, 'simpleTweet tweetPhoto extraction should read the X background-image URL separately through the shared helper');
 assert.match(renderer, /function renderImageGalleryLayoutNode/, 'Reader should recursively render image-gallery layout nodes');
 assert.match(renderer, /function renderImageGalleryItem/, 'Reader should render image-gallery items through a shared helper');
 assert.match(renderer, /reader-media-background/, 'Reader should render tweetPhoto-style background layers through the shared media frame');

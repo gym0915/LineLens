@@ -13,6 +13,7 @@ import type { CapturedXVideo } from '../../../shared/messages.js';
 import { normalizePreWrapText, normalizeText } from '../../../shared/text.js';
 import { X_CANONICAL_ORIGIN } from '../../../shared/url.js';
 import { extractSimpleTweetLayoutTree } from './block-layout-tree.js';
+import { getXMediaBackgroundUrl } from './media-layout.js';
 import { buildVideoHlsPayload, chooseCapturedVideoSource, matchCapturedVideo } from './video-media.js';
 
 type TweetProfile = {
@@ -764,7 +765,7 @@ function extractVideoItem(element: Element, id: string, capturedVideos: Captured
 
 function extractVideoPreviewItem(element: Element): SimpleTweetContentItem | null {
   const image = element.querySelector<HTMLImageElement>('[data-testid="tweetPhoto"] img, img');
-  const src = image?.currentSrc || image?.src || getTweetPhotoBackgroundUrl(element);
+  const src = image?.currentSrc || image?.src || getXMediaBackgroundUrl(element);
   if (!src) {
     return null;
   }
@@ -1145,7 +1146,7 @@ function compactStyle<T extends Record<string, string | number | boolean | undef
 
 export function tweetPhotoElementToPhoto(element: HTMLElement): TweetPhoto | null {
   const image = element.querySelector<HTMLImageElement>('img');
-  const displaySrc = getTweetPhotoBackgroundUrl(element);
+  const displaySrc = getXMediaBackgroundUrl(element);
   const src = image?.currentSrc || image?.src || displaySrc;
   if (!src) {
     return null;
@@ -1158,13 +1159,6 @@ export function tweetPhotoElementToPhoto(element: HTMLElement): TweetPhoto | nul
     alt: image?.alt || undefined,
     ...(href ? { href: new URL(href, X_CANONICAL_ORIGIN).toString() } : {})
   };
-}
-
-function getTweetPhotoBackgroundUrl(element: Element): string {
-  const backgroundLayer = element.querySelector<HTMLElement>('[style*="background-image"]');
-  const style = backgroundLayer?.style.backgroundImage || backgroundLayer?.getAttribute('style') || '';
-  const match = /url\((?:"|&quot;)?([^")]+)(?:"|&quot;)?\)/.exec(style);
-  return match?.[1]?.replace(/&amp;/g, '&') ?? '';
 }
 
 export function extractVideoFromElement(element: Element, id: string, capturedVideos: CapturedXVideo[]): VideoBlock | null {

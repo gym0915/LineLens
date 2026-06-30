@@ -12,7 +12,7 @@ export function xMediaElementToImageBlock(element: HTMLElement, blockId: string)
 
   const ratioRoot = element.closest('[data-block="true"]') ?? element.closest('a') ?? element;
   const frameAspectRatio = getXMediaAspectRatio(ratioRoot);
-  const aspectRatio = frameAspectRatio ?? (image ? getImageAspectRatio(image) : undefined);
+  const aspectRatio = frameAspectRatio ?? (image ? getXImageAspectRatio(image) : undefined);
   const href = element.closest('a[href]')?.getAttribute('href') ?? undefined;
   return {
     id: blockId,
@@ -59,7 +59,7 @@ function xMediaElementToGalleryItem(element: HTMLElement): ImageGalleryBlock['it
   }
 
   const href = element.closest('a[href]')?.getAttribute('href') ?? undefined;
-  const aspectRatio = image ? getImageAspectRatio(image) : undefined;
+  const aspectRatio = image ? getXImageAspectRatio(image) : undefined;
   return {
     src,
     ...(displaySrc ? { displaySrc } : {}),
@@ -69,14 +69,18 @@ function xMediaElementToGalleryItem(element: HTMLElement): ImageGalleryBlock['it
   };
 }
 
-function getXMediaBackgroundUrl(element: Element): string {
-  const backgroundLayer = element.querySelector<HTMLElement>('[style*="background-image"]');
+export function getXMediaBackgroundLayer(element: Element): HTMLElement | null {
+  return element.querySelector<HTMLElement>('[style*="background-image"]');
+}
+
+export function getXMediaBackgroundUrl(element: Element): string {
+  const backgroundLayer = getXMediaBackgroundLayer(element);
   const style = backgroundLayer?.style.backgroundImage || backgroundLayer?.getAttribute('style') || '';
   const match = /url\((?:"|&quot;)?([^")]+)(?:"|&quot;)?\)/.exec(style);
   return match?.[1]?.replace(/&amp;/g, '&') ?? '';
 }
 
-function getXMediaAspectRatio(element: Element): number | undefined {
+export function getXMediaAspectRatio(element: Element): number | undefined {
   const descendantPreservedRatio = getDescendantPreservedMediaAspectRatio(element);
   if (descendantPreservedRatio) {
     return descendantPreservedRatio;
@@ -129,7 +133,7 @@ function getDescendantPaddingBottomAspectRatio(element: Element): number | undef
   return undefined;
 }
 
-function getImageAspectRatio(image: HTMLImageElement): number | undefined {
+export function getXImageAspectRatio(image: HTMLImageElement): number | undefined {
   return toValidAspectRatio(image.naturalWidth, image.naturalHeight);
 }
 
