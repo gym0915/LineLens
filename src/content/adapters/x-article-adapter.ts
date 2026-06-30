@@ -6,7 +6,7 @@ export const xArticleAdapter: PlatformAdapter = {
   platform: 'x',
   contentType: 'article',
   hosts: ['x.com', 'twitter.com'],
-  urlPatterns: [/^\/[^/]+\/article\/[^/]+$/],
+  urlPatterns: [/^\/[^/]+\/(?:article|status)\/[^/]+$/],
   enabled: true,
   rootSelector: '[data-testid="twitterArticleReadView"]',
   titleSelector: '[data-testid="twitter-article-title"]',

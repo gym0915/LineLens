@@ -27,6 +27,7 @@ import {
 import { resolveSemanticSelectors } from '../dist/content/preprocess/semantic-map-selectors.js';
 
 const xUrl = new URL('https://x.com/example/article/123456789');
+const xStatusUrl = new URL('https://x.com/example/status/123456789');
 const twitterUrl = new URL('https://twitter.com/example/article/123456789');
 const substackInboxUrl = new URL('https://substack.com/inbox/post/202529490');
 const latentSpaceUrl = new URL('https://www.latent.space/p/how-to-think-about-agent-browsers');
@@ -40,6 +41,7 @@ assert.deepEqual(
   'built-in adapters should include X, Substack, and the local fixture platform'
 );
 assert.equal(resolvePlatformAdapter(xUrl)?.id, 'x.article', 'resolver should match x.com article URLs');
+assert.equal(resolvePlatformAdapter(xStatusUrl)?.id, 'x.article', 'resolver should match x.com status article URLs');
 assert.equal(resolvePlatformAdapter(twitterUrl)?.id, 'x.article', 'resolver should match twitter.com article URLs');
 assert.equal(resolvePlatformAdapter(substackInboxUrl)?.id, 'substack.article', 'resolver should match substack.com inbox article URLs');
 assert.equal(resolvePlatformAdapter(latentSpaceUrl)?.id, 'substack.article', 'resolver should match Substack custom-domain article URLs');

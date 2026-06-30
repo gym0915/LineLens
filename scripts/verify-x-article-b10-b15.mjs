@@ -69,6 +69,7 @@ const calls = {
   createdTabs: [],
   sentMessages: [],
   executedScripts: [],
+  historyFilters: [],
   webRequestFilters: []
 };
 
@@ -181,8 +182,9 @@ globalThis.chrome = {
   },
   webNavigation: {
     onHistoryStateUpdated: {
-      addListener(callback) {
+      addListener(callback, filter) {
         historyStateUpdatedListener = callback;
+        calls.historyFilters.push(filter);
       }
     }
   },
@@ -212,6 +214,11 @@ assert.equal(typeof tabsUpdatedListener, 'function', 'background should register
 assert.equal(typeof historyStateUpdatedListener, 'function', 'background should register SPA history listener');
 assert.equal(typeof tabsActivatedListener, 'function', 'background should register tab activation listener');
 assert.equal(typeof webRequestListener, 'function', 'background should register webRequest listener');
+assert.deepEqual(calls.historyFilters, [
+  {
+    url: [{ hostSuffix: 'x.com' }, { hostSuffix: 'twitter.com' }, { hostSuffix: 'substack.com' }, { hostSuffix: 'latent.space' }]
+  }
+]);
 assert.deepEqual(calls.webRequestFilters, [{ urls: ['https://video.twimg.com/*'] }]);
 assert.deepEqual(calls.disabledTabs, [], 'toolbar action should stay enabled so clicks reach onClicked');
 
@@ -238,18 +245,33 @@ assert.deepEqual(calls.sentMessages.at(-1), {
 });
 
 await historyStateUpdatedListener({
+  tabId: 49,
+  frameId: 0,
+  url: 'https://substack.com/inbox/post/203490377'
+});
+assert.deepEqual(calls.enabledTabs, [43, 44, 49], 'SPA route into a Substack inbox post should refresh action as clickable');
+assert.equal(calls.icons.at(-1).tabId, 49);
+assert.deepEqual(calls.sentMessages.at(-1), {
+  tabId: 49,
+  message: {
+    type: 'LINELENS_ROUTE_CHANGED',
+    url: 'https://substack.com/inbox/post/203490377'
+  }
+});
+
+await historyStateUpdatedListener({
   tabId: 45,
   frameId: 1,
   url: 'https://x.com/AlchainHust/article/2058732869363827129'
 });
-assert.deepEqual(calls.enabledTabs, [43, 44], 'subframe history updates should be ignored');
+assert.deepEqual(calls.enabledTabs, [43, 44, 49], 'subframe history updates should be ignored');
 
 mockTabs.set(46, {
   id: 46,
   url: 'https://twitter.com/dotey/article/2058421725256171718'
 });
 await tabsActivatedListener({ tabId: 46 });
-assert.deepEqual(calls.enabledTabs, [43, 44, 46], 'switching to an article tab should refresh action as clickable');
+assert.deepEqual(calls.enabledTabs, [43, 44, 49, 46], 'switching to an article tab should refresh action as clickable');
 assert.equal(calls.icons.at(-1).tabId, 46);
 
 mockTabs.set(47, {

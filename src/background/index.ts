@@ -1,7 +1,7 @@
 import type { Article } from '../shared/article';
 import { saveArticle } from '../shared/article-store.js';
 import type { CapturedXVideo, ExtensionMessage } from '../shared/messages';
-import { isXArticleUrl } from '../shared/url.js';
+import { BUILT_IN_PLATFORM_ADAPTERS, resolvePlatformAdapter } from '../content/adapters/index.js';
 
 const readyTabs = new Map<number, string>();
 const tabVideoMap = new Map<number, Map<string, CapturedXVideo>>();
@@ -18,6 +18,12 @@ const IDLE_ICON_PATH = {
   48: 'icons/linelens-disabled-48.png',
   128: 'icons/linelens-disabled-128.png'
 };
+const ROUTE_CHANGE_HOST_FILTERS = [
+  { hostSuffix: 'x.com' },
+  { hostSuffix: 'twitter.com' },
+  { hostSuffix: 'substack.com' },
+  { hostSuffix: 'latent.space' }
+];
 const AMPLIFY_VIDEO_ID_PATTERN = /amplify_video\/(\d+)\//;
 
 chrome.webRequest.onBeforeRequest.addListener(
@@ -116,7 +122,7 @@ chrome.webNavigation.onHistoryStateUpdated.addListener(
     await refreshActionStateForTab(details.tabId, details.url);
   },
   {
-    url: [{ hostSuffix: 'x.com' }, { hostSuffix: 'twitter.com' }]
+    url: ROUTE_CHANGE_HOST_FILTERS
   }
 );
 
@@ -235,7 +241,8 @@ function getMessageTabId(message: ExtensionMessage) {
 }
 
 async function refreshActionStateForTab(tabId: number, url: string | undefined) {
-  if (!url || !isXArticleUrl(url)) {
+  const match = resolveArticleUrl(url);
+  if (!match) {
     readyTabs.delete(tabId);
     await setActionIcon(tabId, IDLE_ICON_PATH);
     await chrome.action.setTitle({ tabId, title: 'LineLens: unsupported page' });
@@ -246,15 +253,29 @@ async function refreshActionStateForTab(tabId: number, url: string | undefined) 
     return;
   }
 
-  readyTabs.set(tabId, 'x.article');
+  readyTabs.set(tabId, match.extractorId);
   await chrome.action.enable(tabId);
   await setActionIcon(tabId, READY_ICON_PATH);
   await chrome.action.setTitle({ tabId, title: 'Open in LineLens' });
-  await notifyRouteChanged(tabId, url);
-  console.info(LOG_PREFIX, 'action refreshed: X article tab', {
+  await notifyRouteChanged(tabId, match.url);
+  console.info(LOG_PREFIX, 'action refreshed: supported article tab', {
     tabId,
-    url
+    url: match.url,
+    extractorId: match.extractorId
   });
+}
+
+function resolveArticleUrl(url: string | undefined): { extractorId: string; url: string } | null {
+  if (!url) {
+    return null;
+  }
+
+  try {
+    const adapter = resolvePlatformAdapter(new URL(url), BUILT_IN_PLATFORM_ADAPTERS);
+    return adapter ? { extractorId: adapter.id, url } : null;
+  } catch {
+    return null;
+  }
 }
 
 async function notifyRouteChanged(tabId: number, url: string) {
