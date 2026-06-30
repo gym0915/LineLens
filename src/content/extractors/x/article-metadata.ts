@@ -14,7 +14,7 @@ export function extractXArticleMetadata(readView: Element, longform: Element): P
     authorRoot?.querySelector<HTMLImageElement>('img')?.src ||
     authorRoot?.querySelector('meta[itemprop="image"]')?.getAttribute('content') ||
     '';
-  const time = authorRoot?.parentElement?.querySelector<HTMLTimeElement>('time') ?? readView.querySelector<HTMLTimeElement>('time');
+  const time = authorRoot?.parentElement?.querySelector<HTMLTimeElement>('time');
   const metrics = extractMetricsFromGroup(metricsGroup);
 
   return {

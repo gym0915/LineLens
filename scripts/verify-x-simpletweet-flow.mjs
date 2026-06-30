@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { JSDOM } from 'jsdom';
 
 const projectRoot = resolve(new URL('..', import.meta.url).pathname);
 const assetRoot = findAssetRoot(projectRoot);
@@ -37,6 +38,8 @@ const sourceFiles = {
 
 const articleFixture = readFileSync(resolve(assetRoot, 'assets2/我们还要被“AI智障客服”折磨多久？.html'), 'utf8');
 const quotedTweetFixture = readFileSync(resolve(assetRoot, 'assets/x-article-simpletweet-tweet.html'), 'utf8');
+const { renderArticleHeader } = await import('../dist/reader/renderers/article-header-renderer.js');
+const { extractXArticleMetadata } = await import('../dist/content/extractors/x/article-metadata.js');
 
 assert.match(sourceFiles.types, /type:\s*'quoted-tweet'/, 'simpleTweet types should define quoted-tweet items');
 assert.match(sourceFiles.types, /type:\s*'video-preview'/, 'simpleTweet types should define video-preview items');
@@ -72,6 +75,11 @@ assert.match(sourceFiles.simpleTweet, /titleTextStyle:\s*extractElementTextStyle
 assert.match(sourceFiles.simpleTweet, /excerptTextStyle:\s*extractElementTextStyle\(excerptElement\)/, 'simpleTweet extractor should preserve article-cover excerpt text style');
 assert.match(sourceFiles.simpleTweet, /getArticleCoverAspectRatio/, 'simpleTweet extractor should derive the article-cover image aspect ratio from source DOM');
 assert.match(sourceFiles.article, /extractXArticleMetadata/, 'article extractor should delegate title-area author and interaction metadata extraction');
+assert.doesNotMatch(
+  sourceFiles.article,
+  /authorHandle:\s*getXArticleAuthorHandleFromUrl\(context\.url\)/,
+  'article extractor should not synthesize X author metadata from status URL paths'
+);
 assert.match(sourceFiles.articleMetadata, /findHeaderElementAfterTitle\(readView, longform, '\[itemprop="author"\]'/, 'article metadata extraction should use the title-to-longform boundary');
 assert.match(sourceFiles.cleanTree, /getSpecialComponentHandler/, 'generic clean-tree converter should hand off special component parsing through handlerId');
 assert.doesNotMatch(sourceFiles.cleanTree, /simple-tweet-clean-tree-converter\.js/, 'generic clean-tree converter should not import the X simpleTweet converter directly');
@@ -171,6 +179,150 @@ assert.match(quotedTweetFixture, /data-testid="videoPlayer"/, 'quoted tweet fixt
 assert.match(quotedTweetFixture, /role="link"[\s\S]*data-testid="User-Name"/, 'quoted tweet fixture should include a role=link quoted card');
 assert.match(quotedTweetFixture, /data-testid="testCondensedMedia"[\s\S]*data-testid="previewInterstitial"[\s\S]*data-testid="tweetText"/, 'quoted tweet fixture should include condensed preview plus text');
 assert.match(quotedTweetFixture, /data-testid="testCondensedMedia"[\s\S]*padding-bottom:\s*100%/, 'quoted tweet fixture should encode a square condensed thumbnail');
+
+const renderDom = new JSDOM('<!doctype html><body></body>');
+globalThis.document = renderDom.window.document;
+globalThis.HTMLElement = renderDom.window.HTMLElement;
+globalThis.SVGSVGElement = renderDom.window.SVGSVGElement;
+globalThis.Node = renderDom.window.Node;
+
+const statusDom = new JSDOM(`
+  <main>
+    <div data-testid="twitterArticleReadView">
+      <h1 data-testid="twitter-article-title">为什么 Claude Code 新 UI，看起来更简陋了</h1>
+      <time datetime="2025-05-26T00:00:00.000Z">2025年5月26日</time>
+      <div aria-label="7 回复、7 次转帖、85 喜欢、142 书签、44740 次观看" role="group">
+        <button data-testid="reply" aria-label="7 回复。回复">7</button>
+        <button data-testid="retweet" aria-label="7 次转帖。转帖">7</button>
+        <button data-testid="like" aria-label="85 喜欢次数。喜欢">85</button>
+        <a href="/hwwaanng/status/2053830423331865077/analytics">4.4万</a>
+      </div>
+      <article data-testid="tweetText">Claude Code 在 4 月份重写了它的桌面应用</article>
+    </div>
+    <div data-testid="twitterArticleRichTextView"></div>
+  </main>
+`);
+const statusReadView = statusDom.window.document.querySelector('[data-testid="twitterArticleReadView"]');
+const statusLongform = statusDom.window.document.querySelector('[data-testid="twitterArticleRichTextView"]');
+const statusMetadata = extractXArticleMetadata(statusReadView, statusLongform);
+assert.deepEqual(
+  {
+    authorName: statusMetadata.authorName,
+    authorHandle: statusMetadata.authorHandle,
+    publishedAt: statusMetadata.publishedAt,
+    publishedAtText: statusMetadata.publishedAtText
+  },
+  {
+    authorName: undefined,
+    authorHandle: undefined,
+    publishedAt: undefined,
+    publishedAtText: undefined
+  },
+  'status-page metadata extraction should not infer author or date without a real title-area author DOM'
+);
+assert.deepEqual(
+  statusMetadata.metrics,
+  {
+    replies: '7',
+    reposts: '7',
+    likes: '85',
+    views: '4.4万',
+    bookmarks: undefined
+  },
+  'status-page metadata extraction should still preserve title-area interaction metrics'
+);
+
+const articleDom = new JSDOM(`
+  <main>
+    <div data-testid="twitterArticleReadView">
+      <h1 data-testid="twitter-article-title">为什么 Claude Code 新 UI，看起来更简陋了</h1>
+      <div>
+        <div itemprop="author" itemscope itemtype="https://schema.org/Person">
+          <meta itemprop="name" content="Hwang">
+          <meta itemprop="additionalName" content="hwwaanng">
+          <meta itemprop="image" content="https://pbs.twimg.com/profile_images/1361512556930600969/LBwP2_YZ_normal.jpg">
+          <img src="https://pbs.twimg.com/profile_images/1361512556930600969/LBwP2_YZ_x96.jpg">
+          <svg data-testid="icon-verified"></svg>
+        </div>
+        <time datetime="2026-05-11T13:31:45.000Z">5月11日</time>
+      </div>
+    </div>
+    <div data-testid="twitterArticleRichTextView"></div>
+  </main>
+`);
+const articleReadView = articleDom.window.document.querySelector('[data-testid="twitterArticleReadView"]');
+const articleLongform = articleDom.window.document.querySelector('[data-testid="twitterArticleRichTextView"]');
+const articleMetadata = extractXArticleMetadata(articleReadView, articleLongform);
+assert.deepEqual(
+  {
+    authorName: articleMetadata.authorName,
+    authorHandle: articleMetadata.authorHandle,
+    publishedAt: articleMetadata.publishedAt,
+    publishedAtText: articleMetadata.publishedAtText,
+    authorVerified: articleMetadata.authorVerified
+  },
+  {
+    authorName: 'Hwang',
+    authorHandle: '@hwwaanng',
+    publishedAt: '2026-05-11T13:31:45.000Z',
+    publishedAtText: '5月11日',
+    authorVerified: true
+  },
+  'article-page metadata extraction should preserve real title-area author DOM'
+);
+
+const statusHeader = renderArticleHeader({
+  id: '2053830423331865077',
+  source: 'x-article',
+  sourceKind: 'platform',
+  sourceProvider: 'x',
+  adapterId: 'x.article',
+  platform: 'x',
+  contentType: 'article',
+  sourceUrl: 'https://x.com/hwwaanng/status/2053830423331865077',
+  canonicalUrl: 'https://x.com/hwwaanng/article/2053830423331865077',
+  title: '为什么 Claude Code 新 UI，看起来更简陋了',
+  extractedAt: 0,
+  blocks: [],
+  metrics: {
+    replies: '7',
+    reposts: '7',
+    likes: '85',
+    views: '4.4万'
+  }
+});
+assert.equal(
+  statusHeader.querySelector('.article-meta-author'),
+  null,
+  'status-page X Article headers should not synthesize an author row when source DOM has only interaction controls'
+);
+assert.ok(
+  statusHeader.querySelector('.article-meta-metrics'),
+  'status-page X Article headers should still render the interaction row'
+);
+
+const articleHeader = renderArticleHeader({
+  id: '2053830423331865077',
+  source: 'x-article',
+  sourceKind: 'platform',
+  sourceProvider: 'x',
+  adapterId: 'x.article',
+  platform: 'x',
+  contentType: 'article',
+  sourceUrl: 'https://x.com/hwwaanng/article/2053830423331865077',
+  canonicalUrl: 'https://x.com/hwwaanng/article/2053830423331865077',
+  title: '为什么 Claude Code 新 UI，看起来更简陋了',
+  extractedAt: 0,
+  blocks: [],
+  authorName: 'Hwang',
+  authorHandle: '@hwwaanng',
+  publishedAtText: '5月11日'
+});
+assert.match(
+  articleHeader.querySelector('.article-meta-author')?.textContent ?? '',
+  /Hwang[\s\S]*@hwwaanng[\s\S]*5月11日/,
+  'article-page X Article headers should preserve real author metadata when source DOM provides it'
+);
 console.log('SimpleTweet content-flow verification passed.');
 
 function findAssetRoot(startDir) {

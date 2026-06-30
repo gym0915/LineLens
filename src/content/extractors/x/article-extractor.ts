@@ -86,7 +86,6 @@ export const xArticleExtractor: ArticleExtractor = {
       contentType: xArticleAdapter.contentType,
       sourceUrl: context.url.toString(),
       canonicalUrl,
-      authorHandle: getXArticleAuthorHandleFromUrl(context.url),
       ...articleMeta,
       title,
       coverImage,

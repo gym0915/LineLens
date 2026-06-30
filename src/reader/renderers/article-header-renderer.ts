@@ -41,8 +41,9 @@ function renderArticleHeaderAuthorMeta(article: Article): HTMLElement | null {
   const authorVerified = article.author?.verified ?? article.authorVerified;
   const sourceLabel = getArticleSourceLabel(article);
   const publishedAtText = article.publishedAtText;
+  const hasAuthoredMeta = Boolean(authorName || authorHandle || authorAvatarUrl || publishedAtText);
 
-  if (!authorName && !authorAvatarUrl && !publishedAtText && !sourceLabel) {
+  if (!hasAuthoredMeta && (!sourceLabel || isXArticle(article))) {
     return null;
   }
 
