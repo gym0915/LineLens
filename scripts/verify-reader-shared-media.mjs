@@ -37,8 +37,8 @@ assert.match(
 
 for (const source of [legacyBlocks]) {
   assert.match(source, /function tweetPhotoElementToImageBlock/, 'X article single-image extraction should use the tweetPhoto container, not only the hidden img');
-  assert.match(source, /getTweetPhotoBackgroundLayer/, 'single-image extraction should inspect the visible tweetPhoto background layer');
-  assert.match(source, /displaySrc = getTweetPhotoBackgroundUrl\(element\)/, 'single-image extraction should preserve the X visible background image');
+  assert.match(source, /getXMediaBackgroundLayer/, 'single-image extraction should inspect the visible tweetPhoto background layer through the shared helper');
+  assert.match(source, /displaySrc = getXMediaBackgroundUrl\(element\)/, 'single-image extraction should preserve the X visible background image');
   assert.match(source, /const frameAspectRatio = getImageGalleryAspectRatio\(ratioRoot\)/, 'single-image extraction should read the X media frame ratio');
   assert.match(source, /const aspectRatio = frameAspectRatio \?\? \(image \? getImageAspectRatio\(image\) : undefined\)/, 'single-image extraction should prefer frame ratio over natural image ratio');
 }
@@ -46,10 +46,12 @@ for (const source of [legacyBlocks]) {
 assert.match(cleanTreeConverter, /convertPlatformSpecialImageElement/, 'clean-tree single-image extraction should delegate platform media handling');
 assert.doesNotMatch(cleanTreeConverter, /tweetPhotoElementToImageBlock/, 'clean-tree converter should not own X single-image helper naming');
 assert.match(xMediaLayout, /function xMediaElementToImageBlock/, 'X-owned media helper should use the tweetPhoto container');
+assert.match(xMediaLayout, /export function getXMediaBackgroundLayer/, 'X-owned media helper should own visible tweetPhoto background layer lookup');
+assert.match(xMediaLayout, /export function getXMediaBackgroundUrl/, 'X-owned media helper should own visible tweetPhoto background URL parsing');
 assert.match(xMediaLayout, /getXMediaAspectRatio\(ratioRoot\)/, 'X-owned media helper should preserve X padding-bottom media frame ratios');
 assert.match(xMediaLayout, /objectFit:\s*'cover'/, 'X-owned media helper should preserve X cover cropping');
 assert.match(xMediaLayout, /const frameAspectRatio = getXMediaAspectRatio\(ratioRoot\)/, 'X-owned media helper should read the X media frame ratio');
-assert.match(xMediaLayout, /const aspectRatio = frameAspectRatio \?\? \(image \? getImageAspectRatio\(image\) : undefined\)/, 'X-owned media helper should prefer frame ratio over natural image ratio');
+assert.match(xMediaLayout, /const aspectRatio = frameAspectRatio \?\? \(image \? getXImageAspectRatio\(image\) : undefined\)/, 'X-owned media helper should prefer frame ratio over natural image ratio');
 
 assert.match(renderer, /className = 'reader-media-frame'/, 'shared media frame should expose a common frame class');
 assert.match(renderer, /className = 'reader-media-background'/, 'shared media frame should render the visible background layer');

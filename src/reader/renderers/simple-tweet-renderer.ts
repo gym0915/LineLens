@@ -2,8 +2,9 @@ import type { SimpleTweetBlock, SimpleTweetCardData, SimpleTweetContentItem, Sim
 import { createReaderTextSpan } from '../reader-text-renderer.js';
 import { applySimpleTweetTextStyle } from '../style-policy.js';
 import { applyMediaAspectRatio, renderMediaFrame } from './media-frame.js';
+import { renderSimpleTweetCardFrame } from './simple-tweet-frame.js';
 import { renderVideoPlayer } from './video-renderer.js';
-import { renderBookmarkIcon, renderGrokIcon, renderLikeIcon, renderReplyIcon, renderRetweetIcon, renderShareIcon, renderSimpleTweetActions, renderSimpleTweetAiGeneratedBadge, renderSimpleTweetTranslationIcon, renderSourceLabelText, renderVerifiedIcon, renderViewsIcon, renderXLogoIcon } from './icons.js';
+import { renderBookmarkIcon, renderLikeIcon, renderReplyIcon, renderRetweetIcon, renderShareIcon, renderSimpleTweetTranslationIcon, renderSourceLabelText, renderVerifiedIcon, renderViewsIcon, renderXLogoIcon } from './icons.js';
 
 export function renderSimpleTweetBlock(block: SimpleTweetBlock): HTMLElement {
   const renderableBlock = withRenderableItems(block);
@@ -18,52 +19,15 @@ export function renderSimpleTweetBlock(block: SimpleTweetBlock): HTMLElement {
   } else if (block.href) {
     card.dataset.href = block.href;
   }
-  renderSimpleTweetCardFrame(renderableBlock, card, { compact: false, showActions: true });
+  renderSimpleTweetCardFrame(renderableBlock, card, { compact: false, showActions: true }, renderSimpleTweetFrameContent);
   return card;
 }
 
-function renderSimpleTweetCardFrame(
-  block: SimpleTweetCardData & { metrics?: TweetMetrics; layoutTree?: SimpleTweetLayoutNode },
-  host: HTMLElement,
-  options: { compact: boolean; showActions: boolean }
-): void {
-  const tweetFrame = document.createElement('div');
-  tweetFrame.className = 'reader-simple-tweet-frame';
-  if (options.compact) {
-    tweetFrame.classList.add('reader-simple-tweet-frame-compact');
-  }
-
-  const contentColumn = document.createElement('div');
-  contentColumn.className = 'reader-simple-tweet-content-column';
-
-  const header = document.createElement('div');
-  header.className = 'reader-simple-tweet-header';
-  header.append(renderSimpleTweetAuthor(block), renderGrokIcon());
-
-  const shell = document.createElement('div');
-  shell.className = 'reader-simple-tweet-shell';
-  const content = document.createElement('div');
-  content.className = 'reader-simple-tweet-content';
-  content.append(block.layoutTree && !options.compact ? renderSimpleTweetLayoutTree(block) : renderSimpleTweetContentItems(block.items, options.compact));
-  shell.append(content);
-
-  if (options.showActions) {
-    contentColumn.append(header, shell);
-    if (block.aiGeneratedText) {
-      contentColumn.append(renderSimpleTweetAiGeneratedBadge(block.aiGeneratedText));
-    }
-    contentColumn.append(renderSimpleTweetActions(block.metrics));
-  } else if (options.compact) {
-    contentColumn.append(header);
-    shell.classList.add('reader-simple-tweet-shell-compact');
-    tweetFrame.append(renderSimpleTweetAvatar(block), contentColumn, shell);
-    host.append(tweetFrame);
-    return;
-  } else {
-    contentColumn.append(header, shell);
-  }
-  tweetFrame.append(renderSimpleTweetAvatar(block), contentColumn);
-  host.append(tweetFrame);
+function renderSimpleTweetFrameContent(
+  block: SimpleTweetCardData & { layoutTree?: SimpleTweetLayoutNode },
+  compact: boolean
+): HTMLElement {
+  return block.layoutTree && !compact ? renderSimpleTweetLayoutTree(block) : renderSimpleTweetContentItems(block.items, compact);
 }
 
 function renderSimpleTweetLayoutTree(block: SimpleTweetCardData & { layoutTree?: SimpleTweetLayoutNode }): HTMLElement {
@@ -392,7 +356,7 @@ function renderSimpleTweetContentItem(item: SimpleTweetContentItem): HTMLElement
     case 'quoted-tweet': {
       const nested = document.createElement('div');
       nested.className = 'reader-simple-tweet reader-simple-tweet-quoted';
-      renderSimpleTweetCardFrame(item.tweet, nested, { compact: true, showActions: false });
+      renderSimpleTweetCardFrame(item.tweet, nested, { compact: true, showActions: false }, renderSimpleTweetFrameContent);
       return nested;
     }
   }
@@ -725,58 +689,4 @@ function applySimpleTweetPhotoLayoutSize(element: HTMLElement, layout: SimpleTwe
 
   const percentage = Math.round(ratio * 10000) / 100;
   element.style.flex = `0 0 ${percentage}%`;
-}
-
-function renderSimpleTweetAvatar(block: SimpleTweetCardData): HTMLImageElement {
-  const avatar = document.createElement('img');
-  avatar.className = 'reader-simple-tweet-avatar';
-  avatar.src = block.authorAvatarUrl ?? 'https://pbs.twimg.com/profile_images/1921559263094218753/p2-n_n4w_x96.jpg';
-  avatar.alt = '';
-  avatar.loading = 'lazy';
-  avatar.setAttribute('data-testid', 'Tweet-User-Avatar');
-  return avatar;
-}
-
-function renderSimpleTweetAuthor(block: SimpleTweetCardData): HTMLDivElement {
-  const author = document.createElement('div');
-  author.className = 'reader-simple-tweet-author';
-
-  const primary = document.createElement('div');
-  primary.className = 'reader-simple-tweet-author-primary';
-
-  const displayName = document.createElement('span');
-  displayName.className = 'reader-simple-tweet-display-name';
-  displayName.setAttribute('data-testid', 'User-Name');
-  displayName.textContent = block.authorName ?? 'karin.';
-
-  primary.append(displayName);
-  if (block.authorVerified || (block.authorVerified === undefined && !block.authorName && !block.authorHandle)) {
-    primary.append(renderVerifiedIcon());
-  }
-  if (block.authorBadgeAvatarUrl) {
-    const badge = document.createElement('img');
-    badge.className = 'reader-simple-tweet-author-badge';
-    badge.src = block.authorBadgeAvatarUrl;
-    badge.alt = '';
-    badge.loading = 'lazy';
-    primary.append(badge);
-  }
-
-  const secondary = document.createElement('div');
-  secondary.className = 'reader-simple-tweet-author-secondary';
-
-  const handle = document.createElement('span');
-  handle.textContent = block.authorHandle ?? '@omokage_AIsOK';
-
-  const separator = document.createElement('span');
-  separator.setAttribute('aria-hidden', 'true');
-  separator.textContent = '·';
-
-  const date = document.createElement('time');
-  date.dateTime = block.publishedAt ?? '2026-02-08T16:26:18.000Z';
-  date.textContent = block.publishedAtText ?? 'Feb 9';
-
-  secondary.append(handle, separator, date);
-  author.append(primary, secondary);
-  return author;
 }

@@ -193,6 +193,7 @@ const extractionContractSource = [modularExtractorSource, legacyBlocksSource, si
 const articleModelSource = readFileSync(resolve(projectRoot, 'src/shared/article.ts'), 'utf8');
 const readerRendererSource = [
   readFileSync(resolve(projectRoot, 'src/reader/block-renderer.ts'), 'utf8'),
+  readFileSync(resolve(projectRoot, 'src/reader/renderers/simple-tweet-frame.ts'), 'utf8'),
   readFileSync(resolve(projectRoot, 'src/reader/renderers/simple-tweet-renderer.ts'), 'utf8'),
   readFileSync(resolve(projectRoot, 'src/reader/renderers/video-renderer.ts'), 'utf8'),
   readFileSync(resolve(projectRoot, 'src/reader/renderers/video-source-controller.ts'), 'utf8'),

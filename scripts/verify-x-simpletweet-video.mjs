@@ -11,7 +11,10 @@ const legacyBlocksSource = readFileSync(resolve(rootDir, 'src/content/extractors
 const simpleTweetSource = readFileSync(resolve(rootDir, 'src/content/extractors/x/simple-tweet.ts'), 'utf8');
 const videoMediaSource = readFileSync(resolve(rootDir, 'src/content/extractors/x/video-media.ts'), 'utf8');
 const videoRendererSource = readFileSync(resolve(rootDir, 'src/reader/renderers/video-renderer.ts'), 'utf8');
-const simpleTweetRendererSource = readFileSync(resolve(rootDir, 'src/reader/renderers/simple-tweet-renderer.ts'), 'utf8');
+const simpleTweetRendererSource = [
+  readFileSync(resolve(rootDir, 'src/reader/renderers/simple-tweet-frame.ts'), 'utf8'),
+  readFileSync(resolve(rootDir, 'src/reader/renderers/simple-tweet-renderer.ts'), 'utf8')
+].join('\n');
 const readerRendererSource = [
   readFileSync(resolve(rootDir, 'src/reader/block-renderer.ts'), 'utf8'),
   simpleTweetRendererSource,

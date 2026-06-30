@@ -20,6 +20,7 @@ const renderer = [
   read('src/reader/block-renderer.ts'),
   read('src/reader/renderers/gallery-renderer.ts'),
   read('src/reader/renderers/media-frame.ts'),
+  read('src/reader/renderers/simple-tweet-frame.ts'),
   read('src/reader/renderers/simple-tweet-renderer.ts')
 ].join('\n');
 const mediaCss = read('public/styles/media.css');

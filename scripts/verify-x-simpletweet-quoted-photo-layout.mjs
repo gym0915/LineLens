@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { JSDOM } from 'jsdom';
 
 const projectRoot = resolve(new URL('..', import.meta.url).pathname);
-const fixturePath = resolve(projectRoot, 'assets2/how i make AI videos (a beginner’s breakdown).html');
+const workspaceRoot = findWorkspaceRoot(projectRoot);
+const fixturePath = resolve(workspaceRoot, 'assets2/how i make AI videos (a beginner’s breakdown).html');
 
 const sourceDom = new JSDOM(readFileSync(fixturePath, 'utf8'), {
   url: 'https://x.com/0xileri/article/2058611697187782908'
@@ -82,4 +83,21 @@ function installDomGlobals(window) {
   globalThis.HTMLElement = window.HTMLElement;
   globalThis.HTMLMediaElement = window.HTMLMediaElement;
   globalThis.Node = window.Node;
+}
+
+function findWorkspaceRoot(startDir) {
+  let current = startDir;
+  for (let depth = 0; depth < 8; depth += 1) {
+    if (existsSync(resolve(current, 'assets2/how i make AI videos (a beginner’s breakdown).html'))) {
+      return current;
+    }
+
+    const parent = resolve(current, '..');
+    if (parent === current) {
+      break;
+    }
+    current = parent;
+  }
+
+  throw new Error(`Unable to locate workspace assets directory from ${startDir}`);
 }
