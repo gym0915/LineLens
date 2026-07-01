@@ -74,6 +74,7 @@ const PRESERVED_DATA_ATTRIBUTES = new Set([
   'data-linelens-heading-level',
   'data-linelens-list-kind',
   'data-linelens-media-aspect-ratio',
+  'data-linelens-media-cover-url',
   'data-linelens-media-layout-height',
   'data-linelens-media-layout-direction',
   'data-linelens-media-layout-width',
@@ -173,6 +174,7 @@ function sanitizeElementTree(root: Element, adapter: PlatformAdapter): {
   const retainedElements = [root, ...Array.from(root.querySelectorAll('*'))];
   for (const element of retainedElements) {
     preserveListSemantics(element);
+    preserveSpecialComponentLayoutSemantics(element);
 
     for (const attribute of Array.from(element.attributes)) {
       if (shouldPreserveAttribute(attribute.name, adapter)) {
@@ -205,7 +207,28 @@ function preserveListSemantics(element: Element): void {
   }
 }
 
+function preserveSpecialComponentLayoutSemantics(element: Element): void {
+  if (element.getAttribute('data-component-name') === 'VideoEmbedPlayer') {
+    const ratioSource = element.querySelector('[style*="padding-bottom"]');
+    const aspectRatio = extractPaddingBottomAspectRatio(ratioSource?.getAttribute('style') ?? '');
+    if (aspectRatio) {
+      element.setAttribute('data-linelens-media-aspect-ratio', aspectRatio);
+    }
+  }
+
+  if (element.tagName.toUpperCase() === 'AUDIO' && element.getAttribute('src')) {
+    const coverUrl = findNearestBackgroundImageUrl(element);
+    if (coverUrl) {
+      element.setAttribute('data-linelens-media-cover-url', coverUrl);
+    }
+  }
+}
+
 function shouldRemoveElement(element: Element, adapter: PlatformAdapter): boolean {
+  if (shouldRetainSpecialComponentInteractiveMetadata(element)) {
+    return false;
+  }
+
   if (matchesAnySelector(element, adapter.cleanRules?.removeSelectors)) {
     return true;
   }
@@ -221,6 +244,44 @@ function shouldRemoveElement(element: Element, adapter: PlatformAdapter): boolea
 
   const testId = element.getAttribute('data-testid');
   return testId !== null && INTERACTIVE_TEST_IDS.has(testId);
+}
+
+function shouldRetainSpecialComponentInteractiveMetadata(element: Element): boolean {
+  const tagName = element.tagName.toUpperCase();
+  if (tagName !== 'BUTTON') {
+    return false;
+  }
+
+  const componentRoot = element.closest('[data-component-name="SubscribeWidget"], [data-component-name="Paywall"], [data-testid="paywall"]');
+  return componentRoot !== null && Boolean(element.getAttribute('data-href') || (element.textContent ?? '').replace(/\s+/g, ' ').trim());
+}
+
+function extractPaddingBottomAspectRatio(style: string): string | null {
+  const match = style.match(/padding-bottom\s*:\s*([0-9.]+)%/i);
+  if (!match) {
+    return null;
+  }
+
+  const percentage = Number(match[1]);
+  if (!Number.isFinite(percentage) || percentage <= 0) {
+    return null;
+  }
+
+  return String(Math.round((100 / percentage) * 10000) / 10000);
+}
+
+function findNearestBackgroundImageUrl(element: Element): string | null {
+  let current: Element | null = element.parentElement;
+  for (let depth = 0; current && depth < 6; depth += 1) {
+    const candidate = current.querySelector('[style*="background-image"]') ?? (current.matches('[style*="background-image"]') ? current : null);
+    const style = candidate?.getAttribute('style') ?? '';
+    const match = /background-image\s*:\s*url\((['"]?)(.*?)\1\)/i.exec(style);
+    if (match?.[2]) {
+      return match[2];
+    }
+    current = current.parentElement;
+  }
+  return null;
 }
 
 function matchesAnySelector(element: Element, selectors: string[] | undefined): boolean {

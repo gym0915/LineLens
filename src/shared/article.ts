@@ -445,9 +445,12 @@ export type EmbedBlock = {
   type: 'embed';
   label: string;
   text?: string;
+  textAnnotations?: TextAnnotation[];
+  textStyle?: TextStyle;
   href?: string;
   provider?: 'x' | 'youtube' | 'substack' | 'generic';
   title?: string;
+  titleTextStyle?: TextStyle;
   authorName?: string;
   authorHandle?: string;
   authorAvatarUrl?: string;

@@ -6,16 +6,16 @@ const SUBSTACK_TITLE_SELECTOR = [
   'article.podcast-post.post-viewer-post > div:first-child a[href*="/p/"]',
   'article.podcast-post.post-viewer-post > div:nth-child(2) a[href*="/p/"]'
 ].join(', ');
-const SUBSTACK_CONTENT_SELECTOR = '.available-content .body.markup';
+const SUBSTACK_BODY_SELECTOR = '.available-content .body.markup';
 const SUBSTACK_ASSETS3_COMPONENT_BLOCK_SELECTOR = [
   '.body.markup [data-component-name="Image2ToDOM"]',
   '.body.markup > [data-component-name="Youtube2ToDOM"]',
   '.body.markup > [data-component-name="VideoEmbedPlayer"]',
-  '.body.markup audio[src]',
+  'audio[src]',
   '.body.markup > [data-component-name="FootnoteToDOM"]',
-  '.body.markup > [data-component-name="Paywall"]',
-  '.body.markup > [data-testid="paywall"]',
-  '.body.markup > [data-component-name="SubscribeWidget"]'
+  '[data-component-name="Paywall"]',
+  '[data-testid="paywall"]',
+  '[data-component-name="SubscribeWidget"]'
 ].join(', ');
 
 export const substackArticleAdapter: PlatformAdapter = {
@@ -28,7 +28,6 @@ export const substackArticleAdapter: PlatformAdapter = {
   enabled: true,
   rootSelector: SUBSTACK_ARTICLE_ROOT_SELECTOR,
   titleSelector: SUBSTACK_TITLE_SELECTOR,
-  contentSelector: SUBSTACK_CONTENT_SELECTOR,
   semanticMap: {
     blockSelector:
       '.body.markup > p, ' +
@@ -93,12 +92,60 @@ export const substackArticleAdapter: PlatformAdapter = {
       handlerId: 'substack.twitter-embed',
       preserveSelectors: ['img', 'picture', 'source', '[data-attrs]', 'a[href]'],
       removeSelectors: ['button', '[role="button"]']
+    },
+    {
+      id: 'substack.youtube-embed',
+      type: 'embed',
+      rootSelector: '.body.markup > [data-component-name="Youtube2ToDOM"]',
+      handlerId: 'substack.youtube-embed',
+      preserveSelectors: ['iframe[src]', 'iframe[data-src]'],
+      removeSelectors: ['button', '[role="button"]']
+    },
+    {
+      id: 'substack.video-embed',
+      type: 'video',
+      rootSelector: '.body.markup > [data-component-name="VideoEmbedPlayer"]',
+      handlerId: 'substack.video-embed',
+      preserveSelectors: ['video[src]', 'video[poster]', 'source[src]', '[aria-label]'],
+      removeSelectors: ['button', '[role="button"]']
+    },
+    {
+      id: 'substack.audio-embed',
+      type: 'embed',
+      rootSelector: 'audio[src]',
+      handlerId: 'substack.audio-embed',
+      preserveSelectors: ['audio[src]'],
+      removeSelectors: ['button', '[role="button"]']
+    },
+    {
+      id: 'substack.footnote',
+      type: 'custom-card',
+      rootSelector: '.body.markup > [data-component-name="FootnoteToDOM"]',
+      handlerId: 'substack.footnote',
+      preserveSelectors: ['a[href]', 'p'],
+      removeSelectors: ['button', '[role="button"]']
+    },
+    {
+      id: 'substack.paywall',
+      type: 'embed',
+      rootSelector: '[data-component-name="Paywall"], [data-testid="paywall"]',
+      handlerId: 'substack.paywall',
+      preserveSelectors: ['a[href]', '[data-native]', '.paywall-title', '.paywall-intro', '.paywall-cta', '.paywall-login'],
+      removeSelectors: ['button', '[role="button"]']
+    },
+    {
+      id: 'substack.subscribe-widget',
+      type: 'embed',
+      rootSelector: '[data-component-name="SubscribeWidget"]',
+      handlerId: 'substack.subscribe-widget',
+      preserveSelectors: ['a[href]', '[data-href]'],
+      removeSelectors: ['button', '[role="button"]']
     }
   ],
   readiness: {
     minBlockCount: 10,
     minTextLength: 500,
-    requiredSelectors: [SUBSTACK_ARTICLE_ROOT_SELECTOR, SUBSTACK_CONTENT_SELECTOR]
+    requiredSelectors: [SUBSTACK_ARTICLE_ROOT_SELECTOR, SUBSTACK_BODY_SELECTOR]
   },
   validation: {
     minBlockCount: 10,

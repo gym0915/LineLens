@@ -76,10 +76,10 @@ assert.equal(counts.image, 1);
 assert.equal(counts.heading, 20);
 assert.equal(counts.list, 23);
 assert.equal(counts.quote, 1);
-assert.equal(counts.embed, 1);
+assert.equal(counts.embed, 2);
 assert.equal(counts['simple-tweet'] ?? 0, 0);
 
-const embed = article.blocks.find((block) => block.type === 'embed');
+const embed = article.blocks.find((block) => block.type === 'embed' && block.provider === 'x');
 assert.ok(embed, 'Twitter2ToDOM should produce a generic embed block');
 const embedIndex = article.blocks.indexOf(embed);
 assert.equal(embedIndex, 4, 'Twitter2ToDOM should stay in its source DOM position instead of being appended');
@@ -98,6 +98,12 @@ assert.equal(embed.metrics?.views, '8.12K Views');
 assert.equal(embed.media?.length, 2);
 assert.equal(embed.media?.[0]?.aspectRatio, 1);
 assert.equal(embed.media?.[0]?.objectFit, 'cover');
+
+const paywallEmbed = article.blocks.find((block) => block.type === 'embed' && block.provider === 'substack' && /paid subscribers/i.test(`${block.title ?? ''} ${block.text ?? ''}`));
+assert.ok(paywallEmbed, 'Substack Paywall should now produce a safe generic embed block');
+assert.equal(paywallEmbed.label, 'Substack');
+assert.ok(paywallEmbed.textAnnotations?.some((annotation) => annotation.bold), 'Substack Paywall should preserve bold text annotations');
+assert.ok(paywallEmbed.textAnnotations?.some((annotation) => annotation.href && annotation.textDecoration === 'underline'), 'Substack Paywall should preserve safe links as underlined annotations');
 
 const image = article.blocks.find((block) => block.type === 'image');
 assert.ok(image, 'Substack fixture should produce an image block');

@@ -18,7 +18,7 @@ const sourceUrls = [
   'https://substack.com/home/post/p-199574024',
   'https://substack.com/inbox/post/203490377'
 ].map((url) => new URL(url));
-const contentSelector = '.available-content .body.markup';
+const bodySelector = '.available-content .body.markup';
 const assets3ComponentRootSelector = [
   '[data-component-name="Image2ToDOM"]',
   '[data-component-name="Youtube2ToDOM"]',
@@ -42,16 +42,19 @@ for (const [index, fixture] of fixtures.entries()) {
   const dom = installDom(readFileSync(fixture.path, 'utf8'), sourceUrl.toString());
   const { document } = dom.window;
   const articleCount = document.querySelectorAll('article').length;
-  const contentRoots = document.querySelectorAll(contentSelector);
-  const contentRoot = document.querySelector(contentSelector);
+  const bodyRoots = document.querySelectorAll(bodySelector);
+  const bodyRoot = document.querySelector(bodySelector);
+  const articleRoot = document.querySelector('article.newsletter-post.post-viewer-post, article.podcast-post.post-viewer-post');
 
   assert.ok(articleCount > 0, `${fixture.name} should contain at least one <article>`);
-  assert.equal(contentRoots.length, 1, `${fixture.name} should expose exactly one ${contentSelector} content root`);
-  assert.ok(contentRoot, `${fixture.name} should contain ${contentSelector}`);
+  assert.equal(bodyRoots.length, 1, `${fixture.name} should expose exactly one ${bodySelector} body root`);
+  assert.ok(articleRoot, `${fixture.name} should contain a Substack article root`);
+  assert.ok(bodyRoot, `${fixture.name} should contain ${bodySelector}`);
+  assert.equal(articleRoot.contains(bodyRoot), true, `${fixture.name} article root should contain ${bodySelector}`);
 
   const adapter = resolvePlatformAdapter(sourceUrl);
   assert.equal(adapter?.id, 'substack.article', `${sourceUrl.toString()} should resolve to substack.article`);
-  assert.equal(adapter.contentSelector, contentSelector, 'Substack adapter should keep .available-content .body.markup as the only body entry');
+  assert.equal(adapter.contentSelector, undefined, 'Substack adapter should use the article root so out-of-body assets3 components can be mapped');
   assert.equal(
     adapter.cleanRules?.removeSelectors?.includes('.paywall'),
     false,
@@ -65,8 +68,8 @@ for (const [index, fixture] of fixtures.entries()) {
   }
 
   const roots = locateConfigurableArticleRoots(adapter, { url: sourceUrl, root: document });
-  assert.equal(roots.contentRoot, contentRoot, `${fixture.name} should extract from the unique ${contentSelector} root`);
-  assertAssets3ComponentRootsCovered(adapter, contentRoot, fixture.name);
+  assert.equal(roots.contentRoot, articleRoot, `${fixture.name} should extract from the Substack article root`);
+  assertAssets3ComponentRootsCovered(adapter, articleRoot, fixture.name);
 
   const readiness = await waitUntilConfigurableArticleReady(adapter, { url: sourceUrl, root: document });
 
