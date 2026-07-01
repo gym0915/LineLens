@@ -41,6 +41,12 @@
   line-height: var(--reader-quote-line-height);
 }
 
+.reader-divider {
+  margin: 32px 0;
+  border: 0;
+  border-top: 1px solid color-mix(in srgb, var(--reader-text-muted) 18%, transparent);
+}
+
 .reader-link {
   display: block;
   color: inherit;

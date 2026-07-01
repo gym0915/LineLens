@@ -88,6 +88,7 @@ assert.equal(
 
 assert.equal(xArticleAdapter.semanticMap?.blockSelector, '[data-block="true"]', 'X adapter should expose block selector semantics');
 assert.equal(xArticleAdapter.semanticMap?.paragraphSelector, '[data-block="true"]', 'X adapter should expose paragraph selector semantics');
+assert.match(xArticleAdapter.semanticMap?.dividerSelector ?? '', /\[role="separator"\]/, 'X adapter should expose its role=separator divider semantics');
 assert.match(xArticleAdapter.semanticMap?.headingSelector ?? '', /longform-header-one/, 'X adapter should expose heading selector semantics');
 assert.match(xArticleAdapter.semanticMap?.quoteSelector ?? '', /blockquote/, 'X adapter should expose quote selector semantics');
 assert.match(xArticleAdapter.semanticMap?.orderedListSelector ?? '', /orderedListItem/, 'X adapter should expose ordered list selector semantics');
@@ -105,6 +106,7 @@ assert.deepEqual(
   [
     'blockSelector',
     'paragraphSelector',
+    'dividerSelector',
     'headingSelector',
     'quoteSelector',
     'orderedListSelector',

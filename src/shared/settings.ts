@@ -31,6 +31,7 @@ export type PlatformFix = {
 export type SemanticMapConfig = {
   blockSelector?: string;
   paragraphSelector?: string;
+  dividerSelector?: string;
   headingSelector?: string;
   quoteSelector?: string;
   orderedListSelector?: string;
@@ -472,6 +473,7 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 const SEMANTIC_MAP_KEYS: Array<keyof SemanticMapConfig> = [
   'blockSelector',
   'paragraphSelector',
+  'dividerSelector',
   'headingSelector',
   'quoteSelector',
   'orderedListSelector',

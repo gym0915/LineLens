@@ -11,6 +11,9 @@ import {
   waitUntilConfigurableArticleReady
 } from '../dist/content/extractors/configurable/index.js';
 import { renderArticleShell } from '../dist/reader/block-renderer.js';
+import { registerClickController } from '../dist/reader/controllers/click-controller.js';
+import { createMediaPreviewState } from '../dist/reader/controllers/media-preview-state.js';
+import { FocusEngine } from '../dist/reader/focus-engine.js';
 import { buildFocusUnits } from '../dist/reader/focus-unit-builder.js';
 
 const projectRoot = resolve(import.meta.dirname, '..');
@@ -23,6 +26,8 @@ const sourceUrls = [
 const bodySelector = '.available-content .body.markup';
 const focusCss = readFileSync(resolve(projectRoot, 'public/styles/focus.css'), 'utf8');
 const overlaysCss = readFileSync(resolve(projectRoot, 'public/styles/overlays.css'), 'utf8');
+const socialCardCss = readFileSync(resolve(projectRoot, 'public/styles/social-card.css'), 'utf8');
+const tokensCss = readFileSync(resolve(projectRoot, 'public/styles/tokens.css'), 'utf8');
 const assets3ComponentRootSelector = [
   '[data-component-name="Image2ToDOM"]',
   '[data-component-name="Youtube2ToDOM"]',
@@ -74,6 +79,7 @@ for (const [index, fixture] of fixtures.entries()) {
   const roots = locateConfigurableArticleRoots(adapter, { url: sourceUrl, root: document });
   assert.equal(roots.contentRoot, articleRoot, `${fixture.name} should extract from the Substack article root`);
   assertAssets3ComponentRootsCovered(adapter, articleRoot, fixture.name);
+  const sourceDividerCount = countSourceDividers(bodyRoot);
 
   const readiness = await waitUntilConfigurableArticleReady(adapter, { url: sourceUrl, root: document });
 
@@ -110,8 +116,9 @@ for (const [index, fixture] of fixtures.entries()) {
     assert.equal(result.article.source, 'substack-article', `${fixture.name} should keep substack article source`);
     assert.ok(result.article.title.trim().length > 0, `${fixture.name} should extract a non-empty title`);
     assert.ok(result.article.blocks.length >= 10, `${fixture.name} should extract a substantial Article block set`);
+    assertStandardDividerExtraction(result.article, sourceDividerCount, fixture.name);
     assertSubstackHeaderMetadata(result.article, fixture.name);
-    assertReaderRendering(result.article, fixture.name);
+    assertReaderRendering(result.article, fixture.name, sourceDividerCount);
   } catch (error) {
     implementationFailures.push({
       fixture: fixture.name,
@@ -210,7 +217,24 @@ function describeComponentRoot(element) {
   return element.getAttribute('data-component-name') ?? element.tagName.toLowerCase();
 }
 
-function assertReaderRendering(article, fixtureName) {
+function countSourceDividers(bodyRoot) {
+  return bodyRoot.querySelectorAll(':scope > hr, :scope > div > hr').length;
+}
+
+function assertStandardDividerExtraction(article, sourceDividerCount, fixtureName) {
+  if (sourceDividerCount === 0) {
+    return;
+  }
+
+  const dividerBlocks = article.blocks.filter((block) => block.type === 'divider');
+  assert.equal(
+    dividerBlocks.length,
+    sourceDividerCount,
+    `${fixtureName} should extract standard HTML <hr> separators as generic divider ArticleBlocks`
+  );
+}
+
+function assertReaderRendering(article, fixtureName, sourceDividerCount = 0) {
   document.body.innerHTML = '';
   const shell = renderArticleShell(article);
   document.body.append(shell);
@@ -223,19 +247,43 @@ function assertReaderRendering(article, fixtureName) {
     assert.equal(unit.blockType, blockTypes.get(unit.blockId), `${fixtureName} FocusUnit should preserve block type for ${unit.blockId}`);
   }
 
+  if (sourceDividerCount > 0) {
+    assert.equal(
+      shell.querySelectorAll('.reader-divider[data-block-type="divider"]').length,
+      sourceDividerCount,
+      `${fixtureName} Reader should render generic divider blocks for standard HTML <hr> separators`
+    );
+    assert.equal(
+      shell.querySelector('.reader-divider.focus-unit, .reader-divider.is-active') === null,
+      true,
+      `${fixtureName} Reader dividers should not participate in active focus state`
+    );
+    assert.equal(
+      focusResult.units.some((unit) => unit.type === 'block' && unit.blockType === 'divider'),
+      false,
+      `${fixtureName} FocusUnit should skip divider blocks because separators are not readable units`
+    );
+  }
+
   const paywallBlock = article.blocks.find((block) => block.type === 'embed' && block.provider === 'substack' && /paid subscribers/i.test(`${block.title ?? ''} ${block.text ?? ''}`));
   if (paywallBlock) {
     const paywallElement = shell.querySelector(`[data-block-id="${paywallBlock.id}"]`);
     assert.ok(paywallElement, `${fixtureName} Reader should render Paywall embed`);
+    assert.notEqual(paywallBlock.presentation, 'cta', `${fixtureName} Reader should not render Paywall as a SubscribeWidget CTA`);
     assert.equal(paywallElement.querySelector('.reader-social-embed-text strong') !== null, true, `${fixtureName} Reader should render Paywall bold annotation`);
     assert.equal(paywallElement.querySelector('.reader-social-embed-text a[href]') !== null, true, `${fixtureName} Reader should render Paywall link annotation`);
   }
 
-  const subscribeBlock = article.blocks.find((block) => block.type === 'embed' && block.provider === 'substack' && /subscribe|subscribed|upgrade/i.test(`${block.title ?? ''} ${block.text ?? ''}`));
+  const subscribeBlock = article.blocks.find((block) => block.type === 'embed' && block.provider === 'substack' && block.presentation === 'cta');
   if (subscribeBlock) {
     const subscribeElement = shell.querySelector(`[data-block-id="${subscribeBlock.id}"]`);
     assert.ok(subscribeElement, `${fixtureName} Reader should render SubscribeWidget embed`);
-    assert.equal(subscribeElement.querySelector('.reader-social-embed-text a[href]') !== null, true, `${fixtureName} Reader should render SubscribeWidget link annotation`);
+    assert.equal(subscribeBlock.presentation, 'cta', `${fixtureName} SubscribeWidget block should carry CTA presentation`);
+    assert.equal(subscribeElement.classList.contains('reader-subscribe-widget'), true, `${fixtureName} Reader should render SubscribeWidget with a dedicated CTA wrapper`);
+    assert.equal(subscribeElement.classList.contains('reader-social-embed'), false, `${fixtureName} Reader should not render SubscribeWidget as a social embed card`);
+    assert.equal(subscribeElement.querySelector('.reader-subscribe-widget-link[href]') !== null, true, `${fixtureName} Reader should render SubscribeWidget as a linked button`);
+    assert.equal(subscribeElement.querySelector('.reader-subscribe-widget-icon') !== null, true, `${fixtureName} Reader should render the SubscribeWidget check icon`);
+    assertSubscribeWidgetClickBehavior(article, shell, focusResult, subscribeBlock, fixtureName);
   }
 
   const youtubeBlocks = article.blocks.filter((block) => block.type === 'embed' && block.provider === 'youtube');
@@ -287,10 +335,121 @@ function assertReaderRendering(article, fixtureName) {
     /\.reader-media-preview-image\s*\{[\s\S]*?background:\s*transparent;/,
     `${fixtureName} media preview should not place transparent Image2ToDOM assets on a white image surface`
   );
+  assert.match(
+    socialCardCss,
+    /\.reader-subscribe-widget\s*\{[\s\S]*?width:\s*fit-content;[\s\S]*?margin:\s*var\(--reader-subscribe-widget-active-margin\);[\s\S]*?padding:\s*var\(--reader-subscribe-widget-active-padding\);/,
+    `${fixtureName} inactive SubscribeWidget wrapper should match active geometry without selected background`
+  );
+  assert.doesNotMatch(
+    socialCardCss,
+    /\.reader-subscribe-widget\s*\{[^}]*background\s*:/,
+    `${fixtureName} inactive SubscribeWidget wrapper should not draw a selected background`
+  );
+  assert.match(
+    socialCardCss,
+    /\.reader-subscribe-widget\s*\{[^}]*border:\s*0;/,
+    `${fixtureName} inactive SubscribeWidget wrapper should clear the generic embed border`
+  );
+  assert.doesNotMatch(
+    socialCardCss,
+    /\.reader-subscribe-widget\s*\{[^}]*box-shadow\s*:/,
+    `${fixtureName} inactive SubscribeWidget wrapper should not draw a selected shadow`
+  );
+  assert.match(
+    socialCardCss,
+    /\.reader-subscribe-widget-link\s*\{[\s\S]*?width:\s*var\(--reader-subscribe-widget-width\);[\s\S]*?height:\s*var\(--reader-subscribe-widget-height\);/,
+    `${fixtureName} SubscribeWidget CTA should consume the measured assets3 button size tokens`
+  );
+  assert.match(
+    socialCardCss,
+    /\.reader-subscribe-widget-link\s*\{[^}]*border:\s*0;/,
+    `${fixtureName} inactive SubscribeWidget button should clear borders`
+  );
+  assert.match(
+    socialCardCss,
+    /\.reader-subscribe-widget-link\s*\{[^}]*outline:\s*0;/,
+    `${fixtureName} inactive SubscribeWidget button should clear outlines`
+  );
+  assert.match(
+    socialCardCss,
+    /\.reader-subscribe-widget-link\s*\{[\s\S]*?color:\s*var\(--reader-subscribe-widget-muted\);/,
+    `${fixtureName} inactive SubscribeWidget text should use a muted reader theme color`
+  );
+  assert.match(
+    tokensCss,
+    /--reader-subscribe-widget-width:\s*142px;[\s\S]*?--reader-subscribe-widget-height:\s*40px;[\s\S]*?--reader-subscribe-widget-icon-size:\s*20px;/,
+    `${fixtureName} SubscribeWidget CTA should use the assets3 size_md and 2x screenshot-derived size`
+  );
+  assert.doesNotMatch(
+    tokensCss,
+    /--reader-subscribe-widget-(?:accent|surface|active-surface):\s*#[0-9a-f]{3,8}/i,
+    `${fixtureName} SubscribeWidget colors should be derived from the reader theme system`
+  );
+  assert.match(
+    focusCss,
+    /\.reader-subscribe-widget\.focus-unit\.is-active\s*\{[\s\S]*?width:\s*fit-content;[\s\S]*?padding:\s*var\(--reader-subscribe-widget-active-padding\);[\s\S]*?background:\s*var\(--reader-highlight-surface\);/,
+    `${fixtureName} active SubscribeWidget focus should wrap the button width with selected padding`
+  );
+  assert.doesNotMatch(
+    focusCss,
+    /\.reader-subscribe-widget\.focus-unit\.is-active\s*\{[^}]*border\s*:/,
+    `${fixtureName} active SubscribeWidget focus should not add a border around the CTA`
+  );
 
   for (const block of article.blocks.filter((candidate) => candidate.type === 'embed' || candidate.type === 'video')) {
     const unit = focusResult.units.find((candidate) => candidate.blockId === block.id);
     assert.equal(unit?.type, 'block', `${fixtureName} FocusUnit should treat ${block.type} as a block unit`);
+  }
+}
+
+function assertSubscribeWidgetClickBehavior(article, shell, focusResult, subscribeBlock, fixtureName) {
+  const subscribeElement = shell.querySelector(`[data-block-id="${subscribeBlock.id}"]`);
+  const subscribeLink = subscribeElement?.querySelector('.reader-subscribe-widget-link[href]');
+  assert.ok(subscribeElement, `${fixtureName} SubscribeWidget click test should find the wrapper`);
+  assert.ok(subscribeLink, `${fixtureName} SubscribeWidget click test should find the link`);
+
+  let activeUnit = null;
+  const focusChanges = [];
+  const openCalls = [];
+  const originalOpen = window.open;
+  window.open = (href, target) => {
+    openCalls.push({ href, target });
+    return {};
+  };
+
+  try {
+    const engine = new FocusEngine(focusResult.units, (unit, index) => {
+      activeUnit = unit;
+      focusChanges.push([unit.unitId, index]);
+    });
+    registerClickController({
+      root: shell,
+      articleId: article.id,
+      units: focusResult.units,
+      engine,
+      hint: document.createElement('div'),
+      toast: document.createElement('div'),
+      mediaPreviewState: createMediaPreviewState(article),
+      getActiveUnit: () => activeUnit
+    });
+
+    const inactiveClick = new window.MouseEvent('click', { bubbles: true, cancelable: true });
+    subscribeLink.dispatchEvent(inactiveClick);
+    assert.equal(inactiveClick.defaultPrevented, true, `${fixtureName} inactive SubscribeWidget click should select before navigation`);
+    assert.equal(openCalls.length, 0, `${fixtureName} inactive SubscribeWidget click should not navigate`);
+    assert.equal(activeUnit?.blockId, subscribeBlock.id, `${fixtureName} inactive SubscribeWidget click should highlight the CTA block`);
+
+    const activeLinkClick = new window.MouseEvent('click', { bubbles: true, cancelable: true });
+    subscribeLink.dispatchEvent(activeLinkClick);
+    assert.equal(activeLinkClick.defaultPrevented, false, `${fixtureName} active SubscribeWidget link click should allow native navigation`);
+
+    const activeWrapperClick = new window.MouseEvent('click', { bubbles: true, cancelable: true });
+    subscribeElement.dispatchEvent(activeWrapperClick);
+    assert.equal(activeWrapperClick.defaultPrevented, true, `${fixtureName} active SubscribeWidget wrapper click should use the block href`);
+    assert.deepEqual(openCalls.at(-1), { href: subscribeBlock.href, target: '_self' }, `${fixtureName} active SubscribeWidget wrapper click should navigate to the SubscribeWidget href`);
+    assert.ok(focusChanges.length >= 2, `${fixtureName} SubscribeWidget click test should flow through FocusEngine`);
+  } finally {
+    window.open = originalOpen;
   }
 }
 

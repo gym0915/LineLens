@@ -31,7 +31,7 @@ export type CleanTreeBlockConversionOptions = {
   enabledBlockTypes?: Array<ArticleBlock['type']>;
 };
 
-const DEFAULT_ENABLED_BLOCK_TYPES: Array<ArticleBlock['type']> = ['paragraph', 'heading', 'quote', 'list', 'image', 'code', 'table', 'simple-tweet', 'image-gallery', 'embed'];
+const DEFAULT_ENABLED_BLOCK_TYPES: Array<ArticleBlock['type']> = ['paragraph', 'divider', 'heading', 'quote', 'list', 'image', 'code', 'table', 'simple-tweet', 'image-gallery', 'embed'];
 
 export function convertCleanTreeToBlocks(
   root: Element,
@@ -72,6 +72,18 @@ function convertElementToBlock(
   const specialComponentBlock = convertSpecialComponentElement(element, context, index, enabledBlockTypes, consumedElements);
   if (specialComponentBlock) {
     return specialComponentBlock;
+  }
+
+  if (isDividerElement(element, semanticSelectors) && enabledBlockTypes.has('divider')) {
+    consumedElements.add(element);
+    const dividerRoot = findDividerRoot(element, semanticSelectors);
+    if (dividerRoot) {
+      consumedElements.add(dividerRoot);
+    }
+    return {
+      id: cleanTreeBlockId(context, index),
+      type: 'divider'
+    };
   }
 
   if (isImageGalleryElement(element, semanticSelectors) && enabledBlockTypes.has('image-gallery')) {
@@ -327,6 +339,7 @@ function buildBlockCandidateSelector(selectors: ResolvedSemanticSelectors, conte
   return uniqueSelectors([
     selectors.blockSelector,
     selectors.paragraphSelector,
+    selectors.dividerSelector,
     selectors.headingSelector,
     selectors.quoteSelector,
     selectors.orderedListSelector,
@@ -350,6 +363,24 @@ function isHeadingElement(element: Element, selectors: ResolvedSemanticSelectors
 
 function isQuoteElement(element: Element, selectors: ResolvedSemanticSelectors): boolean {
   return element.matches(selectors.quoteSelector);
+}
+
+function isDividerElement(element: Element, selectors: ResolvedSemanticSelectors): boolean {
+  return findDividerRoot(element, selectors) !== null;
+}
+
+function findDividerRoot(element: Element, selectors: ResolvedSemanticSelectors): Element | null {
+  if (element.matches(selectors.dividerSelector)) {
+    return element;
+  }
+
+  const directDivider = Array.from(element.children).find((child) => child.matches(selectors.dividerSelector)) ?? null;
+  if (!directDivider || normalizeText(element.textContent ?? '') !== '') {
+    return null;
+  }
+
+  const hasOnlyDividerChildren = Array.from(element.children).every((child) => child === directDivider);
+  return hasOnlyDividerChildren ? directDivider : null;
 }
 
 function isImageElement(element: Element, selectors: ResolvedSemanticSelectors): boolean {

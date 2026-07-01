@@ -80,7 +80,7 @@ assert.deepEqual(getPlatformFixOrder(xArticleAdapter), [
   'preserve-x-media-caption',
   'preserve-x-media-layout'
 ]);
-assert.deepEqual(CLEAN_TREE_PRIMARY_BLOCK_TYPES, ['paragraph', 'heading', 'quote', 'list', 'image', 'code', 'table', 'simple-tweet', 'image-gallery', 'embed']);
+assert.deepEqual(CLEAN_TREE_PRIMARY_BLOCK_TYPES, ['paragraph', 'divider', 'heading', 'quote', 'list', 'image', 'code', 'table', 'simple-tweet', 'image-gallery', 'embed']);
 assert.deepEqual(HIGH_RISK_DUAL_TRACK_BLOCK_TYPES, ['video', 'gif']);
 assert.deepEqual(LEGACY_ONLY_BLOCK_TYPES, ['link']);
 
@@ -222,7 +222,7 @@ assert.match(platformFixesSource, /data-linelens-emoji-image-url/, 'platform fix
 assert.match(platformFixesSource, /data-linelens-video-hls-candidate/, 'platform fixes gate should keep video HLS metadata path dual-track');
 
 assert.match(blockConverterSource, /export function convertCleanTreeToBlocks/, 'block conversion gate should expose clean tree conversion entry');
-assert.match(blockConverterSource, /'paragraph', 'heading', 'quote', 'list', 'image', 'code', 'table', 'simple-tweet', 'image-gallery'/, 'block conversion gate should include code, table, simple-tweet, and image-gallery after migration');
+assert.match(blockConverterSource, /'paragraph', 'divider', 'heading', 'quote', 'list', 'image', 'code', 'table', 'simple-tweet', 'image-gallery'/, 'block conversion gate should include divider, code, table, simple-tweet, and image-gallery after migration');
 assert.match(blockConverterSource, /annotation\.bold = true/, 'block conversion gate should preserve bold inline semantics');
 assert.match(blockConverterSource, /annotation\.href = href/, 'block conversion gate should preserve link annotations');
 assert.match(blockConverterSource, /annotation\.emojiImageUrl = emojiImageUrl/, 'block conversion gate should preserve emoji annotations');

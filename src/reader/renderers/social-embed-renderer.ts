@@ -2,8 +2,13 @@ import type { EmbedBlock } from '../../shared/article-schema.js';
 import { appendReaderText } from '../reader-text-renderer.js';
 import { applySimpleTweetTextStyle } from '../style-policy.js';
 import { applyMediaAspectRatio, renderMediaFrame } from './media-frame.js';
+import { renderSubscribeWidgetBlock } from './subscribe-widget-renderer.js';
 
 export function renderEmbedBlock(block: EmbedBlock): HTMLElement {
+  if (block.presentation === 'cta') {
+    return renderSubscribeWidgetBlock(block);
+  }
+
   if (block.provider || block.authorName || block.authorAvatarUrl || block.media?.length || block.metrics) {
     return renderSocialEmbedBlock(block);
   }

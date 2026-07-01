@@ -53,7 +53,7 @@ const result = buildCleanTreePrimaryBlocks({
 
 assert.deepEqual(
   CLEAN_TREE_PRIMARY_BLOCK_TYPES,
-  ['paragraph', 'heading', 'quote', 'list', 'image', 'code', 'table', 'simple-tweet', 'image-gallery', 'embed'],
+  ['paragraph', 'divider', 'heading', 'quote', 'list', 'image', 'code', 'table', 'simple-tweet', 'image-gallery', 'embed'],
   'clean tree primary block types should include migrated low-risk and embed blocks'
 );
 assert.deepEqual(

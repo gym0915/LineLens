@@ -204,6 +204,7 @@ function registerSubstackSubscribeWidgetHandler(): void {
         id: blockId(context.debugId, context.index),
         type: 'embed',
         label: SUBSTACK_LABEL,
+        presentation: 'cta',
         provider: 'substack',
         title,
         text: title,

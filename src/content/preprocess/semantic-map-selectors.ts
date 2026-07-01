@@ -3,6 +3,7 @@ import type { SemanticMapConfig } from '../adapters/adapter-types.js';
 export type ResolvedSemanticSelectors = {
   blockSelector: string;
   paragraphSelector: string;
+  dividerSelector: string;
   headingSelector: string;
   quoteSelector: string;
   orderedListSelector: string;
@@ -16,8 +17,9 @@ export type ResolvedSemanticSelectors = {
 };
 
 const DEFAULT_SEMANTIC_SELECTORS: ResolvedSemanticSelectors = {
-  blockSelector: '[data-block], p, h1, h2, h3, h4, h5, h6, blockquote, li, figure, img, pre, code, table',
+  blockSelector: '[data-block], p, hr, [role="separator"], [data-kind="divider"], h1, h2, h3, h4, h5, h6, blockquote, li, figure, img, pre, code, table',
   paragraphSelector: '[data-linelens-block-role="paragraph"], [data-kind="paragraph"], p',
+  dividerSelector: '[data-linelens-block-role="divider"], [data-kind="divider"], hr, [role="separator"]',
   headingSelector: '[data-linelens-block-role="heading"], [data-kind="heading"], h1, h2, h3, h4, h5, h6',
   quoteSelector: '[data-linelens-block-role="quote"], [data-kind="quote"], blockquote',
   orderedListSelector: '[data-linelens-list-kind="ordered"], [data-kind="ordered-list"], ol > li',
@@ -34,6 +36,7 @@ export function resolveSemanticSelectors(map: SemanticMapConfig | undefined): Re
   return {
     blockSelector: resolveSelector(map?.blockSelector, DEFAULT_SEMANTIC_SELECTORS.blockSelector),
     paragraphSelector: resolveSelector(map?.paragraphSelector, DEFAULT_SEMANTIC_SELECTORS.paragraphSelector),
+    dividerSelector: resolveSelector(map?.dividerSelector, DEFAULT_SEMANTIC_SELECTORS.dividerSelector),
     headingSelector: resolveSelector(map?.headingSelector, DEFAULT_SEMANTIC_SELECTORS.headingSelector),
     quoteSelector: resolveSelector(map?.quoteSelector, DEFAULT_SEMANTIC_SELECTORS.quoteSelector),
     orderedListSelector: resolveSelector(map?.orderedListSelector, DEFAULT_SEMANTIC_SELECTORS.orderedListSelector),

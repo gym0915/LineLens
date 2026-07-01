@@ -47,7 +47,7 @@ const rendered = renderArticleShell(article);
 assert.equal(rendered.querySelector('.article-title')?.textContent, article.title, 'Reader header should render title');
 assert.equal(rendered.querySelector('.article-meta-author-name')?.textContent, article.authorName, 'Reader header should render generic author name');
 assert.equal(rendered.querySelector('.article-meta-author-secondary')?.textContent?.includes(article.publishedAtText), true, 'Reader header should render generic publication date');
-assert.equal(rendered.querySelector('.article-meta-source')?.textContent?.toLowerCase().includes('medium'), true, 'Reader header should render source provider label');
+assert.equal(rendered.querySelector('.article-source-label')?.textContent?.toLowerCase().includes('medium'), true, 'Reader header should render source provider label');
 assert.equal(rendered.querySelector('.reader-simple-tweet-grok-icon'), null, 'Non-X header should not render Grok icon');
 assert.equal(rendered.querySelector('.article-meta-metrics'), null, 'Non-X header with no metrics should not render X action metrics row');
 assert.equal(rendered.querySelector('.article-meta-metric-icon'), null, 'Non-X header should not render reply/retweet/like/views icons without metrics');

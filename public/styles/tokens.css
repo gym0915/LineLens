@@ -268,6 +268,37 @@
     --reader-social-source-bottom: 10px;
     --reader-social-source-left: 12px;
     --reader-social-source-gap: 3px;
+    --reader-subscribe-widget-width: 142px;
+    --reader-subscribe-widget-height: 40px;
+    --reader-subscribe-widget-margin: 32px 0;
+    --reader-subscribe-widget-active-margin: 32px auto;
+    --reader-subscribe-widget-padding: 0 12px;
+    --reader-subscribe-widget-active-padding: 7px 10px;
+    --reader-subscribe-widget-gap: 10px;
+    --reader-subscribe-widget-radius: 10px;
+    --reader-subscribe-widget-muted: color-mix(
+        in srgb,
+        var(--reader-system-foreground) 34%,
+        var(--reader-canvas)
+    );
+    --reader-subscribe-widget-accent: color-mix(
+        in srgb,
+        var(--reader-system-foreground) 82%,
+        var(--reader-canvas)
+    );
+    --reader-subscribe-widget-surface: color-mix(
+        in srgb,
+        var(--reader-system-card) 72%,
+        var(--reader-system-foreground) 10%
+    );
+    --reader-subscribe-widget-shadow: none;
+    --reader-subscribe-widget-size: 16px;
+    --reader-subscribe-widget-icon-size: 20px;
+    --reader-subscribe-widget-active-surface: color-mix(
+        in srgb,
+        var(--reader-system-card) 62%,
+        var(--reader-system-foreground) 14%
+    );
     --reader-social-source-padding: 4px 8px 5px;
     --reader-social-source-size: 12px;
     --reader-social-source-icon-size: 13px;
@@ -403,6 +434,23 @@
         --reader-social-media-border: var(--reader-theme-night-border);
         --reader-social-media-placeholder: var(--reader-theme-night-card-high);
         --reader-social-card-shadow: var(--reader-theme-night-panel-shadow);
+        --reader-subscribe-widget-muted: color-mix(
+            in srgb,
+            var(--reader-theme-night-active) 42%,
+            var(--reader-theme-night-bg)
+        );
+        --reader-subscribe-widget-accent: var(--reader-theme-night-active);
+        --reader-subscribe-widget-surface: color-mix(
+            in srgb,
+            var(--reader-theme-night-card-high) 74%,
+            var(--reader-theme-night-active) 10%
+        );
+        --reader-subscribe-widget-active-surface: color-mix(
+            in srgb,
+            var(--reader-theme-night-card-high) 82%,
+            var(--reader-theme-night-active) 16%
+        );
+        --reader-subscribe-widget-shadow: none;
         --reader-inverse-surface: #dae2fc;
         --reader-inverse-ink: #283044;
     }

@@ -18,6 +18,10 @@ export function buildFocusUnits(article: Article, root: HTMLElement): FocusUnitB
       continue;
     }
 
+    if (block.type === 'divider') {
+      continue;
+    }
+
     if (block.type === 'paragraph') {
       blockElement.textContent = '';
       const readingUnits = block.text.includes('\n')

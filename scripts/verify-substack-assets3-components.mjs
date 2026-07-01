@@ -309,6 +309,7 @@ function assertArticleJsonComponentMapping(article, componentCounts, document, f
     assert.ok(subscribeEmbed, `${fixtureName} should map SubscribeWidget to Substack EmbedBlock`);
     assert.equal(subscribeEmbed.label, 'Substack', `${fixtureName} should label SubscribeWidget embeds as Substack`);
     assert.ok(!subscribeEmbed.href || isSafeUrl(subscribeEmbed.href), `${fixtureName} should preserve only safe SubscribeWidget links`);
+    assert.equal(subscribeEmbed.presentation, 'cta', `${fixtureName} should mark SubscribeWidget embeds as CTA presentation`);
     assert.ok(
       subscribeEmbed.textAnnotations?.some((annotation) => annotation.href && annotation.textDecoration === 'underline'),
       `${fixtureName} should preserve SubscribeWidget hyperlink and underline annotations`

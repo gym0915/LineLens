@@ -98,6 +98,9 @@ function shouldSelectBlockLinkBeforeNavigation(target: Element, focusElement: HT
   if (blockType === 'image-gallery') {
     return Boolean(target.closest('a.reader-image-gallery-item[href]'));
   }
+  if (blockType === 'embed' && focusElement.dataset.presentation === 'cta') {
+    return Boolean(target.closest('a.reader-subscribe-widget-link[href]') || focusElement.dataset.href);
+  }
 
   return false;
 }
@@ -105,6 +108,9 @@ function shouldSelectBlockLinkBeforeNavigation(target: Element, focusElement: HT
 function shouldNavigateBlockHref(target: Element, focusElement: HTMLElement, activeUnit: FocusUnit | null): boolean {
   if (activeUnit?.unitId !== focusElement.dataset.unitId) {
     return false;
+  }
+  if (focusElement.dataset.blockType === 'embed' && focusElement.dataset.presentation === 'cta') {
+    return Boolean(focusElement.dataset.href && !target.closest('a[href]'));
   }
   if (focusElement.dataset.blockType !== 'simple-tweet') {
     return false;

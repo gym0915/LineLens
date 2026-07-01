@@ -49,6 +49,7 @@ export type ArticleEngagementMeta = TweetMetrics;
 export type ArticleBlock =
   | HeadingBlock
   | ParagraphBlock
+  | DividerBlock
   | QuoteBlock
   | ImageBlock
   | ImageGalleryBlock
@@ -77,6 +78,11 @@ export type ParagraphBlock = {
   text: string;
   annotations?: TextAnnotation[];
   textStyle?: TextStyle;
+};
+
+export type DividerBlock = {
+  id: string;
+  type: 'divider';
 };
 
 export type QuoteBlock = {
@@ -454,6 +460,7 @@ export type EmbedBlock = {
   id: string;
   type: 'embed';
   label: string;
+  presentation?: 'cta';
   text?: string;
   textAnnotations?: TextAnnotation[];
   textStyle?: TextStyle;

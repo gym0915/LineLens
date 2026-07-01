@@ -14,6 +14,7 @@ export const xArticleAdapter: PlatformAdapter = {
   semanticMap: {
     blockSelector: '[data-block="true"]',
     paragraphSelector: '[data-block="true"]',
+    dividerSelector: '[data-block="true"] > [role="separator"], [data-linelens-block-role="divider"], [data-kind="divider"]',
     headingSelector: '.longform-header-one, .longform-header-two, [data-linelens-block-role="heading"], h1, h2, h3, h4, h5, h6',
     quoteSelector: 'blockquote.longform-blockquote[data-block="true"], blockquote',
     orderedListSelector: '.public-DraftStyleDefault-orderedListItem, .longform-ordered-list-item, [data-linelens-list-kind="ordered"]',

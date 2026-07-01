@@ -39,6 +39,7 @@ export const substackArticleAdapter: PlatformAdapter = {
   semanticMap: {
     blockSelector:
       '.body.markup > p, ' +
+      '.body.markup > hr, .body.markup > div > hr, ' +
       '.body.markup > h1, .body.markup > h2, .body.markup > h3, .body.markup > h4, .body.markup > h5, .body.markup > h6, ' +
       '.body.markup > ul > li, .body.markup > ol > li, ' +
       '.body.markup > blockquote, ' +
@@ -46,6 +47,7 @@ export const substackArticleAdapter: PlatformAdapter = {
       SUBSTACK_ASSETS3_COMPONENT_BLOCK_SELECTOR + ', ' +
       '.body.markup > a[data-component-name]',
     paragraphSelector: '.body.markup > p',
+    dividerSelector: '.body.markup > hr, .body.markup > div > hr',
     headingSelector: '.body.markup > h1, .body.markup > h2, .body.markup > h3, .body.markup > h4, .body.markup > h5, .body.markup > h6',
     quoteSelector: '.body.markup > blockquote',
     orderedListSelector: '.body.markup > ol > li',

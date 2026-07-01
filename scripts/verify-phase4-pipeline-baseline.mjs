@@ -23,6 +23,8 @@ import {
   filterInlineStyle,
   shouldPreserveStyleProperty
 } from '../dist/content/preprocess/style-whitelist.js';
+import { renderArticleShell } from '../dist/reader/block-renderer.js';
+import { buildFocusUnits } from '../dist/reader/focus-unit-builder.js';
 
 const projectRoot = resolve(import.meta.dirname, '..');
 const workspaceRoot = findWorkspaceRoot(projectRoot);
@@ -58,10 +60,11 @@ assert.deepEqual(getPlatformFixOrder(xArticleAdapter), [
   'preserve-x-media-caption',
   'preserve-x-media-layout'
 ]);
-assert.deepEqual(CLEAN_TREE_PRIMARY_BLOCK_TYPES, ['paragraph', 'heading', 'quote', 'list', 'image', 'code', 'table', 'simple-tweet', 'image-gallery', 'embed']);
+assert.deepEqual(CLEAN_TREE_PRIMARY_BLOCK_TYPES, ['paragraph', 'divider', 'heading', 'quote', 'list', 'image', 'code', 'table', 'simple-tweet', 'image-gallery', 'embed']);
 assert.deepEqual(HIGH_RISK_DUAL_TRACK_BLOCK_TYPES, ['video', 'gif']);
 assert.deepEqual(LEGACY_ONLY_BLOCK_TYPES, ['link']);
 assert.equal(xArticleAdapter.semanticMap?.blockSelector, '[data-block="true"]', 'P4.5 should expose X block semantics through adapter config');
+assert.match(xArticleAdapter.semanticMap?.dividerSelector ?? '', /\[role="separator"\]/, 'P4.5 should expose X separator semantics through adapter config');
 assert.match(xArticleAdapter.semanticMap?.headingSelector ?? '', /longform-header-one/, 'P4.5 should expose X heading semantics through adapter config');
 assert.match(xArticleAdapter.semanticMap?.quoteSelector ?? '', /blockquote/, 'P4.5 should expose X quote semantics through adapter config');
 assert.match(xArticleAdapter.semanticMap?.orderedListSelector ?? '', /orderedListItem/, 'P4.5 should expose X ordered list semantics through adapter config');
@@ -177,7 +180,7 @@ const blockConverterSource = readFileSync(
 );
 assert.match(blockConverterSource, /export function convertCleanTreeToBlocks/, 'P4.4 should define clean tree to block conversion entry');
 assert.match(blockConverterSource, /enabledBlockTypes/, 'P4.4 should allow block type level rollout');
-assert.match(blockConverterSource, /'paragraph', 'heading', 'quote', 'list', 'image', 'code', 'table', 'simple-tweet', 'image-gallery', 'embed'/, 'P4.4 should include code, table, simple-tweet, image-gallery, and embed after article migrations');
+assert.match(blockConverterSource, /'paragraph', 'divider', 'heading', 'quote', 'list', 'image', 'code', 'table', 'simple-tweet', 'image-gallery', 'embed'/, 'P4.4 should include divider, code, table, simple-tweet, image-gallery, and embed after article migrations');
 assert.match(blockConverterSource, /extractTextAnnotations/, 'P4.4 should preserve inline annotations');
 assert.match(blockConverterSource, /annotation\.bold = true/, 'P4.4 should preserve bold annotations');
 assert.match(blockConverterSource, /annotation\.href = href/, 'P4.4 should preserve link annotations');
@@ -238,6 +241,42 @@ assert.deepEqual(mergeProbe.blocks[0], {
 assert.deepEqual(mergeProbe.blocks[1], { id: 'legacy-2', type: 'video', src: 'video.mp4' });
 assert.deepEqual(mergeProbe.blocks[2], { id: 'legacy-3', type: 'gif', src: 'gif.mp4' });
 assert.deepEqual(mergeProbe.blocks[3], { id: 'legacy-4', type: 'link', text: 'standalone link', href: 'https://example.com' });
+
+const vibeSlopDividerMergeProbe = mergeCleanTreePrimaryBlocks(
+  [
+    {
+      id: '2060985303297585569-b8',
+      type: 'paragraph',
+      text: '两个词合在一起，Vibe Slop 指的就是：人类不理解设计、不理解代码、不理解安全，也不做测试，只靠提示词快速生成出来的软件垃圾。它最可怕的地方，不是它看起来很烂。恰恰相反，它看起来很能用。'
+    },
+    {
+      id: '2060985303297585569-b9',
+      type: 'heading',
+      level: 2,
+      text: '1. 认清 Vibe Slop 的真面目：它把能跑伪装成可靠'
+    }
+  ],
+  [
+    {
+      id: 'clean-vibe-paragraph',
+      type: 'paragraph',
+      text: '两个词合在一起，Vibe Slop 指的就是：人类不理解设计、不理解代码、不理解安全，也不做测试，只靠提示词快速生成出来的软件垃圾。它最可怕的地方，不是它看起来很烂。恰恰相反，它看起来很能用。'
+    },
+    { id: 'clean-vibe-divider', type: 'divider' },
+    {
+      id: 'clean-vibe-heading',
+      type: 'heading',
+      level: 2,
+      text: '1. 认清 Vibe Slop 的真面目：它把能跑伪装成可靠'
+    }
+  ]
+);
+assert.deepEqual(
+  vibeSlopDividerMergeProbe.blocks.map((block) => block.type),
+  ['paragraph', 'divider', 'heading'],
+  'P4.5 should preserve clean-tree-only divider blocks between equivalent legacy paragraph and heading blocks'
+);
+assertVibeSlopDividerReaderRendering(vibeSlopDividerMergeProbe.blocks);
 
 const legacyBlocks = summarizeLegacyExtractorBaseline({
   detailSnapshot,
@@ -370,7 +409,7 @@ const baselineReport = {
     videoHlsCandidateMetadata: true
   },
   blockConversion: {
-    lowRiskBlockTypes: ['paragraph', 'heading', 'quote', 'list', 'image', 'code', 'table', 'simple-tweet', 'image-gallery', 'embed'],
+    lowRiskBlockTypes: ['paragraph', 'divider', 'heading', 'quote', 'list', 'image', 'code', 'table', 'simple-tweet', 'image-gallery', 'embed'],
     preservesInlineSemantics: ['bold', 'link', 'emoji'],
     highRiskBlocksRemainDualTrack: ['video', 'gif'],
     legacyOnlyBlocksRemainLegacy: ['link'],
@@ -404,6 +443,7 @@ function assertSemanticMapDrivesCleanTreeBlockConversion() {
     <main data-fixture-root>
       <p data-semantic-block data-kind="paragraph">Mapped paragraph with <a href="https://example.com/ref">link text</a>.</p>
       <section data-semantic-block data-kind="heading" data-linelens-heading-level="3">Mapped Heading</section>
+      <section data-semantic-block data-kind="x-divider" data-block="true" contenteditable="false"><div role="separator"></div></section>
       <aside data-semantic-block data-kind="quote">Mapped quote</aside>
       <div data-semantic-block data-kind="ordered">Ordered item</div>
       <div data-semantic-block data-kind="unordered">Unordered item</div>
@@ -438,6 +478,7 @@ function assertSemanticMapDrivesCleanTreeBlockConversion() {
         semanticMap: {
           blockSelector: '[data-semantic-block]',
           paragraphSelector: '[data-kind="paragraph"]',
+          dividerSelector: '[data-kind="x-divider"] > [role="separator"]',
           headingSelector: '[data-kind="heading"]',
           quoteSelector: '[data-kind="quote"]',
           orderedListSelector: '[data-kind="ordered"]',
@@ -486,6 +527,11 @@ function assertSemanticMapDrivesCleanTreeBlockConversion() {
       'semanticMap.paragraphSelector should drive clean-tree paragraph detection'
     );
     assert.equal(
+      blocks.some((block) => block.type === 'divider'),
+      true,
+      'semanticMap.dividerSelector should drive clean-tree divider detection from X role=separator blocks'
+    );
+    assert.equal(
       blocks.some((block) => block.type === 'heading' && block.text === 'Mapped Heading' && block.level === 3),
       true,
       'semanticMap.headingSelector should drive clean-tree heading detection'
@@ -522,7 +568,7 @@ function assertSemanticMapDrivesCleanTreeBlockConversion() {
     );
     assert.deepEqual(
       blockTypes,
-      ['paragraph', 'heading', 'quote', 'list', 'list', 'image', 'code', 'table'],
+      ['paragraph', 'heading', 'divider', 'quote', 'list', 'list', 'image', 'code', 'table'],
       'semanticMap selectors should preserve fixture block order'
     );
     assert.deepEqual(
@@ -534,6 +580,7 @@ function assertSemanticMapDrivesCleanTreeBlockConversion() {
           annotationHrefs: ['https://example.com/ref']
         },
         { type: 'heading', text: 'Mapped Heading', level: 3 },
+        { type: 'divider' },
         { type: 'quote', text: 'Mapped quote' },
         { type: 'list', kind: 'ordered', items: ['Ordered item'] },
         { type: 'list', kind: 'unordered', items: ['Unordered item'] },
@@ -548,6 +595,80 @@ function assertSemanticMapDrivesCleanTreeBlockConversion() {
         }
       ],
       'standard block converter output should stay stable while converter modules are split'
+    );
+
+    const readerShell = renderArticleShell({
+      id: 'x-divider-fixture',
+      source: 'x-article',
+      sourceUrl: 'https://x.com/example/article/1',
+      canonicalUrl: 'https://x.com/example/article/1',
+      title: 'X Divider Fixture',
+      extractedAt: 1782220000000,
+      blocks
+    });
+    dom.window.document.body.innerHTML = '';
+    dom.window.document.body.append(readerShell);
+    const focusResult = buildFocusUnits(
+      {
+        id: 'x-divider-fixture',
+        source: 'x-article',
+        sourceUrl: 'https://x.com/example/article/1',
+        canonicalUrl: 'https://x.com/example/article/1',
+        title: 'X Divider Fixture',
+        extractedAt: 1782220000000,
+        blocks
+      },
+      readerShell
+    );
+    const renderedDivider = readerShell.querySelector('.reader-divider[data-block-type="divider"]');
+    assert.equal(renderedDivider?.tagName, 'HR', 'X role=separator divider should render through the unified Reader <hr> divider DOM');
+    assert.equal(renderedDivider?.classList.contains('focus-unit'), false, 'X role=separator divider should not become a Reader FocusUnit');
+    assert.equal(
+      focusResult.units.some((unit) => unit.type === 'block' && unit.blockType === 'divider'),
+      false,
+      'X role=separator divider should not become an active/selectable block unit'
+    );
+  } finally {
+    globalThis.document = previousGlobals.document;
+    globalThis.window = previousGlobals.window;
+    globalThis.Element = previousGlobals.Element;
+    globalThis.HTMLElement = previousGlobals.HTMLElement;
+    globalThis.Node = previousGlobals.Node;
+  }
+}
+
+function assertVibeSlopDividerReaderRendering(blocks) {
+  const dom = new JSDOM('<main></main>', {
+    url: 'https://x.com/AdrianPunk115/article/2060985303297585569'
+  });
+  const previousGlobals = {
+    document: globalThis.document,
+    window: globalThis.window,
+    Element: globalThis.Element,
+    HTMLElement: globalThis.HTMLElement,
+    Node: globalThis.Node
+  };
+
+  globalThis.document = dom.window.document;
+  globalThis.window = dom.window;
+  globalThis.Element = dom.window.Element;
+  globalThis.HTMLElement = dom.window.HTMLElement;
+  globalThis.Node = dom.window.Node;
+
+  try {
+    const vibeSlopReaderShell = renderArticleShell({
+      id: '2060985303297585569',
+      source: 'x-article',
+      sourceUrl: 'https://x.com/AdrianPunk115/article/2060985303297585569',
+      canonicalUrl: 'https://x.com/AdrianPunk115/article/2060985303297585569',
+      title: 'Vibe Slop 来了：AI 正在批量生产垃圾代码，我们普通人该怎么保护自己？',
+      extractedAt: 1782220000000,
+      blocks
+    });
+    assert.equal(
+      vibeSlopReaderShell.querySelector('p[data-block-id="2060985303297585569-b8"] + .reader-divider + h2[data-block-id="2060985303297585569-b9"]') !== null,
+      true,
+      'Vibe Slop Reader output should render the divider before “1. 认清 Vibe Slop 的真面目：它把能跑伪装成可靠”'
     );
   } finally {
     globalThis.document = previousGlobals.document;

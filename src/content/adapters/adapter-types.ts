@@ -18,6 +18,7 @@ export type PlatformFix = {
 export type SemanticMapConfig = {
   blockSelector?: string;
   paragraphSelector?: string;
+  dividerSelector?: string;
   headingSelector?: string;
   quoteSelector?: string;
   orderedListSelector?: string;

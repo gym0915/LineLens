@@ -170,6 +170,26 @@ p .focus-unit.is-active {
   box-shadow: var(--reader-card-shadow);
 }
 
+.reader-subscribe-widget.focus-unit.is-active {
+  box-sizing: border-box;
+  width: fit-content;
+  margin: var(--reader-subscribe-widget-active-margin);
+  padding: var(--reader-subscribe-widget-active-padding);
+  border-radius: var(--reader-radius-card);
+  background: var(--reader-highlight-surface);
+  box-shadow: var(--reader-card-shadow);
+}
+
+.reader-subscribe-widget.focus-unit.is-active .reader-subscribe-widget-link {
+  background: var(--reader-subscribe-widget-active-surface);
+  box-shadow: var(--reader-subscribe-widget-shadow);
+}
+
+.reader-subscribe-widget.focus-unit.is-active .reader-subscribe-widget-link,
+.reader-subscribe-widget.focus-unit.is-active .reader-subscribe-widget-link * {
+  color: var(--reader-subscribe-widget-accent) !important;
+}
+
 .reader-list-item.focus-unit.is-active {
   background: var(--reader-highlight-surface);
   box-shadow: var(--reader-card-shadow);

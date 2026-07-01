@@ -6,6 +6,7 @@ import { cloneContentTree, createCleanTreeContext } from './clone-content-tree.j
 
 export const CLEAN_TREE_PRIMARY_BLOCK_TYPES: Array<ArticleBlock['type']> = [
   'paragraph',
+  'divider',
   'heading',
   'quote',
   'list',
@@ -78,30 +79,37 @@ export function mergeCleanTreePrimaryBlocks(
   let highRiskBlockCount = 0;
   let legacyOnlyBlockCount = 0;
 
-  const blocks = legacyBlocks.map((legacyBlock) => {
+  const blocks: ArticleBlock[] = [];
+
+  for (const legacyBlock of legacyBlocks) {
     if (!CLEAN_TREE_PRIMARY_BLOCK_TYPES.includes(legacyBlock.type)) {
       if (HIGH_RISK_DUAL_TRACK_BLOCK_TYPES.includes(legacyBlock.type)) {
         highRiskBlockCount += 1;
       } else if (LEGACY_ONLY_BLOCK_TYPES.includes(legacyBlock.type)) {
         legacyOnlyBlockCount += 1;
       }
-      return legacyBlock;
+      blocks.push(legacyBlock);
+      continue;
     }
 
     const match = findEquivalentCleanTreeBlock(legacyBlock, cleanTreeBlocks, cleanTreeCursor);
     if (match === null) {
       fallbackBlockCount += 1;
-      return legacyBlock;
+      blocks.push(legacyBlock);
+      continue;
     }
 
+    blocks.push(...cleanTreeBlocks.slice(cleanTreeCursor, match.index).filter(isCleanTreeOnlyPrimaryBlock));
     cleanTreeCursor = match.index + 1;
     replacedBlockCount += 1;
     const mergedBlock = mergeCleanTreeBlockWithLegacyRuntimeFields(legacyBlock, match.block);
-    return {
+    blocks.push({
       ...mergedBlock,
       id: legacyBlock.id
-    };
-  });
+    });
+  }
+
+  blocks.push(...cleanTreeBlocks.slice(cleanTreeCursor).filter(isCleanTreeOnlyPrimaryBlock));
 
   return {
     blocks,
@@ -135,6 +143,10 @@ function mergeCleanTreeBlockWithLegacyRuntimeFields(legacyBlock: ArticleBlock, c
   return cleanTreeBlock;
 }
 
+function isCleanTreeOnlyPrimaryBlock(block: ArticleBlock): boolean {
+  return block.type === 'divider';
+}
+
 function findEquivalentCleanTreeBlock(
   legacyBlock: ArticleBlock,
   cleanTreeBlocks: ArticleBlock[],
@@ -160,6 +172,8 @@ function areEquivalentBlocks(left: ArticleBlock, right: ArticleBlock): boolean {
       return right.type === 'heading' && normalizeText(left.text) === normalizeText(right.text) && left.level === right.level;
     case 'paragraph':
       return right.type === 'paragraph' && normalizeText(left.text) === normalizeText(right.text);
+    case 'divider':
+      return right.type === 'divider';
     case 'quote':
       return right.type === 'quote' && normalizeText(left.text) === normalizeText(right.text);
     case 'list':

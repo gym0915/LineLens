@@ -4,6 +4,7 @@ import type {
 } from '../shared/article-schema.js';
 import { renderArticleHeader } from './renderers/article-header-renderer.js';
 import { renderCodeBlock } from './renderers/code-block-renderer.js';
+import { renderDividerBlock } from './renderers/divider-renderer.js';
 import { renderImageGalleryBlock } from './renderers/gallery-renderer.js';
 import { renderImageBlock } from './renderers/image-renderer.js';
 import { renderListBlock } from './renderers/list-block-renderer.js';
@@ -37,6 +38,8 @@ function renderBlock(block: ArticleBlock): HTMLElement {
       return renderHeadingBlock(block.id, block.level, block.text, block.annotations, block.textStyle);
     case 'paragraph':
       return renderParagraphBlock(block.id, block.text, block.annotations, block.textStyle, block.role);
+    case 'divider':
+      return renderDividerBlock(block.id);
     case 'quote':
       return renderQuoteBlock(block.id, block.text, block.annotations, block.textStyle);
     case 'image':
