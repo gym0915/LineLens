@@ -152,7 +152,11 @@ assert.equal(
   'article.newsletter-post.post-viewer-post, article.podcast-post.post-viewer-post',
   'Substack adapter should expose newsletter and podcast article root selectors'
 );
-assert.equal(substackArticleAdapter.contentSelector, '.available-content .body.markup', 'Substack adapter should expose the body markup selector');
+assert.equal(
+  substackArticleAdapter.contentSelector,
+  undefined,
+  'Substack adapter should use the article root so assets3 components outside the body markup can be mapped'
+);
 assert.deepEqual(
   substackArticleAdapter.readiness?.requiredSelectors,
   ['article.newsletter-post.post-viewer-post, article.podcast-post.post-viewer-post', '.available-content .body.markup'],

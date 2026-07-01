@@ -89,6 +89,29 @@ npm run verify:x-video-b31-b39
 
 Result: PASS. The shared clean-tree, media, Reader renderer, X image gallery, X caption, X simpleTweet, and X video paths did not regress.
 
+## Phase 7 Verification
+
+Passed in the worktree:
+
+```bash
+npm run build
+npm run verify:content-single-source
+npm run verify:m3-adapters-settings
+npm run verify:adapter-manifest-scope
+npm run verify:generic-converter-platform-neutral
+npm run verify:special-components-platform-boundary
+npm run verify:configurable-article-extractor
+npm run verify:substack-article-fixture
+npm run verify:substack-assets3-fixtures
+npm run verify:substack-assets3-components
+npm run verify:substack-url-scope
+npm run verify:reader-platform-neutral-header
+npm run verify:reader-m1-m2
+npm run verify:reader-shared-media
+```
+
+Result: PASS. During final acceptance, `verify:m3-adapters-settings` exposed a stale assertion that still expected `substack.article.contentSelector` to point at `.available-content .body.markup`. The current assets3 contract intentionally leaves `contentSelector` unset so the configurable extractor uses the article root and can map assets3 components outside the body markup. The verifier was updated to match that contract; production adapter behavior was not changed.
+
 ## Remaining Risk
 
 - Live Substack pages can still vary beyond the captured assets3 DOM; this phase is fixture-locked and should be followed by manual smoke testing after merge.
