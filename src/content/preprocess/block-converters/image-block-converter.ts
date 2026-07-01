@@ -5,7 +5,10 @@ export type ImageBlockConverterDeps = {
   blockId: string;
   specialImageRootSelector?: string;
   convertSpecialImageElement(element: HTMLElement): ImageBlock | null;
-  extractPlatformImageMetadata(element: Element): Pick<ImageBlock, 'aspectRatio' | 'objectFit' | 'objectPosition'>;
+  extractPlatformImageMetadata(element: Element): Pick<
+    ImageBlock,
+    'aspectRatio' | 'backgroundColor' | 'objectFit' | 'objectPosition' | 'visualBleedScale' | 'visualBleedMode'
+  >;
 };
 
 export function convertImageElement(element: Element, deps: ImageBlockConverterDeps): ImageBlock | null {

@@ -15,12 +15,31 @@ export function renderArticleHeader(article: Article): HTMLElement {
     header.append(renderCoverImageBlock(article.coverImage));
   }
 
+  const sourceLabel = renderArticleHeaderSourceLabel(article);
+  if (sourceLabel) {
+    header.append(sourceLabel);
+  }
+
   const title = document.createElement('h1');
   title.className = 'article-title';
   title.dataset.blockId = 'title';
   title.dataset.blockType = 'title';
-  title.textContent = article.title;
+  if (article.titleHref) {
+    const link = document.createElement('a');
+    link.href = article.titleHref;
+    link.textContent = article.title;
+    title.append(link);
+  } else {
+    title.textContent = article.title;
+  }
   header.append(title);
+
+  if (article.subtitle) {
+    const subtitle = document.createElement('p');
+    subtitle.className = 'article-subtitle';
+    subtitle.textContent = article.subtitle;
+    header.append(subtitle);
+  }
 
   const authorMeta = renderArticleHeaderAuthorMeta(article);
   if (authorMeta) {
@@ -30,27 +49,47 @@ export function renderArticleHeader(article: Article): HTMLElement {
   if (metrics) {
     header.append(metrics);
   }
+  if (shouldRenderArticleHeaderDivider(article, authorMeta, metrics)) {
+    const divider = document.createElement('hr');
+    divider.className = 'article-header-divider';
+    header.append(divider);
+  }
 
   return header;
+}
+
+function renderArticleHeaderSourceLabel(article: Article): HTMLElement | null {
+  const sourceLabel = getArticleSourceLabel(article);
+  if (!sourceLabel || isXArticle(article)) {
+    return null;
+  }
+
+  const element = document.createElement(article.sourceMeta?.href ? 'a' : 'p');
+  element.className = 'article-source-label';
+  element.textContent = sourceLabel;
+  if (article.sourceMeta?.href) {
+    element.setAttribute('href', article.sourceMeta.href);
+  }
+  return element;
 }
 
 function renderArticleHeaderAuthorMeta(article: Article): HTMLElement | null {
   const authorName = article.author?.name ?? article.authorName;
   const authorHandle = article.author?.handle ?? article.authorHandle;
   const authorAvatarUrl = article.author?.avatarUrl ?? article.authorAvatarUrl;
+  const authorProfileUrl = article.author?.profileUrl;
   const authorVerified = article.author?.verified ?? article.authorVerified;
-  const sourceLabel = getArticleSourceLabel(article);
   const publishedAtText = article.publishedAtText;
   const hasAuthoredMeta = Boolean(authorName || authorHandle || authorAvatarUrl || publishedAtText);
 
-  if (!hasAuthoredMeta && (!sourceLabel || isXArticle(article))) {
+  if (!hasAuthoredMeta) {
     return null;
   }
 
   const row = document.createElement('a');
   row.className = 'article-meta article-meta-author';
-  row.href = article.canonicalUrl;
-  row.setAttribute('aria-label', [authorName, authorHandle, publishedAtText, sourceLabel].filter(Boolean).join(' '));
+  row.href = authorProfileUrl ?? article.canonicalUrl;
+  row.setAttribute('aria-label', [authorName, authorHandle, publishedAtText].filter(Boolean).join(' '));
 
   if (authorAvatarUrl) {
     const avatar = document.createElement('img');
@@ -80,7 +119,6 @@ function renderArticleHeaderAuthorMeta(article: Article): HTMLElement | null {
 
   const secondary = document.createElement('span');
   secondary.className = 'article-meta-author-secondary';
-  appendMetaText(secondary, sourceLabel, 'article-meta-source');
   appendMetaText(secondary, authorHandle);
   appendMetaText(secondary, publishedAtText);
 
@@ -95,6 +133,10 @@ function renderArticleHeaderAuthorMeta(article: Article): HTMLElement | null {
     row.append(renderGrokIcon());
   }
   return row;
+}
+
+function shouldRenderArticleHeaderDivider(article: Article, authorMeta: HTMLElement | null, metrics: HTMLElement | null): boolean {
+  return !metrics && (article.platform === 'substack' || article.sourceProvider === 'substack') && Boolean(authorMeta || article.subtitle);
 }
 
 function renderArticleHeaderMetrics(article: Article): HTMLElement | null {

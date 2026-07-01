@@ -9,13 +9,18 @@ export type ImageCandidate = Pick<
   | 'alt'
   | 'href'
   | 'aspectRatio'
+  | 'backgroundColor'
   | 'backgroundSize'
   | 'backgroundPosition'
   | 'objectFit'
   | 'objectPosition'
+  | 'visualBleedScale'
+  | 'visualBleedMode'
 >;
 
-export type ImageMetadataResolver = (element: Element) => Pick<ImageBlock, 'aspectRatio' | 'objectFit' | 'objectPosition'>;
+export type ImageMetadataResolver = (
+  element: Element
+) => Pick<ImageBlock, 'aspectRatio' | 'backgroundColor' | 'objectFit' | 'objectPosition' | 'visualBleedScale' | 'visualBleedMode'>;
 
 export function resolveImageCandidate(
   element: Element,
@@ -200,16 +205,23 @@ function findClosestHref(element: Element): string | null {
 
 function extractStandardImageMetadata(
   element: Element,
-  platformMetadata: Pick<ImageBlock, 'aspectRatio' | 'objectFit' | 'objectPosition'>
-): Pick<ImageBlock, 'aspectRatio' | 'objectFit' | 'objectPosition'> {
+  platformMetadata: Pick<ImageBlock, 'aspectRatio' | 'backgroundColor' | 'objectFit' | 'objectPosition' | 'visualBleedScale' | 'visualBleedMode'>
+): Pick<ImageBlock, 'aspectRatio' | 'backgroundColor' | 'objectFit' | 'objectPosition' | 'visualBleedScale' | 'visualBleedMode'> {
   const width = Number(element.getAttribute('width') ?? '');
   const height = Number(element.getAttribute('height') ?? '');
   const aspectRatio = toValidAspectRatio(width, height) ?? platformMetadata.aspectRatio;
   return {
     ...(aspectRatio ? { aspectRatio } : {}),
+    ...(platformMetadata.backgroundColor ? { backgroundColor: platformMetadata.backgroundColor } : {}),
     ...(platformMetadata.objectFit ? { objectFit: platformMetadata.objectFit } : {}),
-    ...(platformMetadata.objectPosition ? { objectPosition: platformMetadata.objectPosition } : {})
+    ...(platformMetadata.objectPosition ? { objectPosition: platformMetadata.objectPosition } : {}),
+    ...(isValidVisualBleedScale(platformMetadata.visualBleedScale) ? { visualBleedScale: platformMetadata.visualBleedScale } : {}),
+    ...(platformMetadata.visualBleedMode ? { visualBleedMode: platformMetadata.visualBleedMode } : {})
   };
+}
+
+function isValidVisualBleedScale(value: number | undefined): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0;
 }
 
 function toValidAspectRatio(width: number, height: number): number | undefined {

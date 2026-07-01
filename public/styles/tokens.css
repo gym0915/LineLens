@@ -168,6 +168,16 @@
     --reader-kicker-left: 28px;
     --reader-kicker-size: 10px;
     --reader-title-margin-bottom: 28px;
+    --reader-source-label-margin-bottom: 14px;
+    --reader-source-label-size: 13px;
+    --reader-source-label-weight: 700;
+    --reader-source-label-line-height: 1.45;
+    --reader-title-subtitle-margin-bottom: 14px;
+    --reader-subtitle-margin-bottom: 28px;
+    --reader-subtitle-size: 22px;
+    --reader-subtitle-weight: 400;
+    --reader-subtitle-line-height: 1.42;
+    --reader-header-divider-margin: 16px 0 40px;
     --reader-font-body:
         "Atkinson Hyperlegible", "LXGW WenKai TC", system-ui, sans-serif;
     --reader-font-display:

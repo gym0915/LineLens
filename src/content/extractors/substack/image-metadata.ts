@@ -1,16 +1,22 @@
 import type { ImageBlock } from '../../../shared/article.js';
 
-export function extractSubstackImageUrlMetadata(src: string): Pick<ImageBlock, 'aspectRatio' | 'objectFit' | 'objectPosition'> {
+export function extractSubstackImageUrlMetadata(
+  src: string,
+  element?: Element
+): Pick<ImageBlock, 'aspectRatio' | 'backgroundColor' | 'objectFit' | 'objectPosition' | 'visualBleedScale' | 'visualBleedMode'> {
   const decoded = decodeURIComponent(src);
   const width = getUrlDimension(decoded, 'w');
   const height = getUrlDimension(decoded, 'h');
   const cropMode = getUrlToken(decoded, 'c');
   const gravity = getUrlToken(decoded, 'g');
+  const isTransparentImage2ToDom = cropMode === 'limit' && Boolean(element?.closest('[data-component-name="Image2ToDOM"]'));
   return {
     ...(toValidAspectRatio(width, height) ? { aspectRatio: toValidAspectRatio(width, height) } : {}),
+    ...(cropMode === 'limit' ? { backgroundColor: 'transparent' } : {}),
     ...(cropMode === 'fill' ? { objectFit: 'cover' as const } : {}),
     ...(cropMode === 'limit' ? { objectFit: 'contain' as const } : {}),
-    ...(gravity === 'auto' ? { objectPosition: 'center center' } : {})
+    ...(gravity === 'auto' ? { objectPosition: 'center center' } : {}),
+    ...(isTransparentImage2ToDom ? { visualBleedScale: 1.08, visualBleedMode: 'alpha-transparent' as const } : {})
   };
 }
 

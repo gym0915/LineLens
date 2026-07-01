@@ -28,6 +28,14 @@ export const substackArticleAdapter: PlatformAdapter = {
   enabled: true,
   rootSelector: SUBSTACK_ARTICLE_ROOT_SELECTOR,
   titleSelector: SUBSTACK_TITLE_SELECTOR,
+  headerSelectors: {
+    sourceLabelSelector: ':scope > div:first-child a[data-native="true"][href]',
+    titleLinkSelector: SUBSTACK_TITLE_SELECTOR,
+    subtitleSelector: ':scope > div:first-child a[href*="/p/"] + div',
+    authorNameSelector: '.byline-wrapper a[href*="substack.com/@"]',
+    authorAvatarSelector: '.byline-wrapper img[alt*="avatar"]',
+    publishedAtSelector: '.byline-wrapper > div:last-child > div:last-child'
+  },
   semanticMap: {
     blockSelector:
       '.body.markup > p, ' +

@@ -1,45 +1,45 @@
-# Substack Assets3 Adaptation Diff Report
+# Substack Assets3 适配差异报告
 
-## Status
+## 状态
 
-- Worktree: `/Users/steve/ClaudeWork/Codex/LineByLine/LineLens/.worktrees/substack-assets3-adaptation`
-- Branch: `feature/substack-assets3-adaptation`
-- Scope: Substack assets3 adaptation only, plus required shared Article JSON / clean-tree / Reader rendering plumbing.
-- Merge state: not merged to `main`; wait for explicit user confirmation before fast-forward merge.
+- Worktree：`/Users/steve/ClaudeWork/Codex/LineByLine/LineLens/.worktrees/substack-assets3-adaptation`
+- 分支：`feature/substack-assets3-adaptation`
+- 范围：仅限 Substack assets3 适配，以及必要的共享 Article JSON / clean-tree / Reader 渲染 plumbing。
+- 合并状态：尚未合并到 `main`；等待用户明确确认后再执行 fast-forward merge。
 
-## Before
+## 改动前
 
-- Runtime Substack scope still included broader `/p/...` and Latent Space/custom-domain paths.
-- Substack root/title selectors were tuned for newsletter posts and did not reliably cover assets3 podcast-shaped DOM.
-- `scripts/verify-substack-article-fixture.mjs` only covered the earlier assets2 fixture; assets3 full pages and component DOM were not locked as verifier contracts.
-- Substack special component coverage was limited; Paywall was removed by clean rules and SubscribeWidget had no explicit Article JSON mapping.
-- Reader embed rendering did not consume `EmbedBlock` rich-text annotations, so preserved CTA/link/underline/bold semantics in embed text had no neutral rendering path.
+- Substack 运行时范围仍包含较宽的 `/p/...` 以及 Latent Space / custom-domain 路径。
+- Substack root/title selector 主要面向 newsletter post，不稳定覆盖 assets3 中 podcast 形态的 DOM。
+- `scripts/verify-substack-article-fixture.mjs` 只覆盖早期 assets2 fixture；assets3 完整页面和组件 DOM 还没有固化为 verifier 合同。
+- Substack 特殊组件覆盖有限；Paywall 会被 clean rules 移除，SubscribeWidget 没有明确的 Article JSON 映射。
+- Reader 的 embed 渲染不消费 `EmbedBlock` rich-text annotations，因此 embed 文本中保留下来的 CTA / link / underline / bold 语义没有平台中立的渲染路径。
 
-## After
+## 改动后
 
-- Runtime Substack scope is narrowed to `substack.com/inbox/post/...` and `substack.com/home/post/...`; `/p/...` and Latent Space/custom domains are intentionally unsupported in this phase.
-- `substack.article` covers newsletter and podcast article roots, stable title fallback, assets3 component block roots, and clean-rule preservation for safe component attributes.
-- Assets3 is covered by three verifier contracts:
+- Substack 运行时范围收窄为 `substack.com/inbox/post/...` 和 `substack.com/home/post/...`；本阶段有意不支持 `/p/...` 和 Latent Space / custom-domain。
+- `substack.article` 覆盖 newsletter 与 podcast article root、稳定 title fallback、assets3 组件 block root，并通过 clean-rule 保留安全组件属性。
+- Assets3 由三个 verifier 合同覆盖：
   - `verify:substack-assets3-fixtures`
   - `verify:substack-assets3-components`
   - `verify:substack-url-scope`
-- Substack special components map into existing Article JSON shapes:
+- Substack 特殊组件映射到现有 Article JSON 形态：
   - YouTube -> `EmbedBlock(provider: 'youtube')`
-  - Video -> `VideoBlock` when direct media is safe, otherwise `EmbedBlock(provider: 'substack')`
+  - Video -> 能拿到安全 direct media 时输出 `VideoBlock`，否则输出 `EmbedBlock(provider: 'substack')`
   - Audio -> `EmbedBlock(provider: 'substack')`
-  - Footnote -> lightweight `ParagraphBlock`
-  - Paywall / SubscribeWidget -> neutral `EmbedBlock(provider: 'substack')`
-  - Twitter remains generic `EmbedBlock(provider: 'x')`, not X `simple-tweet`
-- Safe style/layout preservation now includes rich text annotations and media/layout metadata where representable:
-  - bold, italic, underline, links, targets
-  - font size, line height, color, alignment when safely carried as text metadata
-  - media aspect ratio, cover/poster, object-fit/object-position where supported
-  - Paywall/Subscribe readable CTA text and safe links, without preserving original scripts/events/raw DOM
-- Reader renders embed rich text with platform-neutral `reader-text-renderer` and avoids nested anchors when embed text already contains links.
+  - Footnote -> 轻量 `ParagraphBlock`
+  - Paywall / SubscribeWidget -> 平台中立的 `EmbedBlock(provider: 'substack')`
+  - Twitter 仍是通用 `EmbedBlock(provider: 'x')`，不是 X 的 `simple-tweet`
+- 安全样式与布局保留现在覆盖 rich text annotations 和可表达的 media/layout metadata：
+  - 粗体、斜体、下划线、链接、target
+  - 字号、行高、颜色、对齐；仅在能安全作为文本 metadata 承载时保留
+  - 支持的媒体比例、cover/poster、object-fit/object-position
+  - Paywall / Subscribe 的可读 CTA 文案和安全链接；不保留原站 script、事件或 raw DOM
+- Reader 使用平台中立的 `reader-text-renderer` 渲染 embed rich text，并在 embed 文本自身已经包含链接时避免生成嵌套 anchor。
 
-## File Groups
+## 文件分组
 
-Substack adapter and handler:
+Substack adapter 和 handler：
 
 - `src/content/adapters/substack-article-adapter.ts`
 - `src/content/extractors/substack/assets3-component-handler.ts`
@@ -47,18 +47,18 @@ Substack adapter and handler:
 - `src/content/extractors/configurable/register-built-in-special-handlers.ts`
 - `src/content/extractors/configurable/configurable-article-extractor.ts`
 
-Shared schema / clean-tree plumbing:
+共享 schema / clean-tree plumbing：
 
 - `src/shared/article.ts`
 - `src/content/preprocess/clone-content-tree.ts`
 
-Reader rendering:
+Reader 渲染：
 
 - `src/reader/renderers/social-embed-renderer.ts`
 - `src/reader/reader-text-renderer.ts`
 - `src/reader/style-policy.ts`
 
-Scope and verifier contracts:
+Scope 与 verifier 合同：
 
 - `public/manifest.json`
 - `src/background/index.ts`
@@ -72,9 +72,9 @@ Scope and verifier contracts:
 - `scripts/verify-adapter-manifest-scope.mjs`
 - `scripts/verify-x-article-b10-b15.mjs`
 
-## Phase 6 Verification
+## Phase 6 验证
 
-Passed in the worktree:
+已在 worktree 中通过：
 
 ```bash
 npm run verify:phase4-pipeline-baseline
@@ -87,11 +87,11 @@ npm run verify:x-simpletweet-video
 npm run verify:x-video-b31-b39
 ```
 
-Result: PASS. The shared clean-tree, media, Reader renderer, X image gallery, X caption, X simpleTweet, and X video paths did not regress.
+结果：PASS。共享 clean-tree、media、Reader renderer、X image gallery、X caption、X simpleTweet、X video 路径没有回退。
 
-## Phase 7 Verification
+## Phase 7 验证
 
-Passed in the worktree:
+已在 worktree 中通过：
 
 ```bash
 npm run build
@@ -110,11 +110,11 @@ npm run verify:reader-m1-m2
 npm run verify:reader-shared-media
 ```
 
-Result: PASS. During final acceptance, `verify:m3-adapters-settings` exposed a stale assertion that still expected `substack.article.contentSelector` to point at `.available-content .body.markup`. The current assets3 contract intentionally leaves `contentSelector` unset so the configurable extractor uses the article root and can map assets3 components outside the body markup. The verifier was updated to match that contract; production adapter behavior was not changed.
+结果：PASS。最终验收时，`verify:m3-adapters-settings` 暴露了一个过期断言：它仍期望 `substack.article.contentSelector` 指向 `.available-content .body.markup`。当前 assets3 合同有意不设置 `contentSelector`，这样 configurable extractor 会使用 article root，从而能映射 body markup 外部的 assets3 组件。已更新 verifier 以匹配该合同；生产 adapter 行为未改变。
 
-## Remaining Risk
+## 剩余风险
 
-- Live Substack pages can still vary beyond the captured assets3 DOM; this phase is fixture-locked and should be followed by manual smoke testing after merge.
-- `blob:` video URLs are intentionally not preserved; when no safe direct media URL exists, Reader displays a neutral Substack embed fallback with text/poster.
-- Audio is represented as an `EmbedBlock`, not a new audio-specific ArticleBlock.
-- `/p/...`, `latent.space`, and other custom domains are intentionally out of scope for this phase.
+- 真实 Substack 页面仍可能出现 captured assets3 DOM 之外的变化；本阶段是 fixture-locked，合并后应继续做手动 smoke testing。
+- `blob:` video URL 有意不保留；当无法拿到安全 direct media URL 时，Reader 会展示带文本 / poster 的平台中立 Substack embed fallback。
+- Audio 表示为 `EmbedBlock`，没有新增 audio-specific ArticleBlock。
+- `/p/...`、`latent.space` 和其他 custom domain 是本阶段明确的非目标。

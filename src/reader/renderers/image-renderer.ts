@@ -15,10 +15,13 @@ export function renderImageBlock(block: ImageBlock): HTMLElement {
     src: block.src,
     displaySrc: block.displaySrc,
     alt: block.alt,
+    backgroundColor: block.backgroundColor,
     backgroundSize: block.backgroundSize,
     backgroundPosition: block.backgroundPosition,
     objectFit: block.objectFit,
     objectPosition: block.objectPosition,
+    visualBleedScale: block.visualBleedScale,
+    visualBleedMode: block.visualBleedMode,
     imageClassName: 'reader-media-image',
     onError: () => {
       figure.classList.add('is-load-error');

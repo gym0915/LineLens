@@ -23,6 +23,8 @@ export type Article = {
   publishedAtText?: string;
   metrics?: TweetMetrics;
   title: string;
+  titleHref?: string;
+  subtitle?: string;
   coverImage?: ImageBlock;
   extractedAt: number;
   blocks: ArticleBlock[];
@@ -32,12 +34,14 @@ export type ArticleAuthorMeta = {
   name?: string;
   handle?: string;
   avatarUrl?: string;
+  profileUrl?: string;
   verified?: boolean;
 };
 
 export type ArticleSourceMeta = {
   provider?: string;
   label?: string;
+  href?: string;
 };
 
 export type ArticleEngagementMeta = TweetMetrics;
@@ -93,10 +97,13 @@ export type ImageBlock = {
   alt?: string;
   href?: string;
   aspectRatio?: number;
+  backgroundColor?: string;
   backgroundSize?: 'cover' | 'contain' | 'auto';
   backgroundPosition?: string;
   objectFit?: 'cover' | 'contain' | 'fill' | 'none' | 'scale-down';
   objectPosition?: string;
+  visualBleedScale?: number;
+  visualBleedMode?: 'always' | 'alpha-transparent';
 };
 
 export type ImageGalleryItem = {
@@ -107,10 +114,13 @@ export type ImageGalleryItem = {
   alt?: string;
   href?: string;
   aspectRatio?: number;
+  backgroundColor?: string;
   backgroundSize?: 'cover' | 'contain' | 'auto';
   backgroundPosition?: string;
   objectFit?: 'cover' | 'contain' | 'fill' | 'none' | 'scale-down';
   objectPosition?: string;
+  visualBleedScale?: number;
+  visualBleedMode?: 'always' | 'alpha-transparent';
 };
 
 export type ImageGalleryLayoutNode =

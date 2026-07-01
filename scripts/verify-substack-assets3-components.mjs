@@ -225,6 +225,12 @@ function assertArticleJsonComponentMapping(article, componentCounts, document, f
     assert.ok(imageLikeBlocks.some((image) => Boolean(image.srcset)), `${fixtureName} should preserve Substack image srcset`);
     assert.ok(imageLikeBlocks.some((image) => Boolean(image.href)), `${fixtureName} should preserve Substack image href`);
     assert.ok(imageLikeBlocks.some((image) => typeof image.aspectRatio === 'number'), `${fixtureName} should preserve Substack image aspect ratio`);
+    assert.ok(imageLikeBlocks.some((image) => image.objectFit === 'contain'), `${fixtureName} should preserve Substack Image2ToDOM containment`);
+    assert.ok(imageLikeBlocks.some((image) => image.backgroundColor === 'transparent'), `${fixtureName} should preserve a transparent image surface for transparent Image2ToDOM assets`);
+    assert.ok(
+      imageLikeBlocks.some((image) => image.visualBleedScale === 1.08 && image.visualBleedMode === 'alpha-transparent'),
+      `${fixtureName} should preserve Substack Image2ToDOM visual bleed compensation as alpha-gated structured image metadata`
+    );
   }
 
   const youtubeCount = countRequiredComponents(componentCounts, ['Youtube2ToDOM']);

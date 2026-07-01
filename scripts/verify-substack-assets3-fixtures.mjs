@@ -21,6 +21,8 @@ const sourceUrls = [
   'https://substack.com/inbox/post/203490377'
 ].map((url) => new URL(url));
 const bodySelector = '.available-content .body.markup';
+const focusCss = readFileSync(resolve(projectRoot, 'public/styles/focus.css'), 'utf8');
+const overlaysCss = readFileSync(resolve(projectRoot, 'public/styles/overlays.css'), 'utf8');
 const assets3ComponentRootSelector = [
   '[data-component-name="Image2ToDOM"]',
   '[data-component-name="Youtube2ToDOM"]',
@@ -108,6 +110,7 @@ for (const [index, fixture] of fixtures.entries()) {
     assert.equal(result.article.source, 'substack-article', `${fixture.name} should keep substack article source`);
     assert.ok(result.article.title.trim().length > 0, `${fixture.name} should extract a non-empty title`);
     assert.ok(result.article.blocks.length >= 10, `${fixture.name} should extract a substantial Article block set`);
+    assertSubstackHeaderMetadata(result.article, fixture.name);
     assertReaderRendering(result.article, fixture.name);
   } catch (error) {
     implementationFailures.push({
@@ -212,6 +215,8 @@ function assertReaderRendering(article, fixtureName) {
   const shell = renderArticleShell(article);
   document.body.append(shell);
 
+  assertSubstackHeaderRendering(shell, article, fixtureName);
+
   const focusResult = buildFocusUnits(article, shell);
   const blockTypes = new Map(article.blocks.map((block) => [block.id, block.type]));
   for (const unit of focusResult.units.filter((candidate) => candidate.type === 'block')) {
@@ -249,8 +254,81 @@ function assertReaderRendering(article, fixtureName) {
     assert.equal(element.querySelector('.reader-social-embed-media-image') !== null, true, `${fixtureName} Reader should render Substack media fallback image`);
   }
 
+  const transparentFriendlyImages = article.blocks.filter(
+    (block) => block.type === 'image' && block.objectFit === 'contain' && block.backgroundColor === 'transparent'
+  );
+  for (const block of transparentFriendlyImages) {
+    const element = shell.querySelector(`[data-block-id="${block.id}"]`);
+    const frame = element?.querySelector('.reader-media-frame');
+    assert.ok(frame, `${fixtureName} Reader should render Image2ToDOM through a media frame`);
+    assert.equal(element?.hasAttribute('data-reader-media-surface'), false, `${fixtureName} Reader should not fork single-image focus styling for transparent Image2ToDOM assets`);
+    assert.equal(block.visualBleedScale, 1.08, `${fixtureName} Image2ToDOM should carry visual bleed compensation metadata`);
+    assert.equal(block.visualBleedMode, 'alpha-transparent', `${fixtureName} Image2ToDOM visual bleed compensation should be gated by alpha transparency detection`);
+    assert.equal(frame?.style.backgroundColor, 'transparent', `${fixtureName} Reader should use a transparent frame surface for transparent Image2ToDOM assets`);
+    const background = frame?.querySelector('.reader-media-background');
+    assert.equal(background?.style.backgroundSize, 'contain', `${fixtureName} Reader should keep transparent Image2ToDOM assets contained`);
+    assert.equal(background?.getAttribute('data-visual-bleed-mode'), 'alpha-transparent', `${fixtureName} Reader should mark Image2ToDOM visual bleed as alpha-gated`);
+    assert.equal(background?.getAttribute('data-visual-bleed-scale'), '1.08', `${fixtureName} Reader should carry visual bleed scale for alpha-gated probing`);
+    assert.equal(background?.style.transform, '', `${fixtureName} Reader should not blindly enlarge Image2ToDOM before alpha transparency is detected`);
+  }
+
+  assert.match(
+    focusCss,
+    /\.reader-media\.focus-unit\.is-active\s*\{[\s\S]*?padding:\s*var\(--reader-media-active-padding\);[\s\S]*?background:\s*var\(--reader-highlight-surface\);/,
+    `${fixtureName} active Image2ToDOM focus should use the shared single-image selected background`
+  );
+  assert.doesNotMatch(
+    focusCss,
+    /\.reader-media\.focus-unit\.is-active\[data-reader-media-surface="transparent"\]/,
+    `${fixtureName} active Image2ToDOM focus should not use a transparent-media-specific selected-state override`
+  );
+  assert.match(
+    overlaysCss,
+    /\.reader-media-preview-image\s*\{[\s\S]*?background:\s*transparent;/,
+    `${fixtureName} media preview should not place transparent Image2ToDOM assets on a white image surface`
+  );
+
   for (const block of article.blocks.filter((candidate) => candidate.type === 'embed' || candidate.type === 'video')) {
     const unit = focusResult.units.find((candidate) => candidate.blockId === block.id);
     assert.equal(unit?.type, 'block', `${fixtureName} FocusUnit should treat ${block.type} as a block unit`);
   }
+}
+
+function assertSubstackHeaderMetadata(article, fixtureName) {
+  if (!fixtureName.includes('增长黑客AI周报')) {
+    return;
+  }
+
+  assert.equal(article.sourceMeta?.label, 'AI Growth Hacking Weekly · 增长黑客AI周报', `${fixtureName} should preserve the Substack publication label`);
+  assert.equal(article.sourceMeta?.href, 'https://www.zengzhang.ai/', `${fixtureName} should preserve the Substack publication link`);
+  assert.equal(article.titleHref, 'https://www.zengzhang.ai/p/aiep61-aiagentai4sloop-engineering', `${fixtureName} should preserve the linked title URL`);
+  assert.equal(article.subtitle, '当 AI 能替人消费时，品牌不主动嵌入 Agent 工具箱，就会被 Agent 忽略。', `${fixtureName} should preserve the Substack subtitle`);
+  assert.equal(article.author?.name, '范冰 XDash', `${fixtureName} should preserve the Substack author name`);
+  assert.equal(article.author?.profileUrl, 'https://substack.com/@xdash', `${fixtureName} should preserve the Substack author profile URL`);
+  assert.ok(article.author?.avatarUrl?.includes('55cb259b-c4c4-4c79-8bfe-a4a47eef9d1a_940x940.jpeg'), `${fixtureName} should preserve the Substack author avatar`);
+  assert.equal(article.publishedAtText, 'Jun 18, 2026', `${fixtureName} should preserve the Substack publish date`);
+}
+
+function assertSubstackHeaderRendering(shell, article, fixtureName) {
+  if (!fixtureName.includes('增长黑客AI周报')) {
+    return;
+  }
+
+  const sourceLink = shell.querySelector('.article-source-label[href]');
+  assert.equal(sourceLink?.textContent, article.sourceMeta?.label, `${fixtureName} Reader should render the publication label above the title`);
+  assert.equal(sourceLink?.getAttribute('href'), article.sourceMeta?.href, `${fixtureName} Reader should link the publication label`);
+
+  const titleLink = shell.querySelector('.article-title a[href]');
+  assert.equal(titleLink?.textContent, article.title, `${fixtureName} Reader should render the title as a link`);
+  assert.equal(titleLink?.getAttribute('href'), article.titleHref, `${fixtureName} Reader should preserve the title link`);
+
+  const subtitle = shell.querySelector('.article-subtitle');
+  assert.equal(subtitle?.textContent, article.subtitle, `${fixtureName} Reader should render the Substack subtitle below the title`);
+
+  const authorRow = shell.querySelector('.article-meta-author');
+  assert.equal(authorRow?.getAttribute('href'), article.author?.profileUrl, `${fixtureName} Reader should link the author row to the author profile`);
+  assert.equal(authorRow?.querySelector('.article-meta-author-name')?.textContent, article.author?.name, `${fixtureName} Reader should render the author name`);
+  assert.equal(authorRow?.querySelector('.article-meta-avatar')?.getAttribute('src'), article.author?.avatarUrl, `${fixtureName} Reader should render the author avatar`);
+  assert.match(authorRow?.querySelector('.article-meta-author-secondary')?.textContent ?? '', /Jun 18, 2026/, `${fixtureName} Reader should render the publish date with the author`);
+  assert.equal(shell.querySelector('.article-header-divider') !== null, true, `${fixtureName} Reader should render the Substack header divider`);
 }

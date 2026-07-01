@@ -58,6 +58,15 @@ export type ValidationConfig = {
   emptyContentStrategy?: EmptyContentStrategy;
 };
 
+export type ArticleHeaderSelectorsConfig = {
+  sourceLabelSelector?: string;
+  titleLinkSelector?: string;
+  subtitleSelector?: string;
+  authorNameSelector?: string;
+  authorAvatarSelector?: string;
+  publishedAtSelector?: string;
+};
+
 export type SpecialComponentType =
   | 'social-card'
   | 'video'
@@ -97,6 +106,7 @@ export type PlatformAdapter = {
   enabled: boolean;
   rootSelector: string;
   titleSelector?: string;
+  headerSelectors?: ArticleHeaderSelectorsConfig;
   contentSelector?: string;
   semanticMap?: SemanticMapConfig;
   cleanRules?: CleanRulesConfig;
@@ -113,6 +123,7 @@ export type PlatformAdapterUserConfig = {
   enabled?: boolean;
   rootSelector?: string;
   titleSelector?: string;
+  headerSelectors?: Partial<ArticleHeaderSelectorsConfig>;
   contentSelector?: string;
   semanticMap?: Partial<SemanticMapConfig>;
   cleanRules?: Partial<CleanRulesConfig>;

@@ -218,7 +218,7 @@
   height: auto;
   object-fit: contain;
   object-position: center center;
-  background: var(--reader-highlight-surface);
+  background: transparent;
   box-shadow: var(--reader-overlay-shadow);
 }
 

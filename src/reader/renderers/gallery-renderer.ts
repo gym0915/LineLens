@@ -59,10 +59,13 @@ function renderImageGalleryItem(block: ImageGalleryBlock, index: number): HTMLEl
     src: item.src,
     displaySrc: item.displaySrc,
     alt: item.alt,
+    backgroundColor: item.backgroundColor,
     backgroundSize: item.backgroundSize,
     backgroundPosition: item.backgroundPosition,
     objectFit: item.objectFit,
     objectPosition: item.objectPosition,
+    visualBleedScale: item.visualBleedScale,
+    visualBleedMode: item.visualBleedMode,
     imageClassName: 'reader-image-gallery-image',
     onError: () => {
       itemElement.classList.add('is-load-error');

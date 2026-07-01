@@ -5,6 +5,7 @@ import { substackArticleAdapter } from './substack-article-adapter.js';
 import { xArticleAdapter } from './x-article-adapter.js';
 
 export type {
+  ArticleHeaderSelectorsConfig,
   CleanRulesConfig,
   EmptyContentStrategy,
   PlatformAdapter,

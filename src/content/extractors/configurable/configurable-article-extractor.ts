@@ -1,4 +1,4 @@
-import type { Article, ArticleBlock, ArticleSource } from '../../../shared/article.js';
+import type { Article, ArticleAuthorMeta, ArticleBlock, ArticleSource, ArticleSourceMeta } from '../../../shared/article.js';
 import { validateArticle, type ValidationResult } from '../../../shared/article-validator.js';
 import type { ArticleExtractor, ExtractorContext, ExtractorMatch, ReadyResult } from '../../../shared/extractor-types.js';
 import { normalizeText } from '../../../shared/text.js';
@@ -169,6 +169,7 @@ export async function extractConfigurableArticleWithDiagnostics(
   if (!title && adapter.validation?.titleStrategy !== 'optional') {
     throw new Error('missing_title');
   }
+  const headerMeta = resolveConfigurableArticleHeaderMeta(adapter, roots.articleRoot, roots.titleElement, context.url);
 
   const sourceUrl = context.url.toString();
   const blockResult = buildCleanTreePrimaryBlocks({
@@ -189,6 +190,7 @@ export async function extractConfigurableArticleWithDiagnostics(
     sourceUrl,
     canonicalUrl: options.canonicalUrl ?? sourceUrl,
     title,
+    ...headerMeta,
     extractedAt: context.now?.() ?? Date.now(),
     blocks: blockResult.blocks
   };
@@ -283,6 +285,106 @@ function resolveDocumentFallbackTitle(root: ParentNode | null): string {
 
 function extractTitleText(element: Element | null | undefined): string {
   return normalizeText(element?.getAttribute('content') ?? element?.textContent ?? '');
+}
+
+function resolveConfigurableArticleHeaderMeta(
+  adapter: PlatformAdapter,
+  articleRoot: Element,
+  titleElement: Element | null,
+  sourceUrl: URL
+): Partial<Article> {
+  const selectors = adapter.headerSelectors;
+  if (!selectors) {
+    return {};
+  }
+
+  const sourceElement = queryScopedSelector(articleRoot, selectors.sourceLabelSelector);
+  const sourceLabel = extractTitleText(sourceElement);
+  const sourceHref = resolveElementHref(sourceElement, sourceUrl);
+  const sourceMeta = resolveSourceMeta(sourceLabel, sourceHref);
+
+  const titleLinkElement = queryScopedSelector(articleRoot, selectors.titleLinkSelector) ?? titleElement;
+  const titleHref = resolveElementHref(titleLinkElement, sourceUrl);
+  const subtitle = extractTitleText(queryScopedSelector(articleRoot, selectors.subtitleSelector));
+
+  const authorNameElement = queryScopedSelector(articleRoot, selectors.authorNameSelector);
+  const authorName = extractTitleText(authorNameElement);
+  const authorProfileUrl = resolveElementHref(authorNameElement, sourceUrl);
+  const authorAvatarElement = queryScopedSelector(articleRoot, selectors.authorAvatarSelector);
+  const authorAvatarUrl = resolveImageSource(authorAvatarElement, sourceUrl);
+  const author = resolveArticleAuthorMeta(authorName, authorProfileUrl, authorAvatarUrl);
+
+  const publishedAtText = extractTitleText(queryScopedSelector(articleRoot, selectors.publishedAtSelector));
+
+  return {
+    ...(sourceMeta ? { sourceMeta } : {}),
+    ...(titleHref ? { titleHref } : {}),
+    ...(subtitle ? { subtitle } : {}),
+    ...(author ? { author } : {}),
+    ...(publishedAtText ? { publishedAtText } : {})
+  };
+}
+
+function queryScopedSelector(root: Element, selector: string | undefined): Element | null {
+  if (!selector) {
+    return null;
+  }
+
+  try {
+    return root.querySelector(selector);
+  } catch {
+    return null;
+  }
+}
+
+function resolveSourceMeta(label: string, href: string | undefined): ArticleSourceMeta | null {
+  if (!label && !href) {
+    return null;
+  }
+
+  return {
+    ...(label ? { label } : {}),
+    ...(href ? { href } : {})
+  };
+}
+
+function resolveArticleAuthorMeta(
+  name: string,
+  profileUrl: string | undefined,
+  avatarUrl: string | undefined
+): ArticleAuthorMeta | null {
+  if (!name && !profileUrl && !avatarUrl) {
+    return null;
+  }
+
+  return {
+    ...(name ? { name } : {}),
+    ...(profileUrl ? { profileUrl } : {}),
+    ...(avatarUrl ? { avatarUrl } : {})
+  };
+}
+
+function resolveElementHref(element: Element | null | undefined, sourceUrl: URL): string | undefined {
+  const href = element?.getAttribute('href') ?? element?.closest('a[href]')?.getAttribute('href') ?? '';
+  return resolveAbsoluteUrl(href, sourceUrl);
+}
+
+function resolveImageSource(element: Element | null | undefined, sourceUrl: URL): string | undefined {
+  const src = element?.getAttribute('src') ?? element?.getAttribute('data-src') ?? '';
+  return resolveAbsoluteUrl(src, sourceUrl);
+}
+
+function resolveAbsoluteUrl(value: string, sourceUrl: URL): string | undefined {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+
+  try {
+    return new URL(trimmed, sourceUrl).toString();
+  } catch {
+    return undefined;
+  }
 }
 
 function validateConfigurableArticle(article: Article, config: ValidationConfig | undefined): ValidationResult {

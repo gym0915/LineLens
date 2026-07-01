@@ -10,14 +10,14 @@ import {
 export function extractPlatformImageMetadata(
   adapter: PlatformAdapter,
   element: Element
-): Pick<ImageBlock, 'aspectRatio' | 'objectFit' | 'objectPosition'> {
+): Pick<ImageBlock, 'aspectRatio' | 'backgroundColor' | 'objectFit' | 'objectPosition' | 'visualBleedScale' | 'visualBleedMode'> {
   const src = getImageMetadataSource(element);
   if (!src) {
     return {};
   }
 
   if (adapter.platform === 'substack') {
-    return extractSubstackImageUrlMetadata(src);
+    return extractSubstackImageUrlMetadata(src, element);
   }
 
   return {};
