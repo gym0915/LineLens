@@ -1,4 +1,6 @@
 import type { EmbedBlock } from '../../shared/article-schema.js';
+import { appendReaderText } from '../reader-text-renderer.js';
+import { applySimpleTweetTextStyle } from '../style-policy.js';
 import { applyMediaAspectRatio, renderMediaFrame } from './media-frame.js';
 
 export function renderEmbedBlock(block: EmbedBlock): HTMLElement {
@@ -15,11 +17,12 @@ export function renderEmbedBlock(block: EmbedBlock): HTMLElement {
 }
 
 function renderSocialEmbedBlock(block: EmbedBlock): HTMLElement {
-  const card = block.href ? document.createElement('a') : document.createElement('aside');
+  const shouldWrapCardWithLink = Boolean(block.href && !block.textAnnotations?.some((annotation) => annotation.href));
+  const card = shouldWrapCardWithLink ? document.createElement('a') : document.createElement('aside');
   card.className = 'reader-block reader-embed reader-social-embed';
   card.dataset.blockId = block.id;
   card.dataset.blockType = 'embed';
-  if (block.href) {
+  if (shouldWrapCardWithLink && block.href) {
     card.setAttribute('href', block.href);
     card.setAttribute('target', '_blank');
     card.setAttribute('rel', 'noopener noreferrer');
@@ -68,7 +71,8 @@ function renderSocialEmbedBlock(block: EmbedBlock): HTMLElement {
   if (block.text) {
     const text = document.createElement('p');
     text.className = 'reader-social-embed-text';
-    text.textContent = block.text;
+    appendReaderText(text, block.text, block.textAnnotations, { role: 'body' });
+    applySimpleTweetTextStyle(text, block.textStyle);
     body.append(text);
   }
 

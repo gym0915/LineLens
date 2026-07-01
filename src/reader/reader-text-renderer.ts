@@ -19,6 +19,7 @@ export type ReaderTextMetadata = {
     lineHeight?: string;
     textAlign?: string;
     fontStyle?: string;
+    textDecoration?: string;
   }>;
 };
 
@@ -55,7 +56,15 @@ export function createReaderTextMetadata(
     annotations: annotations
       .filter(
         (annotation) =>
-          (annotation.bold || annotation.href || annotation.emojiImageUrl || annotation.color || annotation.fontSize || annotation.lineHeight || annotation.textAlign || annotation.fontStyle) &&
+          (annotation.bold ||
+            annotation.href ||
+            annotation.emojiImageUrl ||
+            annotation.color ||
+            annotation.fontSize ||
+            annotation.lineHeight ||
+            annotation.textAlign ||
+            annotation.fontStyle ||
+            annotation.textDecoration) &&
           annotation.endOffset > rangeStart &&
           annotation.startOffset < rangeEnd
       )
@@ -70,7 +79,8 @@ export function createReaderTextMetadata(
         fontSize: annotation.fontSize,
         lineHeight: annotation.lineHeight,
         textAlign: annotation.textAlign,
-        fontStyle: annotation.fontStyle
+        fontStyle: annotation.fontStyle,
+        textDecoration: annotation.textDecoration
       }))
       .filter((annotation) => annotation.endOffset > annotation.startOffset)
       .sort((a, b) => a.startOffset - b.startOffset)
@@ -122,11 +132,11 @@ export function createReaderTextNodes(metadata: ReaderTextMetadata): Array<Node>
 
 function createAnnotatedNode(
   text: string,
-  annotation: Pick<TextAnnotation, 'bold' | 'href' | 'target' | 'emojiImageUrl' | 'color' | 'fontSize' | 'lineHeight' | 'textAlign' | 'fontStyle'>
+  annotation: Pick<TextAnnotation, 'bold' | 'href' | 'target' | 'emojiImageUrl' | 'color' | 'fontSize' | 'lineHeight' | 'textAlign' | 'fontStyle' | 'textDecoration'>
 ): HTMLElement {
   let node: HTMLElement;
 
-  const hasTextStyle = Boolean(annotation.color || annotation.fontSize || annotation.lineHeight || annotation.textAlign || annotation.fontStyle);
+  const hasTextStyle = Boolean(annotation.color || annotation.fontSize || annotation.lineHeight || annotation.textAlign || annotation.fontStyle || annotation.textDecoration);
 
   if (annotation.emojiImageUrl) {
     node = createXEmojiNode(text, annotation.emojiImageUrl, Boolean(annotation.bold));

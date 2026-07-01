@@ -10,6 +10,8 @@ import {
   locateConfigurableArticleRoots,
   waitUntilConfigurableArticleReady
 } from '../dist/content/extractors/configurable/index.js';
+import { renderArticleShell } from '../dist/reader/block-renderer.js';
+import { buildFocusUnits } from '../dist/reader/focus-unit-builder.js';
 
 const projectRoot = resolve(import.meta.dirname, '..');
 const assets3Root = findAssets3Root(projectRoot);
@@ -106,6 +108,7 @@ for (const [index, fixture] of fixtures.entries()) {
     assert.equal(result.article.source, 'substack-article', `${fixture.name} should keep substack article source`);
     assert.ok(result.article.title.trim().length > 0, `${fixture.name} should extract a non-empty title`);
     assert.ok(result.article.blocks.length >= 10, `${fixture.name} should extract a substantial Article block set`);
+    assertReaderRendering(result.article, fixture.name);
   } catch (error) {
     implementationFailures.push({
       fixture: fixture.name,
@@ -202,4 +205,52 @@ function assertAssets3ComponentRootsCovered(adapter, contentRoot, fixtureName) {
 
 function describeComponentRoot(element) {
   return element.getAttribute('data-component-name') ?? element.tagName.toLowerCase();
+}
+
+function assertReaderRendering(article, fixtureName) {
+  document.body.innerHTML = '';
+  const shell = renderArticleShell(article);
+  document.body.append(shell);
+
+  const focusResult = buildFocusUnits(article, shell);
+  const blockTypes = new Map(article.blocks.map((block) => [block.id, block.type]));
+  for (const unit of focusResult.units.filter((candidate) => candidate.type === 'block')) {
+    assert.equal(unit.blockType, blockTypes.get(unit.blockId), `${fixtureName} FocusUnit should preserve block type for ${unit.blockId}`);
+  }
+
+  const paywallBlock = article.blocks.find((block) => block.type === 'embed' && block.provider === 'substack' && /paid subscribers/i.test(`${block.title ?? ''} ${block.text ?? ''}`));
+  if (paywallBlock) {
+    const paywallElement = shell.querySelector(`[data-block-id="${paywallBlock.id}"]`);
+    assert.ok(paywallElement, `${fixtureName} Reader should render Paywall embed`);
+    assert.equal(paywallElement.querySelector('.reader-social-embed-text strong') !== null, true, `${fixtureName} Reader should render Paywall bold annotation`);
+    assert.equal(paywallElement.querySelector('.reader-social-embed-text a[href]') !== null, true, `${fixtureName} Reader should render Paywall link annotation`);
+  }
+
+  const subscribeBlock = article.blocks.find((block) => block.type === 'embed' && block.provider === 'substack' && /subscribe|subscribed|upgrade/i.test(`${block.title ?? ''} ${block.text ?? ''}`));
+  if (subscribeBlock) {
+    const subscribeElement = shell.querySelector(`[data-block-id="${subscribeBlock.id}"]`);
+    assert.ok(subscribeElement, `${fixtureName} Reader should render SubscribeWidget embed`);
+    assert.equal(subscribeElement.querySelector('.reader-social-embed-text a[href]') !== null, true, `${fixtureName} Reader should render SubscribeWidget link annotation`);
+  }
+
+  const youtubeBlocks = article.blocks.filter((block) => block.type === 'embed' && block.provider === 'youtube');
+  for (const block of youtubeBlocks) {
+    const element = shell.querySelector(`[data-block-id="${block.id}"]`);
+    assert.ok(element, `${fixtureName} Reader should render YouTube embed`);
+    assert.match(element.textContent ?? '', /YouTube/i, `${fixtureName} Reader should not render blank YouTube fallback`);
+  }
+
+  const substackMediaEmbeds = article.blocks.filter(
+    (block) => block.type === 'embed' && block.provider === 'substack' && block.media?.length
+  );
+  for (const block of substackMediaEmbeds) {
+    const element = shell.querySelector(`[data-block-id="${block.id}"]`);
+    assert.ok(element, `${fixtureName} Reader should render Substack media embed`);
+    assert.equal(element.querySelector('.reader-social-embed-media-image') !== null, true, `${fixtureName} Reader should render Substack media fallback image`);
+  }
+
+  for (const block of article.blocks.filter((candidate) => candidate.type === 'embed' || candidate.type === 'video')) {
+    const unit = focusResult.units.find((candidate) => candidate.blockId === block.id);
+    assert.equal(unit?.type, 'block', `${fixtureName} FocusUnit should treat ${block.type} as a block unit`);
+  }
 }

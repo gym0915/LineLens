@@ -1,9 +1,10 @@
 import type { CodeBlock, CodeToken, TextAnnotation, TextStyle } from '../shared/article-schema.js';
 
-type InlineTextStyle = Pick<TextAnnotation, 'color' | 'fontSize' | 'lineHeight' | 'textAlign' | 'fontStyle'>;
+type InlineTextStyle = Pick<TextAnnotation, 'color' | 'fontSize' | 'lineHeight' | 'textAlign' | 'fontStyle' | 'textDecoration'>;
 
 export function applyInlineTextStyle(element: HTMLElement, style: InlineTextStyle): void {
   if (style.fontStyle) element.style.fontStyle = style.fontStyle;
+  if (style.textDecoration) element.style.textDecoration = style.textDecoration;
 }
 
 export function applyCaptionTextStyle(element: HTMLElement, style?: TextStyle): void {
