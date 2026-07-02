@@ -287,7 +287,16 @@ async function notifyRouteChanged(tabId: number, url: string) {
 async function openReader(article: Article) {
   const readerUrl = new URL(chrome.runtime.getURL('reader.html'));
   readerUrl.searchParams.set('articleId', article.id);
-  await chrome.tabs.create({ url: readerUrl.toString(), active: true });
+  const url = readerUrl.toString();
+  const existingReaderTabs = await chrome.tabs.query({ url: `${chrome.runtime.getURL('reader.html')}*` });
+  const existingReaderTab = existingReaderTabs.find((tab) => tab.url === url && typeof tab.id === 'number');
+
+  if (typeof existingReaderTab?.id === 'number') {
+    await chrome.tabs.update(existingReaderTab.id, { active: true });
+    return;
+  }
+
+  await chrome.tabs.create({ url, active: true });
 }
 
 async function extractCurrentTabArticle(tab: chrome.tabs.Tab) {

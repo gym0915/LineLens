@@ -67,6 +67,8 @@ const calls = {
   icons: [],
   titles: [],
   createdTabs: [],
+  queriedTabs: [],
+  updatedTabs: [],
   sentMessages: [],
   executedScripts: [],
   historyFilters: [],
@@ -157,6 +159,14 @@ globalThis.chrome = {
     async create(details) {
       calls.createdTabs.push(details);
       return { id: 99, url: details.url };
+    },
+    async query(queryInfo) {
+      calls.queriedTabs.push(queryInfo);
+      return [];
+    },
+    async update(tabId, updateProperties) {
+      calls.updatedTabs.push({ tabId, updateProperties });
+      return mockTabs.get(tabId) ?? { id: tabId };
     },
     async get(tabId) {
       return mockTabs.get(tabId) ?? { id: tabId };
@@ -367,6 +377,34 @@ assert.equal(
   calls.createdTabs.at(-1).url,
   'chrome-extension://linelens/reader.html?articleId=2058421725256171718'
 );
+assert.deepEqual(calls.queriedTabs.at(-1), {
+  url: 'chrome-extension://linelens/reader.html*'
+});
+
+const createdTabsBeforeExistingReaderClick = calls.createdTabs.length;
+const existingReaderUrl = 'chrome-extension://linelens/reader.html?articleId=2058421725256171718';
+const otherReaderUrl = 'chrome-extension://linelens/reader.html?articleId=other-article';
+mockTabs.set(77, { id: 77, url: existingReaderUrl });
+mockTabs.set(78, { id: 78, url: otherReaderUrl });
+chrome.tabs.query = async (queryInfo) => {
+  calls.queriedTabs.push(queryInfo);
+  return [mockTabs.get(78), mockTabs.get(77)];
+};
+
+await actionClickedListener({ id: 42, url: article.sourceUrl });
+assert.equal(
+  calls.createdTabs.length,
+  createdTabsBeforeExistingReaderClick,
+  'opening the same article again should reuse the existing Reader tab'
+);
+assert.deepEqual(calls.updatedTabs.at(-1), {
+  tabId: 77,
+  updateProperties: { active: true }
+});
+chrome.tabs.query = async (queryInfo) => {
+  calls.queriedTabs.push(queryInfo);
+  return [];
+};
 
 sendMessageFailures.set(48, 1);
 await actionClickedListener({ id: 48, url: article.sourceUrl });

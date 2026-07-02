@@ -66,6 +66,8 @@ namespace chrome {
     };
 
     function create(details: { url: string; active?: boolean }): Promise<Tab>;
+    function query(queryInfo: { url?: string }): Promise<Tab[]>;
+    function update(tabId: number, updateProperties: { active?: boolean }): Promise<Tab>;
     function get(tabId: number): Promise<Tab>;
     function sendMessage(tabId: number, message: ExtensionMessage): Promise<ExtensionMessage>;
   }
