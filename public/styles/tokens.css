@@ -28,26 +28,25 @@
     --reader-theme-cool-gray-bg: #e0e2e6;
     --reader-theme-cool-gray-code-bg: #ced0d4;
     --reader-theme-cool-gray-ref-bg: #f2f3f5;
-    --reader-theme-night-bg: #0b1325;
+    --reader-theme-night-bg: #13141a;
     --reader-theme-night-foreground: #e8e4dc;
     --reader-theme-night-active: #e8e4dc;
     --reader-theme-night-title: #e8e4dc;
-    --reader-theme-night-card: #171f32;
-    --reader-theme-night-card-high: #222a3d;
-    --reader-theme-night-secondary: #bfc6e0;
-    --reader-theme-night-secondary-container: #3f465c;
-    --reader-theme-night-border: rgba(255, 255, 255, 0.1);
+    --reader-theme-night-card: #1c1e28;
+    --reader-theme-night-card-high: #1e2028;
+    --reader-theme-night-secondary: rgba(232, 228, 220, 0.45);
+    --reader-theme-night-secondary-container: rgba(255, 255, 255, 0.12);
+    --reader-theme-night-border: rgba(255, 255, 255, 0.07);
     --reader-theme-night-border-faint: rgba(255, 255, 255, 0.08);
     --reader-theme-night-muted: rgba(232, 228, 220, 0.26);
     --reader-theme-night-hover: rgba(232, 228, 220, 0.42);
     --reader-theme-night-subtle: rgba(232, 228, 220, 0.35);
     --reader-theme-night-highlight-surface: rgba(255, 255, 255, 0.1);
-    --reader-theme-night-highlight-shadow: 0 0 40px rgba(255, 255, 255, 0.15);
-    --reader-theme-night-panel-shadow:
-        0 18px 60px rgba(0, 0, 0, 0.38), 0 0 40px rgba(255, 255, 255, 0.12);
-    --reader-theme-night-code-surface: #131b2e;
-    --reader-theme-night-code-header: #222a3d;
-    --reader-theme-night-code-pre-surface: rgba(255, 255, 255, 0.08);
+    --reader-theme-night-highlight-shadow: 0 2px 20px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.09);
+    --reader-theme-night-panel-shadow: 0 8px 40px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.07);
+    --reader-theme-night-code-surface: #0d0e14;
+    --reader-theme-night-code-header: #0d0e14;
+    --reader-theme-night-code-pre-surface: #0d0e14;
     --reader-theme-night-media-placeholder: rgba(255, 255, 255, 0.08);
     --reader-canvas: var(--reader-system-background);
     --reader-ink: var(--reader-system-foreground);
@@ -402,7 +401,7 @@
         --reader-border-subtle: var(--reader-theme-night-border);
         --reader-border-faint: var(--reader-theme-night-border-faint);
         --reader-progress-track: var(--reader-theme-night-border-faint);
-        --reader-progress-fill: var(--reader-theme-night-active);
+        --reader-progress-fill: rgba(232, 228, 220, 0.45);
         --reader-surface-translucent: var(
             --reader-theme-night-highlight-surface
         );
@@ -420,15 +419,15 @@
         );
         --reader-table-header-surface: rgba(255, 255, 255, 0.08);
         --reader-table-border: var(--reader-theme-night-border-faint);
-        --reader-table-active-border: rgba(218, 226, 252, 0.52);
+        --reader-table-active-border: rgba(232, 228, 220, 0.55);
         --reader-table-ink: var(--reader-theme-night-active);
         --reader-table-header-ink: var(--reader-theme-night-active);
-        --reader-toast-surface: rgba(218, 226, 252, 0.92);
+        --reader-toast-surface: rgba(232, 228, 220, 0.92);
         --reader-toast-ink: var(--reader-theme-night-bg);
         --reader-social-ink: var(--reader-theme-night-foreground);
         --reader-social-muted: var(--reader-theme-night-subtle);
         --reader-social-blue: var(--reader-theme-night-secondary);
-        --reader-social-blue-outline: rgba(191, 198, 224, 0.45);
+        --reader-social-blue-outline: rgba(232, 228, 220, 0.45);
         --reader-social-border: var(--reader-theme-night-border);
         --reader-social-surface: var(--reader-theme-night-card);
         --reader-social-media-border: var(--reader-theme-night-border);
@@ -451,7 +450,7 @@
             var(--reader-theme-night-active) 16%
         );
         --reader-subscribe-widget-shadow: none;
-        --reader-inverse-surface: #dae2fc;
-        --reader-inverse-ink: #283044;
+        --reader-inverse-surface: #e8e4dc;
+        --reader-inverse-ink: #13141a;
     }
 }

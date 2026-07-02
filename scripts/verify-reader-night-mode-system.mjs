@@ -31,25 +31,25 @@ assert.equal(
 );
 
 for (const [token, value] of [
-  ['--reader-theme-night-bg', '#0b1325'],
+  ['--reader-theme-night-bg', '#13141a'],
   ['--reader-theme-night-foreground', '#e8e4dc'],
   ['--reader-theme-night-active', '#e8e4dc'],
   ['--reader-theme-night-title', '#e8e4dc'],
-  ['--reader-theme-night-card', '#171f32'],
-  ['--reader-theme-night-card-high', '#222a3d'],
-  ['--reader-theme-night-secondary', '#bfc6e0'],
-  ['--reader-theme-night-secondary-container', '#3f465c'],
-  ['--reader-theme-night-border', 'rgba(255, 255, 255, 0.1)'],
+  ['--reader-theme-night-card', '#1c1e28'],
+  ['--reader-theme-night-card-high', '#1e2028'],
+  ['--reader-theme-night-secondary', 'rgba(232, 228, 220, 0.45)'],
+  ['--reader-theme-night-secondary-container', 'rgba(255, 255, 255, 0.12)'],
+  ['--reader-theme-night-border', 'rgba(255, 255, 255, 0.07)'],
   ['--reader-theme-night-border-faint', 'rgba(255, 255, 255, 0.08)'],
   ['--reader-theme-night-muted', 'rgba(232, 228, 220, 0.26)'],
   ['--reader-theme-night-hover', 'rgba(232, 228, 220, 0.42)'],
   ['--reader-theme-night-subtle', 'rgba(232, 228, 220, 0.35)'],
   ['--reader-theme-night-highlight-surface', 'rgba(255, 255, 255, 0.1)'],
-  ['--reader-theme-night-highlight-shadow', '0 0 40px rgba(255, 255, 255, 0.15)'],
-  ['--reader-theme-night-panel-shadow', '0 18px 60px rgba(0, 0, 0, 0.38), 0 0 40px rgba(255, 255, 255, 0.12)'],
-  ['--reader-theme-night-code-surface', '#131b2e'],
-  ['--reader-theme-night-code-header', '#222a3d'],
-  ['--reader-theme-night-code-pre-surface', 'rgba(255, 255, 255, 0.08)'],
+  ['--reader-theme-night-highlight-shadow', '0 2px 20px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.09)'],
+  ['--reader-theme-night-panel-shadow', '0 8px 40px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.07)'],
+  ['--reader-theme-night-code-surface', '#0d0e14'],
+  ['--reader-theme-night-code-header', '#0d0e14'],
+  ['--reader-theme-night-code-pre-surface', '#0d0e14'],
   ['--reader-theme-night-media-placeholder', 'rgba(255, 255, 255, 0.08)'],
 ]) {
   assert(hasTokenDeclaration(tokensCss, token, value), token + ' should expose DESIGN.md night mode value ' + value);
@@ -76,14 +76,21 @@ for (const [token, value] of [
   ['--reader-highlight-shadow', 'var(--reader-theme-night-highlight-shadow)'],
   ['--reader-quote-border-muted', 'rgba(255, 255, 255, 0.15)'],
   ['--reader-quote-border-active', 'rgba(232, 228, 220, 0.55)'],
+  ['--reader-progress-fill', 'rgba(232, 228, 220, 0.45)'],
+  ['--reader-code-surface', 'var(--reader-theme-night-code-surface)'],
+  ['--reader-code-header', 'var(--reader-theme-night-code-header)'],
+  ['--reader-code-pre-surface', 'var(--reader-theme-night-code-pre-surface)'],
   ['--reader-social-ink', 'var(--reader-theme-night-foreground)'],
   ['--reader-social-muted', 'var(--reader-theme-night-subtle)'],
   ['--reader-social-blue', 'var(--reader-theme-night-secondary)'],
-  ['--reader-social-blue-outline', 'rgba(191, 198, 224, 0.45)'],
+  ['--reader-social-blue-outline', 'rgba(232, 228, 220, 0.45)'],
   ['--reader-social-border', 'var(--reader-theme-night-border)'],
   ['--reader-social-surface', 'var(--reader-theme-night-card)'],
   ['--reader-social-media-border', 'var(--reader-theme-night-border)'],
-  ['--reader-social-media-placeholder', 'var(--reader-theme-night-card-high)']
+  ['--reader-social-media-placeholder', 'var(--reader-theme-night-card-high)'],
+  ['--reader-toast-surface', 'rgba(232, 228, 220, 0.92)'],
+  ['--reader-inverse-surface', '#e8e4dc'],
+  ['--reader-inverse-ink', '#13141a']
 ]) {
   assert(hasMediaTokenDeclaration(tokensCss, token, value), token + ' should map to the night theme inside prefers-color-scheme');
 }
@@ -130,7 +137,7 @@ assert(
   'inactive night-mode table borders should use the faint border token'
 );
 assert(
-  hasMediaTokenDeclaration(tokensCss, '--reader-table-active-border', 'rgba(218, 226, 252, 0.52)'),
+  hasMediaTokenDeclaration(tokensCss, '--reader-table-active-border', 'rgba(232, 228, 220, 0.55)'),
   'active night-mode table borders should keep the brighter active table line'
 );
 assert.match(
