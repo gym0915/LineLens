@@ -23,19 +23,19 @@ const rendererSource = read('src/reader/block-renderer.ts');
 const textRendererSource = read('src/reader/reader-text-renderer.ts');
 
 for (const [token, value] of [
-  ['--reader-system-background', '#faf9f5'],
+  ['--reader-system-background', '#F9F7F3'],
   ['--reader-system-foreground', '#2c2521'],
   ['--reader-system-card', '#ffffff'],
-  ['--reader-theme-warm-white-bg', '#faf9f5'],
-  ['--reader-theme-warm-white-code-bg', '#ececea'],
-  ['--reader-theme-warm-white-ref-bg', '#fdfcfa'],
-  ['--reader-theme-warm-yellow-bg', '#fff7d2'],
-  ['--reader-theme-soft-rose-bg', '#f7e1e7'],
-  ['--reader-theme-soft-blue-bg', '#dbe7f3'],
-  ['--reader-theme-soft-sage-bg', '#dde9d7'],
-  ['--reader-theme-soft-lavender-bg', '#e8dcef'],
-  ['--reader-theme-soft-peach-bg', '#fde5d6'],
-  ['--reader-theme-cool-gray-bg', '#e0e2e6'],
+  ['--reader-theme-warm-white-bg', '#F9F7F3'],
+  ['--reader-theme-warm-white-code-bg', '#ECECEA'],
+  ['--reader-theme-warm-white-ref-bg', '#FDFCFA'],
+  ['--reader-theme-warm-yellow-bg', '#FFF7D2'],
+  ['--reader-theme-soft-rose-bg', '#F7E1E7'],
+  ['--reader-theme-soft-blue-bg', '#DBE7F3'],
+  ['--reader-theme-soft-sage-bg', '#DDE9D7'],
+  ['--reader-theme-soft-lavender-bg', '#E8DCEF'],
+  ['--reader-theme-soft-peach-bg', '#FDE5D6'],
+  ['--reader-theme-cool-gray-bg', '#E0E2E6'],
   ['--reader-radius-content', '8px'],
   ['--reader-title-size', 'clamp(2rem, 5vw, 2.75rem)'],
   ['--reader-title-line-height', '1.18'],
@@ -372,6 +372,7 @@ function isAllowedStructuralDimensionalDeclaration({ property, value }) {
   if ((property === 'width' || property === 'height' || property === 'max-width') && normalized === '100%') return true;
   if ((property === 'max-width' && normalized === '100vw') || (property === 'max-height' && normalized === '100vh')) return true;
   if (property === 'border-radius' && normalized === '999px') return true;
+  if (property === 'transform' && normalized === 'translateY(-1px)') return true;
   if ((property === 'border' || property === 'border-top' || property === 'border-bottom') && normalized.startsWith('1px solid ')) return true;
   return false;
 }

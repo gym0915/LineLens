@@ -21,6 +21,7 @@
     "verify:reader-shared-media": "npm run build && node scripts/verify-reader-shared-media.mjs",
     "verify:reader-progress-ui": "node scripts/verify-reader-progress-ui.mjs",
     "verify:reader-radius-system": "node scripts/verify-reader-radius-system.mjs",
+    "verify:reader-day-mode-system": "node scripts/verify-reader-day-mode-system.mjs",
     "verify:reader-night-mode-system": "node scripts/verify-reader-night-mode-system.mjs",
     "verify:reader-theme-settings-ui": "node scripts/verify-reader-theme-settings-ui.mjs",
     "verify:reader-inline-highlight-clean-style": "node scripts/verify-reader-inline-highlight-clean-style.mjs",
